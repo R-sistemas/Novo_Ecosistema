@@ -34,6 +34,7 @@ export async function carregarCozinha() {
       const titulo = document.createElement("h3");
       const modalidade = pedido.pagamento_entrega ? "Entrega" : pedido.mesa ? "Mesa " + pedido.mesa : "Retirada";
       titulo.textContent = pedido.cliente + " · " + modalidade;
+      if (pedido.mesa) titulo.textContent += " · Comanda " + pedido.comanda;
       const resumo = document.createElement("p");
       resumo.textContent = pedido.itens.map(item => item.quantidade + " × " + item.nome).join(", ");
       const financeiro = document.createElement("p");
@@ -63,14 +64,14 @@ export async function carregarCozinha() {
           artigo.append(despacho);
         }
       }
-      if (!pedido.recebido) {
+      if (!pedido.recebido && !pedido.mesa) {
         const receber = document.createElement("button");
         receber.textContent = "Registrar recebimento no caixa";
         receber.onclick = () => fila.dispatchEvent(new CustomEvent("receber-pedido", { detail: pedido.id }));
         artigo.append(receber);
       }
       for (const [destino, texto] of acoes[pedido.estado]) {
-        if ((destino === "entregue" && !pedido.recebido) || (destino === "recusado" && pedido.recebido)) continue;
+        if ((destino === "entregue" && !pedido.recebido && !pedido.mesa) || (destino === "recusado" && pedido.recebido)) continue;
         const botao = document.createElement("button");
         botao.textContent = texto;
         botao.onclick = async () => {

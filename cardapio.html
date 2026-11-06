@@ -30,6 +30,11 @@
     </label>
   </fieldset>
   <label id="opcao-pix" hidden><input id="pix-sandbox" type="checkbox"> <span id="rotulo-pix">Pagar com Pix</span></label>
+  <fieldset id="pagamento-mesa" hidden disabled>
+    <legend>Como deseja pagar?</legend>
+    <label><input type="radio" name="pagamento-mesa" value="caixa" checked> Pagar no caixa</label>
+    <label id="opcao-pix-mesa"><input type="radio" name="pagamento-mesa" value="pix"> Pagar agora via Pix</label>
+  </fieldset>
   <div id="dados-pix" hidden>
     <label for="documento-pix">CPF ou CNPJ para emissão da cobrança no Asaas</label>
     <input id="documento-pix" inputmode="numeric" maxlength="18" autocomplete="off">

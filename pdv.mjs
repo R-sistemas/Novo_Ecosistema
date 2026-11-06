@@ -10,6 +10,8 @@ let vendaPendente;
 let meioSelecionado;
 let area;
 let terminais = [];
+let consultaComandas = 0;
+let ultimaListaComandas;
 const estado = { sessao: null, fechamentos: [] };
 const carrinho = new Map();
 const meios = { Dinheiro: "dinheiro", Pix: "pix", "Cartão": "cartao" };
@@ -201,7 +203,10 @@ el("login").addEventListener("submit", evento => {
     el("area-administracao").hidden = area !== "administracao";
     el("login").hidden = true;
     el("operacao").hidden = false;
-    if (area === "vendas") void carregarCozinha();
+    if (area === "vendas") {
+      void carregarCozinha();
+      void carregarComandas();
+    }
     return "Estabelecimento carregado.";
   });
 });
@@ -210,16 +215,31 @@ el("empresa").addEventListener("change", () => operar(async () => {
   carrinho.clear();
   vendaPendente = undefined;
   limparPagamento();
+  el("resultado-mesa").hidden = true;
   estado.sessao = null;
   estado.fechamentos = [];
   produtos = [];
   if (area === "vendas") {
     renderizar();
     void carregarCozinha();
+    void carregarComandas();
   }
   await atualizar();
   return "Estabelecimento carregado.";
 }));
+el("configurar-mesa").onsubmit = evento => {
+  evento.preventDefault();
+  operar(async () => {
+    const mesa = await executar("configurar_mesa_cardapio", {
+      p_empresa: el("empresa").value, p_numero: el("numero-mesa").valueAsNumber
+    });
+    const link = new URL("./cardapio.html", location.href);
+    link.search = new URLSearchParams(mesa);
+    el("link-mesa").value = link.href;
+    el("resultado-mesa").hidden = false;
+    return "Link da mesa disponível.";
+  });
+};
 el("trocar-area").onclick = () => {
   if (carrinho.size || vendaPendente) {
     el("notice").textContent = "Conclua ou esvazie a venda atual antes de trocar de área.";
@@ -295,19 +315,55 @@ el("cadastro-produto").addEventListener("submit", evento => {
     return "Produto cadastrado.";
   });
 });
-el("fila-cozinha").addEventListener("receber-pedido", evento => operar(async () => {
+function receberPedido(id, meio) {
+  return operar(async () => {
   if (!estado.sessao) throw new Error("Abra o caixa antes de receber o pedido.");
-  const meio = el("meio-pedido-cozinha").value;
   if (!window.confirm("Registrar o recebimento deste pedido em " + meio + "?")) return "";
   const valor = await executar("receber_pedido_no_caixa", {
     p_caixa: estado.sessao.id,
-    p_pedido: evento.detail,
+    p_pedido: id,
     p_meio: meios[meio]
   });
   await atualizar();
   void carregarCozinha();
+  void carregarComandas();
   return "Recebimento registrado · " + reais(valor);
-}));
+  });
+}
+el("fila-cozinha").addEventListener("receber-pedido", evento => {
+  void receberPedido(evento.detail, el("meio-pedido-cozinha").value);
+});
+
+async function carregarComandas() {
+  if (area !== "vendas" || el("operacao").hidden) return;
+  const atual = ++consultaComandas;
+  const lista = el("comandas-pendentes");
+  const empresa = el("empresa").value;
+  try {
+    const comandas = await executar("comandas_pendentes", {
+      p_empresa: empresa, p_busca: el("buscar-comanda").value
+    });
+    if (atual !== consultaComandas || empresa !== el("empresa").value) return;
+    const resultado = JSON.stringify([empresa, comandas]);
+    if (resultado === ultimaListaComandas) return;
+    ultimaListaComandas = resultado;
+    lista.replaceChildren(...comandas.map(comanda => {
+      const linha = document.createElement("div");
+      linha.className = "row";
+      linha.append("Mesa " + comanda.mesa + " · Comanda " + comanda.comanda + " · " +
+        comanda.cliente + " · " + reais(comanda.total_centavos), botao("Receber", () =>
+        receberPedido(comanda.id, el("meio-comanda").value)));
+      return linha;
+    }));
+    if (!comandas.length) lista.textContent = "Nenhuma comanda pendente para esta busca.";
+  } catch (erro) {
+    if (atual !== consultaComandas) return;
+    ultimaListaComandas = undefined;
+    lista.textContent = erro.message;
+  }
+}
+el("buscar-comanda").oninput = carregarComandas;
+setInterval(() => { if (!document.hidden) void carregarComandas(); }, 5000);
 function abrirPagamento() {
   el("pagamento-pdv").hidden = false;
   el("abrir-pagamento-pdv").hidden = true;

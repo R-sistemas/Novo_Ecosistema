@@ -18,6 +18,7 @@ button{background:white;color:var(--forte);font-weight:700;cursor:pointer}button
 .qr{display:block;width:156px;height:156px;margin:12px auto;background:white;border:1px solid var(--borda);padding:8px}.pix-note{text-align:center;margin:0;color:var(--suave)}.actions{display:flex;gap:8px;flex-wrap:wrap}.actions button{flex:1}.log{margin:0;padding-left:19px}footer{padding-block:13px;border-top:1px solid var(--borda);color:var(--suave);font-size:.82rem}
 .meios{display:grid;gap:8px;margin-bottom:12px}.meios button{text-align:left}.meios button[aria-pressed="true"]{background:#e4f1e7;border-color:var(--verde)}
 dialog{border:1px solid var(--borda);border-radius:14px;max-width:min(400px,90vw);padding:22px}dialog::backdrop{background:#1b2a22a0}dialog input{width:100%;margin-bottom:12px}[hidden]{display:none!important}
+.table-wrap{position:relative;isolation:isolate}.table-wrap::before{content:"";position:absolute;inset:44px 0 0;background:url("logo.png") center / min(30%,220px) auto no-repeat;opacity:.055;z-index:-1;pointer-events:none}
 @media(max-width:780px){.grid{grid-template-columns:1fr}.table-wrap{min-height:0}header{gap:10px}header img{width:52px}.tools{flex-wrap:wrap}}
 </style>
 </head>

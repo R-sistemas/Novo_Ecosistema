@@ -41,6 +41,10 @@ async function acompanhar() {
     : creditoQuiosque ? "Aguardando confirmação do cartão"
     : pixTeste ? "Aguardando Pix Sandbox" : "Aguardando pagamento Pix") : estados[pedido.estado]) +
     " · " + moeda.format(pedido.total_centavos / 100);
+  if (pedido.mesa) {
+    el("mensagem").textContent += " · Mesa " + pedido.mesa + " · Comanda " + pedido.comanda +
+      (pedido.pago ? " · Pago" : aguardandoPix || pedido.estado === "recusado" ? "" : " · Pagar no caixa");
+  }
   if (!aguardandoPix) el("pagamento-pix").hidden = true;
   return aguardandoPix;
 }
@@ -101,7 +105,7 @@ executarComFeedback(async () => {
   if (p_slug === "quiosque-dorafa") {
     pixDisponivel = await executar("pix_online_disponivel", { p_slug }).catch(() => false);
   }
-  el("opcao-pix").hidden = entrega || creditoTeste || creditoQuiosque || !pixDisponivel;
+  el("opcao-pix").hidden = Boolean(p_mesa) || entrega || creditoTeste || creditoQuiosque || !pixDisponivel;
   if (entrega) {
     el("entrega-teste").hidden = false;
     el("entrega-teste").disabled = false;
@@ -116,15 +120,25 @@ executarComFeedback(async () => {
   el("rotulo-pix").textContent = pixMercadoPagoTeste ? "Simular Pix Mercado Pago"
     : pixMercadoPagoQuiosque ? "Pagar com Pix Mercado Pago"
     : pixTeste ? "Pagar com Pix Sandbox" : "Pagar com Pix";
+  const pagamentoMesa = p_mesa && !creditoTeste && !creditoQuiosque;
+  const pixEscolhido = () => pagamentoMesa
+    ? document.querySelector('input[name="pagamento-mesa"]:checked').value === "pix"
+    : el("pix-sandbox").checked;
   el("pix-sandbox").onchange = () => {
-    const solicitarDocumento = !pixTeste && !pixMercadoPagoQuiosque && el("pix-sandbox").checked;
+    const solicitarDocumento = !pixTeste && !pixMercadoPagoQuiosque && pixEscolhido();
     el("dados-pix").hidden = !solicitarDocumento;
     el("documento-pix").required = solicitarDocumento;
     const solicitarEmail = pixMercadoPagoQuiosque &&
-      (entrega ? el("pagamento-entrega").value === "online" : el("pix-sandbox").checked);
+      (entrega ? el("pagamento-entrega").value === "online" : pixEscolhido());
     el("dados-email-pix").hidden = !solicitarEmail;
     el("email-pix").required = solicitarEmail;
   };
+  if (pagamentoMesa) {
+    el("pagamento-mesa").hidden = false;
+    el("pagamento-mesa").disabled = false;
+    el("opcao-pix-mesa").hidden = !pixDisponivel;
+    el("pagamento-mesa").onchange = el("pix-sandbox").onchange;
+  }
   if (entrega) {
     el("pagamento-entrega").onchange = el("pix-sandbox").onchange;
     el("pagamento-entrega").onchange();
@@ -161,7 +175,7 @@ executarComFeedback(async () => {
       const endereco = entrega ? Object.fromEntries(
         [...el("entrega-teste").querySelectorAll("input")].map(campo => [campo.name, campo.value.trim()])
       ) : undefined;
-      const pix = entrega ? pagamento === "online" : pixDisponivel && el("pix-sandbox").checked;
+      const pix = entrega ? pagamento === "online" : pixDisponivel && pixEscolhido();
       const cpfCnpj = pix && !pixTeste ? el("documento-pix").value : undefined;
       const email = pix && pixMercadoPagoQuiosque ? el("email-pix").value.trim() : undefined;
       const assinatura = JSON.stringify({ p_itens, p_cliente, pix, cpfCnpj, email, endereco, pagamento });

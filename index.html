@@ -35,6 +35,14 @@
 <section class="panel"><h2>Últimos registros</h2><ol id="history"></ol></section>
 </div>
 <section class="panel">
+<h2>Comandas de mesa a receber</h2>
+<label for="buscar-comanda">Número da comanda ou da mesa</label>
+<input id="buscar-comanda" type="search" inputmode="numeric" placeholder="Ex.: 12">
+<label for="meio-comanda">Meio de recebimento da comanda</label>
+<select id="meio-comanda"><option>Dinheiro</option><option>Pix</option><option>Cartão</option></select>
+<div id="comandas-pendentes" aria-live="polite"></div>
+</section>
+<section class="panel">
 <h2>Cozinha</h2>
 <label for="meio-pedido-cozinha">Meio de recebimento do pedido no caixa</label>
 <select id="meio-pedido-cozinha"><option>Dinheiro</option><option>Pix</option><option>Cartão</option></select>
@@ -44,6 +52,12 @@
 </section>
 </div>
 <section id="area-administracao" hidden>
+<form id="configurar-mesa" class="panel">
+<h2>Link do cardápio da mesa</h2>
+<label for="numero-mesa">Número da mesa</label><input id="numero-mesa" type="number" min="1" max="999" step="1" required>
+<button>Obter link da mesa</button>
+<label for="link-mesa" id="resultado-mesa" hidden>Endereço para o QR da mesa<input id="link-mesa" readonly></label>
+</form>
 <form id="cadastrar-operador" class="panel">
 <h2>Cadastrar operador</h2>
 <label for="novo-operador-email">E-mail do operador</label><input id="novo-operador-email" type="email" maxlength="254" required>
