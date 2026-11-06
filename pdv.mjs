@@ -1,5 +1,5 @@
 import { saldo } from "./caixa.mjs";
-import { entrar, listar, executar, cadastrarProduto, desativarProduto } from "./supabase-pdv.mjs";
+import { entrar, listar, executar, cadastrarOperador, cadastrarProduto, desativarProduto } from "./supabase-pdv.mjs";
 import { carregarCozinha } from "./cozinha.mjs";
 
 let produtos = [];
@@ -233,6 +233,23 @@ el("configurar-pdv").onsubmit = evento => {
     await executar("configurar_nome_pdv", { p_empresa: el("empresa").value, p_nome: el("nome-pdv").value.trim() });
     await atualizar();
     return "Nome do PDV atualizado.";
+  });
+};
+el("cadastrar-operador").onsubmit = evento => {
+  evento.preventDefault();
+  operar(async () => {
+    const senha = el("novo-operador-senha");
+    try {
+      await cadastrarOperador({
+        empresa: el("empresa").value, email: el("novo-operador-email").value.trim(),
+        senha: senha.value, caixa: el("novo-operador-caixa").value.trim() || null
+      });
+    } finally {
+      senha.value = "";
+    }
+    evento.target.reset();
+    await atualizar();
+    return "Operador cadastrado e vinculado ao estabelecimento.";
   });
 };
 el("editar-terminal").onchange = () => {

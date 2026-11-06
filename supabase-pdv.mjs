@@ -2,10 +2,10 @@ const url = "https://eyqxxlcmxlilgogxdcoq.supabase.co";
 let sessao;
 let renovacao;
 
-async function requisitar(caminho, dados, token, metodo = dados === undefined ? "GET" : "POST") {
+async function requisitar(caminho, dados, token, metodo = dados === undefined ? "GET" : "POST", base = url) {
   const chave = document.querySelector('meta[name="supabase-key"]').content.trim();
   if (!chave) throw new Error("Configure a chave publicável do Supabase.");
-  const resposta = await fetch(url + caminho, {
+  const resposta = await fetch(base + caminho, {
     method: metodo,
     headers: {
       apikey: chave,
@@ -16,11 +16,11 @@ async function requisitar(caminho, dados, token, metodo = dados === undefined ? 
   });
   const corpo = await resposta.text();
   const resultado = corpo ? JSON.parse(corpo) : null;
-  if (!resposta.ok) throw new Error(resultado?.message ?? resultado?.msg ?? "Falha ao acessar o Supabase.");
+  if (!resposta.ok) throw new Error(resultado?.erro ?? resultado?.message ?? resultado?.msg ?? "Não foi possível concluir a solicitação.");
   return resultado;
 }
 
-async function solicitar(caminho, dados, metodo) {
+async function solicitar(caminho, dados, metodo, base) {
   if (sessao && Date.now() >= sessao.expiraEm - 60_000) {
     if (!renovacao) {
       const atual = sessao;
@@ -34,7 +34,7 @@ async function solicitar(caminho, dados, metodo) {
     }
     await renovacao;
   }
-  return requisitar(caminho, dados, sessao?.access_token, metodo);
+  return requisitar(caminho, dados, sessao?.access_token, metodo, base);
 }
 
 function guardarSessao(nova) {
@@ -51,5 +51,6 @@ export async function entrar(email, password) {
 export const listar = consulta => solicitar("/rest/v1/" + consulta);
 export const executar = (nome, dados) => solicitar("/rest/v1/rpc/" + nome, dados);
 export const cadastrarProduto = dados => solicitar("/rest/v1/produtos", dados);
+export const cadastrarOperador = dados => solicitar("/api/cadastrar-operador", dados, "POST", "");
 export const desativarProduto = (empresa, id) =>
   solicitar("/rest/v1/produtos?empresa_id=eq." + empresa + "&id=eq." + id, { ativo: false }, "PATCH");
