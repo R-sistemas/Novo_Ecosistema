@@ -24,7 +24,8 @@ export default async function handler(req, res) {
       signal: AbortSignal.timeout(8000)
     });
     if (!resposta.ok) throw new Error("Integração retornou HTTP " + resposta.status);
-    return resposta.json();
+    const corpo = await resposta.text();
+    return corpo ? JSON.parse(corpo) : null;
   }
   const banco = (nome, dados) => chamar(new URL("/rest/v1/rpc/" + nome, SUPABASE_URL), {
     apikey: SUPABASE_SERVICE_ROLE_KEY,
