@@ -1,9 +1,10 @@
 import { saldo } from "./caixa.mjs";
-import { entrar, listar, executar } from "./supabase-pdv.mjs";
+import { entrar, listar, executar, cadastrarProduto } from "./supabase-pdv.mjs";
 import { carregarCozinha } from "./cozinha.mjs";
 
 let produtos = [];
 let usuario;
+let empresasGerenciadas = new Set();
 let ocupado = false;
 let vendaPendente;
 const estado = { sessao: null, fechamentos: [] };
@@ -27,6 +28,7 @@ function botao(texto, acao, secundario = false) {
 
 async function atualizar() {
   const empresa = el("empresa").value;
+  el("cadastro-produto").hidden = !empresasGerenciadas.has(empresa);
   const [catalogo, caixas] = await Promise.all([
     listar("produtos?ativo=eq.true&empresa_id=eq." + empresa + "&order=nome"),
     listar("caixas?empresa_id=eq." + empresa + "&operador_id=eq." + usuario + "&order=aberto_em.desc&limit=1")
@@ -141,7 +143,11 @@ el("login").addEventListener("submit", evento => {
   operar(async () => {
     usuario = await entrar(el("email").value, el("password").value);
     el("password").value = "";
-    const empresas = await listar("empresas?select=id,nome&order=nome");
+    const [empresas, vinculos] = await Promise.all([
+      listar("empresas?select=id,nome&order=nome"),
+      listar("membros?select=empresa_id&papel=eq.gestor")
+    ]);
+    empresasGerenciadas = new Set(vinculos.map(vinculo => vinculo.empresa_id));
     if (!empresas.length) throw new Error("Seu usuário ainda não tem acesso a um estabelecimento.");
     el("empresa").replaceChildren(...empresas.map(e => new Option(e.nome, e.id)));
     await atualizar();
@@ -165,6 +171,21 @@ el("empresa").addEventListener("change", () => operar(async () => {
 }));
 
 el("cash").addEventListener("submit", evento => evento.preventDefault());
+el("cadastro-produto").addEventListener("submit", evento => {
+  evento.preventDefault();
+  operar(async () => {
+    const codigo = el("produto-codigo").value.trim();
+    const nome = el("produto-nome").value.trim();
+    const preco_centavos = Math.round(el("produto-preco").valueAsNumber * 100);
+    if (!codigo || !nome || !Number.isSafeInteger(preco_centavos) || preco_centavos < 1) {
+      throw new Error("Informe código, nome e preço válido.");
+    }
+    await cadastrarProduto({ empresa_id: el("empresa").value, codigo, nome, preco_centavos });
+    evento.target.reset();
+    await atualizar();
+    return "Produto cadastrado.";
+  });
+});
 el("fila-cozinha").addEventListener("receber-pedido", evento => operar(async () => {
   if (!estado.sessao) throw new Error("Abra o caixa antes de receber o pedido.");
   const meio = el("method").value;

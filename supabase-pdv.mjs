@@ -13,8 +13,9 @@ async function solicitar(caminho, dados) {
     },
     body: dados === undefined ? undefined : JSON.stringify(dados)
   });
-  const resultado = await resposta.json();
-  if (!resposta.ok) throw new Error(resultado.message ?? resultado.msg ?? "Falha ao acessar o Supabase.");
+  const corpo = await resposta.text();
+  const resultado = corpo ? JSON.parse(corpo) : null;
+  if (!resposta.ok) throw new Error(resultado?.message ?? resultado?.msg ?? "Falha ao acessar o Supabase.");
   return resultado;
 }
 
@@ -27,3 +28,4 @@ export async function entrar(email, password) {
 
 export const listar = consulta => solicitar("/rest/v1/" + consulta);
 export const executar = (nome, dados) => solicitar("/rest/v1/rpc/" + nome, dados);
+export const cadastrarProduto = dados => solicitar("/rest/v1/produtos", dados);

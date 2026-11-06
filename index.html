@@ -23,6 +23,13 @@
 <p id="aviso-cozinha" role="status"></p>
 <div id="fila-cozinha"></div>
 </section>
+<form id="cadastro-produto" class="panel" hidden>
+<h2>Cadastrar produto</h2>
+<label for="produto-codigo">Código</label><input id="produto-codigo" maxlength="32" required>
+<label for="produto-nome">Nome</label><input id="produto-nome" maxlength="100" required>
+<label for="produto-preco">Preço (R$)</label><input id="produto-preco" type="number" min="0.01" step="0.01" required>
+<button>Salvar produto</button>
+</form>
 </div><p id="notice" role="status" aria-live="polite"></p>
 </main>
 </body></html>
