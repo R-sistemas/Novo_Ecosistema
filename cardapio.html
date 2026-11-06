@@ -16,8 +16,15 @@
   <p id="total"></p>
   <label for="cliente">Seu nome</label>
   <input id="cliente" maxlength="100" required>
+  <label id="opcao-pix" hidden><input id="pix-sandbox" type="checkbox"> Pagar com Pix Sandbox</label>
   <button>Enviar pedido</button>
 </form>
+<section id="pagamento-pix" class="panel" hidden>
+  <h2>Pix Sandbox</h2>
+  <img id="qr-pix" width="220" height="220" alt="QR Code Pix de teste">
+  <label for="pix-codigo">Pix copia e cola</label>
+  <input id="pix-codigo" readonly>
+</section>
 <p id="mensagem" role="status"></p>
 <button id="acompanhar" hidden>Atualizar andamento</button>
 </main>

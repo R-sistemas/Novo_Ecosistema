@@ -25,7 +25,26 @@ async function executarComFeedback(acao) {
 async function acompanhar() {
   const pedido = await executar("acompanhar_pedido", { p_slug, p_id });
   if (!pedido) throw new Error("Pedido indisponível.");
-  el("mensagem").textContent = estados[pedido.estado] + " · " + moeda.format(pedido.total_centavos / 100);
+  const aguardando = pedido.pix_sandbox && !pedido.pix_confirmado;
+  el("mensagem").textContent = (aguardando ? "Aguardando Pix Sandbox" : estados[pedido.estado]) +
+    " · " + moeda.format(pedido.total_centavos / 100);
+  if (!aguardando) el("pagamento-pix").hidden = true;
+  return aguardando;
+}
+
+async function mostrarPix(dados) {
+  const resposta = await fetch("/api/checkout-pix-sandbox", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(dados)
+  });
+  const pix = await resposta.json();
+  if (!resposta.ok || !pix.imagem || !pix.copiaECola) {
+    throw new Error(pix.erro ?? "QR Code indisponível.");
+  }
+  el("qr-pix").src = "data:image/png;base64," + pix.imagem;
+  el("pix-codigo").value = pix.copiaECola;
+  el("pagamento-pix").hidden = false;
 }
 
 el("acompanhar").onclick = () => executarComFeedback(acompanhar);
@@ -34,7 +53,7 @@ executarComFeedback(async () => {
   if (!p_slug) throw new Error("Abra o link do cardápio do estabelecimento.");
   if (p_id) {
     el("acompanhar").hidden = false;
-    await acompanhar();
+    if (await acompanhar()) await mostrarPix({ p_slug, p_id, p_itens: [] });
     return;
   }
   const menu = await executar("ver_cardapio", { p_slug });
@@ -61,6 +80,7 @@ executarComFeedback(async () => {
   el("pedido").addEventListener("input", totalizar);
   totalizar();
   el("pedido").hidden = false;
+  el("opcao-pix").hidden = p_slug !== "loja-teste";
   el("pedido").onsubmit = evento => {
     evento.preventDefault();
     executarComFeedback(async () => {
@@ -69,11 +89,18 @@ executarComFeedback(async () => {
       }));
       if (!p_itens.length) throw new Error("Escolha pelo menos um produto.");
       const p_cliente = el("cliente").value.trim();
-      const assinatura = JSON.stringify({ p_itens, p_cliente });
+      const pix = p_slug === "loja-teste" && el("pix-sandbox").checked;
+      const assinatura = JSON.stringify({ p_itens, p_cliente, pix });
       if (tentativa?.assinatura !== assinatura) tentativa = { assinatura, id: crypto.randomUUID() };
       el("pedido").inert = true;
       try {
-        p_id = await executar("enviar_pedido", { p_slug, p_mesa, p_itens, p_cliente, p_id: tentativa.id });
+        const dados = { p_slug, p_mesa, p_itens, p_cliente, p_id: tentativa.id };
+        if (pix) {
+          await mostrarPix(dados);
+          p_id = tentativa.id;
+        } else {
+          p_id = await executar("enviar_pedido", dados);
+        }
         parametros.set("pedido", p_id);
         parametros.delete("mesa");
         history.replaceState(null, "", "?" + parametros);
@@ -86,3 +113,9 @@ executarComFeedback(async () => {
     });
   };
 });
+
+setInterval(() => {
+  if (p_id && !document.hidden && !el("pagamento-pix").hidden) {
+    void executarComFeedback(acompanhar);
+  }
+}, 5000);
