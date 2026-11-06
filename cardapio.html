@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="supabase-key" content="sb_publishable_s0oowaHaCZkMUZgNTo6upw_zljF76Na">
+<title>Cardápio | R Sistemas</title>
+<link rel="stylesheet" href="style.css">
+<script type="module" src="cardapio.mjs"></script>
+</head>
+<body>
+<main>
+<h1 id="loja">Cardápio</h1>
+<form class="panel" id="pedido" hidden>
+  <div id="produtos"></div>
+  <p id="total"></p>
+  <label for="cliente">Seu nome</label>
+  <input id="cliente" maxlength="100" required>
+  <button>Enviar pedido</button>
+</form>
+<p id="mensagem" role="status"></p>
+<button id="acompanhar" hidden>Atualizar andamento</button>
+</main>
+</body>
+</html>

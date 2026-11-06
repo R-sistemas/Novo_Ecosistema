@@ -1,5 +1,6 @@
 import { saldo } from "./caixa.mjs";
 import { entrar, listar, executar } from "./supabase-pdv.mjs";
+import { carregarCozinha } from "./cozinha.mjs";
 
 let produtos = [];
 let usuario;
@@ -145,6 +146,7 @@ el("login").addEventListener("submit", evento => {
     await atualizar();
     el("login").hidden = true;
     el("operacao").hidden = false;
+    void carregarCozinha();
     return "Estabelecimento carregado.";
   });
 });
@@ -156,6 +158,7 @@ el("empresa").addEventListener("change", () => operar(async () => {
   estado.fechamentos = [];
   produtos = [];
   renderizar();
+  void carregarCozinha();
   await atualizar();
   return "Estabelecimento carregado.";
 }));
