@@ -12,6 +12,8 @@ let ocupado = false;
 let aguardandoPix = false;
 const pixTeste = p_slug === "loja-teste";
 const pixMercadoPagoTeste = pixTeste && parametros.get("pix") === "mercado-pago";
+const pixMercadoPagoQuiosque = p_slug === "quiosque-dorafa" &&
+  (parametros.get("pix") === "mercado-pago" || (!p_id && !parametros.has("pix")));
 let pixDisponivel = pixTeste;
 
 async function executarComFeedback(acao) {
@@ -38,6 +40,7 @@ async function acompanhar() {
 
 async function mostrarPix(dados) {
   const rota = pixMercadoPagoTeste ? "/api/checkout-pix-mercado-pago-teste"
+    : pixMercadoPagoQuiosque ? "/api/checkout-pix-mercado-pago-quiosque"
     : pixTeste ? "/api/checkout-pix-sandbox" : "/api/checkout-pix-quiosque";
   const resposta = await fetch(rota, {
     method: "POST",
@@ -93,11 +96,15 @@ executarComFeedback(async () => {
   }
   el("opcao-pix").hidden = !pixDisponivel;
   el("rotulo-pix").textContent = pixMercadoPagoTeste ? "Simular Pix Mercado Pago"
+    : pixMercadoPagoQuiosque ? "Pagar com Pix Mercado Pago"
     : pixTeste ? "Pagar com Pix Sandbox" : "Pagar com Pix";
   el("pix-sandbox").onchange = () => {
-    const solicitarDocumento = !pixTeste && el("pix-sandbox").checked;
+    const solicitarDocumento = !pixTeste && !pixMercadoPagoQuiosque && el("pix-sandbox").checked;
     el("dados-pix").hidden = !solicitarDocumento;
     el("documento-pix").required = solicitarDocumento;
+    const solicitarEmail = pixMercadoPagoQuiosque && el("pix-sandbox").checked;
+    el("dados-email-pix").hidden = !solicitarEmail;
+    el("email-pix").required = solicitarEmail;
   };
   el("pedido").onsubmit = evento => {
     evento.preventDefault();
@@ -109,13 +116,15 @@ executarComFeedback(async () => {
       const p_cliente = el("cliente").value.trim();
       const pix = pixDisponivel && el("pix-sandbox").checked;
       const cpfCnpj = pix && !pixTeste ? el("documento-pix").value : undefined;
-      const assinatura = JSON.stringify({ p_itens, p_cliente, pix, cpfCnpj });
+      const email = pix && pixMercadoPagoQuiosque ? el("email-pix").value.trim() : undefined;
+      const assinatura = JSON.stringify({ p_itens, p_cliente, pix, cpfCnpj, email });
       if (tentativa?.assinatura !== assinatura) tentativa = { assinatura, id: crypto.randomUUID() };
       el("pedido").inert = true;
       try {
         const dados = { p_slug, p_mesa, p_itens, p_cliente, p_id: tentativa.id };
         if (pix) {
-          await mostrarPix({ ...dados, cpfCnpj });
+          await mostrarPix({ ...dados, cpfCnpj, email });
+          if (pixMercadoPagoQuiosque) parametros.set("pix", "mercado-pago");
           el("documento-pix").value = "";
           p_id = tentativa.id;
         } else {
