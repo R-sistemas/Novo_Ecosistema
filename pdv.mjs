@@ -196,6 +196,7 @@ el("fila-cozinha").addEventListener("receber-pedido", evento => operar(async () 
     p_meio: meios[meio]
   });
   await atualizar();
+  void carregarCozinha();
   return "Recebimento registrado · " + reais(valor);
 }));
 el("sale").addEventListener("submit", evento => {
