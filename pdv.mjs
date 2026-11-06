@@ -1,5 +1,5 @@
 import { saldo } from "./caixa.mjs";
-import { entrar, listar, executar, cadastrarProduto } from "./supabase-pdv.mjs";
+import { entrar, listar, executar, cadastrarProduto, desativarProduto } from "./supabase-pdv.mjs";
 import { carregarCozinha } from "./cozinha.mjs";
 
 let produtos = [];
@@ -8,6 +8,8 @@ let empresasGerenciadas = new Set();
 let ocupado = false;
 let vendaPendente;
 let meioSelecionado;
+let area;
+let terminais = [];
 const estado = { sessao: null, fechamentos: [] };
 const carrinho = new Map();
 const meios = { Dinheiro: "dinheiro", Pix: "pix", "Cartão": "cartao" };
@@ -30,19 +32,48 @@ function botao(texto, acao, secundario = false) {
 
 async function atualizar() {
   const empresa = el("empresa").value;
-  const gestor = empresasGerenciadas.has(empresa);
-  el("cadastro-produto").hidden = !gestor;
+  const administracao = area === "administracao";
+  const terminalAnterior = el("terminal-pdv").value;
   el("configuracao-entrega").hidden = true;
-  const [catalogo, caixas, configuracao] = await Promise.all([
+  const [catalogo, caixas, configuracao, caixasDisponiveis] = await Promise.all([
     listar("produtos?ativo=eq.true&empresa_id=eq." + empresa + "&order=nome"),
-    listar("caixas?empresa_id=eq." + empresa + "&operador_id=eq." + usuario + "&order=aberto_em.desc&limit=1"),
-    gestor ? listar("empresas?select=pagamento_na_entrega&id=eq." + empresa) : []
+    administracao ? [] : listar("caixas?empresa_id=eq." + empresa + "&operador_id=eq." + usuario + "&order=aberto_em.desc&limit=1"),
+    listar("empresas?select=nome,nome_pdv,pagamento_na_entrega&id=eq." + empresa),
+    administracao ? executar("listar_terminais_gestor", { p_empresa: empresa })
+      : listar("terminais_pdv?select=id,nome&empresa_id=eq." + empresa + "&operador_id=eq." + usuario + "&order=nome")
   ]);
-  if (configuracao.length) {
+  const nomePdv = configuracao[0].nome_pdv ?? configuracao[0].nome;
+  el("nome-pdv-exibido").textContent = nomePdv;
+  terminais = caixasDisponiveis;
+  if (administracao) {
+    el("status").textContent = "Administração";
+    el("nome-pdv").value = nomePdv;
+    el("editar-terminal").replaceChildren(new Option("Novo caixa", ""),
+      ...terminais.map(t => new Option(t.nome + " · " + t.email, t.id)));
+    el("configurar-terminal").reset();
+    el("cadastro-produto").hidden = false;
     el("pagamento-na-entrega").checked = configuracao[0].pagamento_na_entrega;
     el("configuracao-entrega").hidden = false;
+    el("catalogo-gestor").replaceChildren(...catalogo.map(produto => {
+      const linha = document.createElement("li");
+      linha.append(produto.nome + " · " + reais(produto.preco_centavos) + " ",
+        botao("Desativar", () => operar(async () => {
+          if (!window.confirm("Retirar " + produto.nome + " do catálogo ativo?")) return "";
+          await desativarProduto(empresa, produto.id);
+          await atualizar();
+          return "Produto retirado do catálogo.";
+        }), true));
+      return linha;
+    }));
+    return;
   }
   const caixa = caixas[0];
+  el("terminal-pdv").replaceChildren(...terminais.map(t => new Option(t.nome, t.id)));
+  if (caixa && !caixa.fechado_em && !terminais.some(t => t.id === caixa.terminal_id)) {
+    el("terminal-pdv").add(new Option("Caixa do turno atual", caixa.terminal_id ?? ""));
+  }
+  el("terminal-pdv").value = caixa && !caixa.fechado_em ? caixa.terminal_id ?? ""
+    : terminais.some(t => t.id === terminalAnterior) ? terminalAnterior : terminais[0]?.id ?? "";
   const registros = caixa ? await listar("movimentos_caixa?caixa_id=eq." + caixa.id + "&order=criado_em.asc") : [];
   produtos = catalogo.map(p => ({ ...p, preco: Number(p.preco_centavos) }));
   const movimentos = registros.map(m => ({
@@ -90,6 +121,7 @@ function renderizarProdutos() {
 function renderizar() {
   const sessao = estado.sessao;
   el("status").textContent = sessao ? "Caixa aberto" : "Caixa fechado";
+  el("terminal-pdv").disabled = Boolean(sessao);
   el("balance").textContent = sessao ? "Dinheiro esperado: " + reais(saldo(sessao)) : "Abra o caixa para registrar vendas.";
   el("amount-label").textContent = sessao ? "Valor da movimentação ou dinheiro contado" : "Saldo inicial em dinheiro";
   el("cash-actions").replaceChildren(...(sessao ? ["Suprimento", "Sangria", "Fechar caixa"] : ["Abrir caixa"])
@@ -135,7 +167,9 @@ function operarCaixa(acao) {
   operar(async () => {
     const p_caixa = estado.sessao?.id;
     if (acao === "Abrir caixa") {
-      await executar("abrir_caixa", { p_empresa: el("empresa").value, p_abertura: valor });
+      const terminal = el("terminal-pdv").value;
+      if (!terminal) throw new Error("Peça ao gestor para vincular um caixa à sua conta.");
+      await executar("abrir_caixa", { p_empresa: el("empresa").value, p_abertura: valor, p_terminal: terminal });
     } else if (acao === "Fechar caixa") {
       if (carrinho.size) throw new Error("Conclua ou esvazie a venda atual antes de fechar o caixa.");
       await executar("fechar_caixa", { p_caixa, p_contado: valor });
@@ -158,12 +192,16 @@ el("login").addEventListener("submit", evento => {
       listar("membros?select=empresa_id&papel=eq.gestor")
     ]);
     empresasGerenciadas = new Set(vinculos.map(vinculo => vinculo.empresa_id));
-    if (!empresas.length) throw new Error("Seu usuário ainda não tem acesso a um estabelecimento.");
-    el("empresa").replaceChildren(...empresas.map(e => new Option(e.nome, e.id)));
+    area = el("entrada").value;
+    const disponiveis = area === "administracao" ? empresas.filter(e => empresasGerenciadas.has(e.id)) : empresas;
+    if (!disponiveis.length) throw new Error("Seu usuário ainda não tem acesso a um estabelecimento nesta área.");
+    el("empresa").replaceChildren(...disponiveis.map(e => new Option(e.nome, e.id)));
     await atualizar();
+    el("area-vendas").hidden = area !== "vendas";
+    el("area-administracao").hidden = area !== "administracao";
     el("login").hidden = true;
     el("operacao").hidden = false;
-    void carregarCozinha();
+    if (area === "vendas") void carregarCozinha();
     return "Estabelecimento carregado.";
   });
 });
@@ -175,11 +213,44 @@ el("empresa").addEventListener("change", () => operar(async () => {
   estado.sessao = null;
   estado.fechamentos = [];
   produtos = [];
-  renderizar();
-  void carregarCozinha();
+  if (area === "vendas") {
+    renderizar();
+    void carregarCozinha();
+  }
   await atualizar();
   return "Estabelecimento carregado.";
 }));
+el("trocar-area").onclick = () => {
+  if (carrinho.size || vendaPendente) {
+    el("notice").textContent = "Conclua ou esvazie a venda atual antes de trocar de área.";
+    return;
+  }
+  location.reload();
+};
+el("configurar-pdv").onsubmit = evento => {
+  evento.preventDefault();
+  operar(async () => {
+    await executar("configurar_nome_pdv", { p_empresa: el("empresa").value, p_nome: el("nome-pdv").value.trim() });
+    await atualizar();
+    return "Nome do PDV atualizado.";
+  });
+};
+el("editar-terminal").onchange = () => {
+  const terminal = terminais.find(t => t.id === el("editar-terminal").value);
+  el("nome-terminal").value = terminal?.nome ?? "";
+  el("email-operador").value = terminal?.email ?? "";
+};
+el("configurar-terminal").onsubmit = evento => {
+  evento.preventDefault();
+  operar(async () => {
+    await executar("configurar_terminal_pdv", {
+      p_empresa: el("empresa").value, p_terminal: el("editar-terminal").value || null,
+      p_nome: el("nome-terminal").value.trim(), p_email: el("email-operador").value.trim()
+    });
+    await atualizar();
+    return "Caixa e operador configurados.";
+  });
+};
 
 el("cash").addEventListener("submit", evento => evento.preventDefault());
 el("configuracao-entrega").addEventListener("submit", evento => {
@@ -247,7 +318,7 @@ function limparPagamento() {
 el("abrir-pagamento-pdv").onclick = abrirPagamento;
 for (const opcao of opcoesPagamento) opcao.onclick = () => selecionarPagamento(opcao);
 document.addEventListener("keydown", evento => {
-  if (el("operacao").hidden || ocupado || evento.ctrlKey || evento.altKey || evento.metaKey) return;
+  if (area !== "vendas" || el("operacao").hidden || ocupado || evento.ctrlKey || evento.altKey || evento.metaKey) return;
   if (evento.key === "F3") {
     evento.preventDefault();
     abrirPagamento();

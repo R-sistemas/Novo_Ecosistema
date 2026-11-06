@@ -8,10 +8,15 @@
 <script type="module" src="pdv.mjs"></script>
 </head>
 <body>
-<header><img src="logo.png" alt="R Sistemas"><div><strong>R Sistemas</strong><small>PDV</small></div><span id="status"></span></header>
+<header><img src="logo.png" alt="R Sistemas"><div><strong id="nome-pdv-exibido">R Sistemas</strong><small>PDV · R Sistemas</small></div><span id="status"></span></header>
 <main>
 <section class="intro"><p class="eyebrow">OPERAÇÃO DE BALCÃO</p><h1>Ponto de venda</h1></section>
-<form id="login" class="panel"><label for="email">E-mail</label><input id="email" type="email" autocomplete="username" required><label for="password">Senha</label><input id="password" type="password" autocomplete="current-password" required><button>Entrar</button></form><div id="operacao" hidden><label for="empresa">Estabelecimento</label><select id="empresa"></select><div class="layout">
+<form id="login" class="panel"><label for="email">E-mail</label><input id="email" type="email" autocomplete="username" required><label for="password">Senha</label><input id="password" type="password" autocomplete="current-password" required><label for="entrada">Área de acesso</label><select id="entrada"><option value="vendas">Vendas</option><option value="administracao">Administração</option></select><button>Entrar</button></form>
+<div id="operacao" hidden><label for="empresa">Estabelecimento</label><select id="empresa"></select>
+<button id="trocar-area" type="button">Trocar área</button>
+<div id="area-vendas" hidden>
+<label for="terminal-pdv">Caixa autorizado</label><select id="terminal-pdv"></select>
+<div class="layout">
 <section class="panel"><h2>Produtos</h2><label for="search">Pesquisar por nome ou código</label><input id="search" type="search" placeholder="Ex.: café ou 101"><div id="products" class="products"></div></section>
 <section class="panel"><h2>Venda atual</h2><div id="cart"></div><p class="total"><span>Total</span><strong id="total"></strong></p>
 <form id="sale">
@@ -37,6 +42,20 @@
 <p id="aviso-cozinha" role="status"></p>
 <div id="fila-cozinha"></div>
 </section>
+</div>
+<section id="area-administracao" hidden>
+<form id="configurar-pdv" class="panel">
+<h2>Identidade do PDV</h2>
+<label for="nome-pdv">Nome exibido</label><input id="nome-pdv" maxlength="100" required>
+<button>Salvar nome</button>
+</form>
+<form id="configurar-terminal" class="panel">
+<h2>Caixas e operadores</h2>
+<label for="editar-terminal">Caixa</label><select id="editar-terminal"></select>
+<label for="nome-terminal">Nome do caixa</label><input id="nome-terminal" maxlength="60" required>
+<label for="email-operador">E-mail do operador vinculado à loja</label><input id="email-operador" type="email" required>
+<button>Salvar caixa</button>
+</form>
 <form id="cadastro-produto" class="panel" hidden>
 <h2>Cadastrar produto</h2>
 <label for="produto-codigo">Código</label><input id="produto-codigo" maxlength="32" required>
@@ -44,12 +63,14 @@
 <label for="produto-preco">Preço (R$)</label><input id="produto-preco" type="number" min="0.01" step="0.01" required>
 <button>Salvar produto</button>
 </form>
+<section class="panel"><h2>Produtos ativos</h2><ul id="catalogo-gestor"></ul></section>
 <form id="configuracao-entrega" class="panel" hidden>
 <h2>Configuração de entrega</h2>
 <label><input id="pagamento-na-entrega" type="checkbox"> Oferecer pagamento na entrega</label>
-<p>Esta preferência será aplicada quando o checkout de entrega estiver disponível.</p>
+<p>Exibe a opção no checkout de entrega desta loja.</p>
 <button>Salvar configuração</button>
 </form>
+</section>
 </div><p id="notice" role="status" aria-live="polite"></p>
 </main>
 </body></html>

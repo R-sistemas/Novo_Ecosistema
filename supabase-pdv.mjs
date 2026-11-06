@@ -2,11 +2,11 @@ const url = "https://eyqxxlcmxlilgogxdcoq.supabase.co";
 let sessao;
 let renovacao;
 
-async function requisitar(caminho, dados, token) {
+async function requisitar(caminho, dados, token, metodo = dados === undefined ? "GET" : "POST") {
   const chave = document.querySelector('meta[name="supabase-key"]').content.trim();
   if (!chave) throw new Error("Configure a chave publicável do Supabase.");
   const resposta = await fetch(url + caminho, {
-    method: dados === undefined ? "GET" : "POST",
+    method: metodo,
     headers: {
       apikey: chave,
       ...(token ? { Authorization: "Bearer " + token } : {}),
@@ -20,7 +20,7 @@ async function requisitar(caminho, dados, token) {
   return resultado;
 }
 
-async function solicitar(caminho, dados) {
+async function solicitar(caminho, dados, metodo) {
   if (sessao && Date.now() >= sessao.expiraEm - 60_000) {
     if (!renovacao) {
       const atual = sessao;
@@ -34,7 +34,7 @@ async function solicitar(caminho, dados) {
     }
     await renovacao;
   }
-  return requisitar(caminho, dados, sessao?.access_token);
+  return requisitar(caminho, dados, sessao?.access_token, metodo);
 }
 
 function guardarSessao(nova) {
@@ -51,3 +51,5 @@ export async function entrar(email, password) {
 export const listar = consulta => solicitar("/rest/v1/" + consulta);
 export const executar = (nome, dados) => solicitar("/rest/v1/rpc/" + nome, dados);
 export const cadastrarProduto = dados => solicitar("/rest/v1/produtos", dados);
+export const desativarProduto = (empresa, id) =>
+  solicitar("/rest/v1/produtos?empresa_id=eq." + empresa + "&id=eq." + id, { ativo: false }, "PATCH");

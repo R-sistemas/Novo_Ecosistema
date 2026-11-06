@@ -20,7 +20,7 @@ export async function carregarCozinha() {
     ultimaFila = undefined;
     fila.replaceChildren();
   }
-  if (!idEmpresa || carregando) return;
+  if (!idEmpresa || carregando || document.getElementById("area-vendas").hidden) return;
   carregando = true;
   try {
     const pedidos = await executar("fila_cozinha", { p_empresa: idEmpresa });
