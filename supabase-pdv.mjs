@@ -1,7 +1,8 @@
 const url = "https://eyqxxlcmxlilgogxdcoq.supabase.co";
-let token;
+let sessao;
+let renovacao;
 
-async function solicitar(caminho, dados) {
+async function requisitar(caminho, dados, token) {
   const chave = document.querySelector('meta[name="supabase-key"]').content.trim();
   if (!chave) throw new Error("Configure a chave publicável do Supabase.");
   const resposta = await fetch(url + caminho, {
@@ -19,11 +20,32 @@ async function solicitar(caminho, dados) {
   return resultado;
 }
 
+async function solicitar(caminho, dados) {
+  if (sessao && Date.now() >= sessao.expiraEm - 60_000) {
+    if (!renovacao) {
+      const atual = sessao;
+      renovacao = requisitar("/auth/v1/token?grant_type=refresh_token", {
+        refresh_token: atual.refresh_token
+      }).then(nova => {
+        if (sessao === atual) guardarSessao(nova);
+      }).catch(() => {
+        throw new Error("Não foi possível renovar a sessão. Tente novamente ou atualize a página e entre de novo.");
+      }).finally(() => { renovacao = undefined; });
+    }
+    await renovacao;
+  }
+  return requisitar(caminho, dados, sessao?.access_token);
+}
+
+function guardarSessao(nova) {
+  sessao = { ...nova, expiraEm: Date.now() + nova.expires_in * 1000 };
+}
+
 export async function entrar(email, password) {
-  token = undefined;
-  const sessao = await solicitar("/auth/v1/token?grant_type=password", { email, password });
-  token = sessao.access_token;
-  return sessao.user.id;
+  sessao = undefined;
+  const nova = await requisitar("/auth/v1/token?grant_type=password", { email, password });
+  guardarSessao(nova);
+  return nova.user.id;
 }
 
 export const listar = consulta => solicitar("/rest/v1/" + consulta);

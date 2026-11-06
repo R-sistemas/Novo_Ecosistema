@@ -28,11 +28,18 @@ function botao(texto, acao, secundario = false) {
 
 async function atualizar() {
   const empresa = el("empresa").value;
-  el("cadastro-produto").hidden = !empresasGerenciadas.has(empresa);
-  const [catalogo, caixas] = await Promise.all([
+  const gestor = empresasGerenciadas.has(empresa);
+  el("cadastro-produto").hidden = !gestor;
+  el("configuracao-entrega").hidden = true;
+  const [catalogo, caixas, configuracao] = await Promise.all([
     listar("produtos?ativo=eq.true&empresa_id=eq." + empresa + "&order=nome"),
-    listar("caixas?empresa_id=eq." + empresa + "&operador_id=eq." + usuario + "&order=aberto_em.desc&limit=1")
+    listar("caixas?empresa_id=eq." + empresa + "&operador_id=eq." + usuario + "&order=aberto_em.desc&limit=1"),
+    gestor ? listar("empresas?select=pagamento_na_entrega&id=eq." + empresa) : []
   ]);
+  if (configuracao.length) {
+    el("pagamento-na-entrega").checked = configuracao[0].pagamento_na_entrega;
+    el("configuracao-entrega").hidden = false;
+  }
   const caixa = caixas[0];
   const registros = caixa ? await listar("movimentos_caixa?caixa_id=eq." + caixa.id + "&order=criado_em.asc") : [];
   produtos = catalogo.map(p => ({ ...p, preco: Number(p.preco_centavos) }));
@@ -171,6 +178,16 @@ el("empresa").addEventListener("change", () => operar(async () => {
 }));
 
 el("cash").addEventListener("submit", evento => evento.preventDefault());
+el("configuracao-entrega").addEventListener("submit", evento => {
+  evento.preventDefault();
+  operar(async () => {
+    await executar("configurar_pagamento_na_entrega", {
+      p_empresa: el("empresa").value,
+      p_habilitado: el("pagamento-na-entrega").checked
+    });
+    return "Configuração de entrega salva.";
+  });
+});
 el("cadastro-produto").addEventListener("submit", evento => {
   evento.preventDefault();
   operar(async () => {

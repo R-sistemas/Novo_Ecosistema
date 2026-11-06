@@ -11,6 +11,7 @@ let tentativa;
 let ocupado = false;
 let aguardandoPix = false;
 const pixTeste = p_slug === "loja-teste";
+const creditoTeste = pixTeste && parametros.get("cartao") === "credito";
 const pixMercadoPagoTeste = pixTeste && parametros.get("pix") === "mercado-pago";
 const pixMercadoPagoQuiosque = p_slug === "quiosque-dorafa" &&
   (parametros.get("pix") === "mercado-pago" || (!p_id && !parametros.has("pix")));
@@ -32,7 +33,8 @@ async function acompanhar() {
   const pedido = await executar("acompanhar_pedido", { p_slug, p_id });
   if (!pedido) throw new Error("Pedido indisponível.");
   aguardandoPix = (pedido.pix_sandbox || pedido.pix_producao) && !pedido.pix_confirmado;
-  el("mensagem").textContent = (aguardandoPix ? (pixTeste ? "Aguardando Pix Sandbox" : "Aguardando pagamento Pix") : estados[pedido.estado]) +
+  el("mensagem").textContent = (aguardandoPix ? (creditoTeste ? "Aguardando confirmação do crédito de teste"
+    : pixTeste ? "Aguardando Pix Sandbox" : "Aguardando pagamento Pix") : estados[pedido.estado]) +
     " · " + moeda.format(pedido.total_centavos / 100);
   if (!aguardandoPix) el("pagamento-pix").hidden = true;
   return aguardandoPix;
@@ -64,7 +66,7 @@ executarComFeedback(async () => {
   if (!p_slug) throw new Error("Abra o link do cardápio do estabelecimento.");
   if (p_id) {
     el("acompanhar").hidden = false;
-    if (await acompanhar()) await mostrarPix({ p_slug, p_id, p_itens: [] });
+    if (await acompanhar() && !creditoTeste) await mostrarPix({ p_slug, p_id, p_itens: [] });
     return;
   }
   const menu = await executar("ver_cardapio", { p_slug });
@@ -94,7 +96,7 @@ executarComFeedback(async () => {
   if (p_slug === "quiosque-dorafa") {
     pixDisponivel = await executar("pix_online_disponivel", { p_slug }).catch(() => false);
   }
-  el("opcao-pix").hidden = !pixDisponivel;
+  el("opcao-pix").hidden = creditoTeste || !pixDisponivel;
   el("rotulo-pix").textContent = pixMercadoPagoTeste ? "Simular Pix Mercado Pago"
     : pixMercadoPagoQuiosque ? "Pagar com Pix Mercado Pago"
     : pixTeste ? "Pagar com Pix Sandbox" : "Pagar com Pix";
@@ -114,6 +116,22 @@ executarComFeedback(async () => {
       }));
       if (!p_itens.length) throw new Error("Escolha pelo menos um produto.");
       const p_cliente = el("cliente").value.trim();
+      if (creditoTeste) {
+        const totalCentavos = campos.reduce((soma, { produto, campo }) =>
+          soma + produto.preco_centavos * (campo.valueAsNumber || 0), 0);
+        const { abrirCreditoTeste } = await import("./credito-teste.mjs");
+        await abrirCreditoTeste({
+          totalCentavos, pedido: { p_slug, p_mesa, p_itens, p_cliente, p_id: crypto.randomUUID() }
+        }, async id => {
+          p_id = id;
+          parametros.set("pedido", id);
+          history.replaceState(null, "", "?" + parametros);
+          el("acompanhar").hidden = false;
+          await acompanhar();
+        });
+        el("pedido").hidden = true;
+        return;
+      }
       const pix = pixDisponivel && el("pix-sandbox").checked;
       const cpfCnpj = pix && !pixTeste ? el("documento-pix").value : undefined;
       const email = pix && pixMercadoPagoQuiosque ? el("email-pix").value.trim() : undefined;

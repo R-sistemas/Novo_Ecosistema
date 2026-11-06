@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R Sistemas | Cartões de teste</title>
+<h1>Homologação de cartões</h1>
+<p>Ordem fictícia de R$ 50,00. Use somente cartões de teste do Mercado Pago.</p>
+<form id="configuracao">
+  <label>Public Key de teste <input id="chave" required autocomplete="off"></label>
+  <label>Modalidade
+    <select id="modalidade">
+      <option value="credit_card">Crédito</option>
+      <option value="debit_card">Débito</option>
+    </select>
+  </label>
+  <button>Carregar formulário</button>
+</form>
+<div id="cartao"></div>
+<p id="resultado" role="status"></p>
+<script src="https://sdk.mercadopago.com/js/v2"></script>
+<script type="module">
+const el = id => document.getElementById(id);
+let controlador;
+el("configuracao").onsubmit = async evento => {
+  evento.preventDefault();
+  el("resultado").textContent = "";
+  try {
+    controlador?.unmount();
+    const modalidade = el("modalidade").value;
+    const mp = new MercadoPago(el("chave").value.trim(), { locale: "pt-BR" });
+    controlador = await mp.bricks().create("cardPayment", "cartao", {
+      initialization: { amount: 50 },
+      customization: { paymentMethods: { maxInstallments: 1 } },
+      callbacks: {
+        onReady() {},
+        async onSubmit(dados) {
+          try {
+            const bandeira = modalidade === "debit_card" && dados.payment_method_id === "elo"
+              ? "debelo" : dados.payment_method_id;
+            const resposta = await fetch("/ordem", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                modalidade, token: dados.token, bandeira,
+                pagador: dados.payer
+              })
+            });
+            const ordem = await resposta.json();
+            if (!resposta.ok) throw new Error(ordem.erro);
+            el("resultado").textContent = [ordem.id, ordem.tipo, ordem.status, ordem.detalhe].join(" · ");
+          } catch (erro) {
+            el("resultado").textContent = erro.message;
+            throw erro;
+          }
+        },
+        onError() {
+          el("resultado").textContent = "O formulário do Mercado Pago encontrou um erro.";
+        }
+      }
+    });
+  } catch {
+    el("resultado").textContent = "Não foi possível carregar o formulário. Confira a Public Key de teste.";
+  }
+};
+</script>
+</html>

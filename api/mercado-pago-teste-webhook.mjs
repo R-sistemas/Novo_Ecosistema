@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { mercadoPago, pixMercadoPagoRecebido } from "../lib/mercado-pago.mjs";
+import { mercadoPago, pagamentoMercadoPagoRecebido, pixMercadoPagoRecebido } from "../lib/mercado-pago.mjs";
 import { bancoMercadoPagoTeste as banco } from "../lib/banco-mercado-pago-teste.mjs";
 
 export async function receberNotificacao(req, res, { segredo, token, sandbox }) {
@@ -47,11 +47,14 @@ export async function receberNotificacao(req, res, { segredo, token, sandbox }) 
     console.info(log, id, ordem.status, ordem.status_detail);
     const pedidoId = ordem.external_reference;
     const totalCentavos = Math.round(Number(ordem.total_amount) * 100);
+    const dados = { pedidoId, totalCentavos };
+    const credito = pagamentoMercadoPagoRecebido(ordem, dados, "credit_card");
     if (ordem.id === id.toUpperCase() && typeof pedidoId === "string" &&
         /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(pedidoId) &&
         Number.isSafeInteger(totalCentavos) && totalCentavos > 0 &&
-        pixMercadoPagoRecebido(ordem, { pedidoId, totalCentavos })) {
-      const atualizar = sandbox ? "atualizar_pix_mercado_pago_teste" : "atualizar_pix_mercado_pago_quiosque";
+        (credito || pixMercadoPagoRecebido(ordem, dados))) {
+      const atualizar = "atualizar_" + (credito ? "credito" : "pix") +
+        "_mercado_pago_" + (sandbox ? "teste" : "quiosque");
       const confirmado = await banco(atualizar, {
         p_pedido: pedidoId, p_cobranca: ordem.id, p_valor: totalCentavos, p_confirmado: true
       });
