@@ -12,6 +12,14 @@ A construção deve ser modular e desacoplada. As regras obrigatórias estão em
 4. **Replicação.** Ativar uma segunda empresa real por configuração, com dados e identidade próprios.
 5. **Asaas.** Confirmar o modelo de recebimento por loja e homologar Pix no sandbox. Validar confirmação autenticada, idempotência, expiração e devolução antes de habilitar pagamentos no cardápio.
 
+## Pagamentos online
+
+O Quiosque usa a própria conta Asaas de produção. A configuração de provedores e meios é por estabelecimento e ambiente. As credenciais ficam no servidor, vinculadas à conta da loja.
+
+O Asaas atende exclusivamente ao Pix. Após validar o Pix, selecionar outro provedor para cartão de crédito e débito online, com exceção do PagBank. Avaliar as taxas efetivas, o prazo de repasse, o suporte técnico e a facilidade de homologação. A página de pagamento do provedor coleta os dados do cartão. Confirmar o pagamento pelo provedor antes de liberar o pedido.
+
+Novas integrações serão adicionadas conforme a demanda das lojas e os meios oferecidos por cada instituição.
+
 ## Infraestrutura e identidade
 
 GitHub para o código, Vercel para os aplicativos e Supabase para dados e autenticação. A REMO compartilha infraestrutura inicialmente e mantém operação independente. O cardápio público destaca a marca de cada loja. O piloto exclui campanhas, remarketing e QR de marketing. O OSRM fica fora do custo inicial até a necessidade de roteamento viário ser validada.

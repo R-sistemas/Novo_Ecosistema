@@ -10,6 +10,8 @@ let p_id = parametros.get("pedido");
 let tentativa;
 let ocupado = false;
 let aguardandoPix = false;
+const pixTeste = p_slug === "loja-teste";
+let pixDisponivel = pixTeste;
 
 async function executarComFeedback(acao) {
   if (ocupado) return;
@@ -26,15 +28,15 @@ async function executarComFeedback(acao) {
 async function acompanhar() {
   const pedido = await executar("acompanhar_pedido", { p_slug, p_id });
   if (!pedido) throw new Error("Pedido indisponível.");
-  aguardandoPix = pedido.pix_sandbox && !pedido.pix_confirmado;
-  el("mensagem").textContent = (aguardandoPix ? "Aguardando Pix Sandbox" : estados[pedido.estado]) +
+  aguardandoPix = (pedido.pix_sandbox || pedido.pix_producao) && !pedido.pix_confirmado;
+  el("mensagem").textContent = (aguardandoPix ? (pixTeste ? "Aguardando Pix Sandbox" : "Aguardando pagamento Pix") : estados[pedido.estado]) +
     " · " + moeda.format(pedido.total_centavos / 100);
   if (!aguardandoPix) el("pagamento-pix").hidden = true;
   return aguardandoPix;
 }
 
 async function mostrarPix(dados) {
-  const resposta = await fetch("/api/checkout-pix-sandbox", {
+  const resposta = await fetch(pixTeste ? "/api/checkout-pix-sandbox" : "/api/checkout-pix-quiosque", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(dados)
@@ -45,6 +47,7 @@ async function mostrarPix(dados) {
     throw new Error(pix.erro ?? "QR Code indisponível.");
   }
   el("qr-pix").src = "data:image/png;base64," + pix.imagem;
+  el("titulo-pix").textContent = pixTeste ? "Pix Sandbox" : "Pix";
   el("pix-codigo").value = pix.copiaECola;
   el("pagamento-pix").hidden = false;
 }
@@ -82,7 +85,16 @@ executarComFeedback(async () => {
   el("pedido").addEventListener("input", totalizar);
   totalizar();
   el("pedido").hidden = false;
-  el("opcao-pix").hidden = p_slug !== "loja-teste";
+  if (p_slug === "quiosque-dorafa") {
+    pixDisponivel = await executar("pix_online_disponivel", { p_slug }).catch(() => false);
+  }
+  el("opcao-pix").hidden = !pixDisponivel;
+  el("rotulo-pix").textContent = pixTeste ? "Pagar com Pix Sandbox" : "Pagar com Pix";
+  el("pix-sandbox").onchange = () => {
+    const solicitarDocumento = !pixTeste && el("pix-sandbox").checked;
+    el("dados-pix").hidden = !solicitarDocumento;
+    el("documento-pix").required = solicitarDocumento;
+  };
   el("pedido").onsubmit = evento => {
     evento.preventDefault();
     executarComFeedback(async () => {
@@ -91,14 +103,16 @@ executarComFeedback(async () => {
       }));
       if (!p_itens.length) throw new Error("Escolha pelo menos um produto.");
       const p_cliente = el("cliente").value.trim();
-      const pix = p_slug === "loja-teste" && el("pix-sandbox").checked;
-      const assinatura = JSON.stringify({ p_itens, p_cliente, pix });
+      const pix = pixDisponivel && el("pix-sandbox").checked;
+      const cpfCnpj = pix && !pixTeste ? el("documento-pix").value : undefined;
+      const assinatura = JSON.stringify({ p_itens, p_cliente, pix, cpfCnpj });
       if (tentativa?.assinatura !== assinatura) tentativa = { assinatura, id: crypto.randomUUID() };
       el("pedido").inert = true;
       try {
         const dados = { p_slug, p_mesa, p_itens, p_cliente, p_id: tentativa.id };
         if (pix) {
-          await mostrarPix(dados);
+          await mostrarPix({ ...dados, cpfCnpj });
+          el("documento-pix").value = "";
           p_id = tentativa.id;
         } else {
           p_id = await executar("enviar_pedido", dados);
