@@ -29,17 +29,20 @@ export default async function handler(req, res) {
       typeof payment?.id !== "string" || !/^pay_[a-z0-9]{1,100}$/i.test(payment.id)) {
     return res.status(400).end();
   }
+  const centavos = typeof payment.value === "number" ? Math.round(payment.value * 100) : null;
+  if (centavos !== null && (!Number.isSafeInteger(centavos) || centavos <= 0)) {
+    return res.status(400).end();
+  }
 
   try {
-    const resposta = await fetch(new URL("/rest/v1/asaas_sandbox_eventos?on_conflict=evento_id", url), {
+    const resposta = await fetch(new URL("/rest/v1/rpc/registrar_evento_pix_sandbox", url), {
       method: "POST",
       headers: {
         apikey: chave,
         Authorization: "Bearer " + chave,
-        "Content-Type": "application/json",
-        Prefer: "resolution=ignore-duplicates,return=minimal"
+        "Content-Type": "application/json"
       },
-      body: JSON.stringify({ evento_id: id, cobranca_id: payment.id, tipo: event }),
+      body: JSON.stringify({ p_evento: id, p_cobranca: payment.id, p_valor: centavos }),
       signal: AbortSignal.timeout(5000)
     });
     return res.status(resposta.ok ? 200 : 503).end();

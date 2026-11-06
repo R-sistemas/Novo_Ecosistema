@@ -36,7 +36,7 @@ export async function carregarCozinha() {
       const resumo = document.createElement("p");
       resumo.textContent = pedido.itens.map(item => item.quantidade + " × " + item.nome).join(", ");
       const financeiro = document.createElement("p");
-      financeiro.textContent = pedido.recebido ? "Recebimento registrado" :
+      financeiro.textContent = pedido.pix_teste ? "Pix confirmado no Sandbox" : pedido.recebido ? "Recebimento registrado" :
         pedido.estado === "entregue" ? "Entregue · recebimento pendente" : "Recebimento pendente";
       artigo.append(titulo, resumo, financeiro);
       if (!pedido.recebido) {
