@@ -8,6 +8,7 @@ let ocupado = false;
 let vendaPendente;
 const estado = { sessao: null, fechamentos: [] };
 const carrinho = new Map();
+const meios = { Dinheiro: "dinheiro", Pix: "pix", "Cartão": "cartao" };
 const el = id => document.getElementById(id);
 const reais = centavos => new Intl.NumberFormat("pt-BR", {
   style: "currency", currency: "BRL"
@@ -164,11 +165,22 @@ el("empresa").addEventListener("change", () => operar(async () => {
 }));
 
 el("cash").addEventListener("submit", evento => evento.preventDefault());
+el("fila-cozinha").addEventListener("receber-pedido", evento => operar(async () => {
+  if (!estado.sessao) throw new Error("Abra o caixa antes de receber o pedido.");
+  const meio = el("method").value;
+  if (!window.confirm("Registrar o recebimento deste pedido em " + meio + "?")) return "";
+  const valor = await executar("receber_pedido_no_caixa", {
+    p_caixa: estado.sessao.id,
+    p_pedido: evento.detail,
+    p_meio: meios[meio]
+  });
+  await atualizar();
+  return "Recebimento registrado · " + reais(valor);
+}));
 el("sale").addEventListener("submit", evento => {
   evento.preventDefault();
   if (!estado.sessao || !carrinho.size) return;
   operar(async () => {
-    const meios = { Dinheiro: "dinheiro", Pix: "pix", "Cartão": "cartao" };
     vendaPendente ??= {
       p_caixa: estado.sessao.id,
       p_venda: crypto.randomUUID(),

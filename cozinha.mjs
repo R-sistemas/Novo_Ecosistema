@@ -24,6 +24,10 @@ export async function carregarCozinha() {
       const resumo = document.createElement("p");
       resumo.textContent = pedido.itens.map(item => item.quantidade + " × " + item.nome).join(", ");
       artigo.append(titulo, resumo);
+      const receber = document.createElement("button");
+      receber.textContent = "Registrar recebimento no caixa";
+      receber.onclick = () => fila.dispatchEvent(new CustomEvent("receber-pedido", { detail: pedido.id }));
+      artigo.append(receber);
       for (const [destino, texto] of acoes[pedido.estado]) {
         const botao = document.createElement("button");
         botao.textContent = texto;
