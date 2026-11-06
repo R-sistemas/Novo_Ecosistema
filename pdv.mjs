@@ -7,10 +7,12 @@ let usuario;
 let empresasGerenciadas = new Set();
 let ocupado = false;
 let vendaPendente;
+let meioSelecionado;
 const estado = { sessao: null, fechamentos: [] };
 const carrinho = new Map();
 const meios = { Dinheiro: "dinheiro", Pix: "pix", "Cartão": "cartao" };
 const el = id => document.getElementById(id);
+const opcoesPagamento = [...document.querySelectorAll("[data-meio-pdv]")];
 const reais = centavos => new Intl.NumberFormat("pt-BR", {
   style: "currency", currency: "BRL"
 }).format(centavos / 100);
@@ -110,7 +112,8 @@ function renderizar() {
     el("cart").append(linha);
   }
   el("total").textContent = reais(total());
-  el("finish").disabled = !sessao || !carrinho.size;
+  el("finish").disabled = !sessao || !carrinho.size || !meioSelecionado;
+  for (const opcao of opcoesPagamento) opcao.disabled = Boolean(vendaPendente);
   const ultimo = estado.fechamentos.at(-1);
   el("closing").textContent = ultimo ? "Último fechamento · esperado " + reais(ultimo.esperado) +
     " · contado " + reais(ultimo.contado) + " · diferença " + reais(ultimo.contado - ultimo.esperado) : "";
@@ -168,6 +171,7 @@ el("login").addEventListener("submit", evento => {
 el("empresa").addEventListener("change", () => operar(async () => {
   carrinho.clear();
   vendaPendente = undefined;
+  limparPagamento();
   estado.sessao = null;
   estado.fechamentos = [];
   produtos = [];
@@ -205,7 +209,7 @@ el("cadastro-produto").addEventListener("submit", evento => {
 });
 el("fila-cozinha").addEventListener("receber-pedido", evento => operar(async () => {
   if (!estado.sessao) throw new Error("Abra o caixa antes de receber o pedido.");
-  const meio = el("method").value;
+  const meio = el("meio-pedido-cozinha").value;
   if (!window.confirm("Registrar o recebimento deste pedido em " + meio + "?")) return "";
   const valor = await executar("receber_pedido_no_caixa", {
     p_caixa: estado.sessao.id,
@@ -216,14 +220,53 @@ el("fila-cozinha").addEventListener("receber-pedido", evento => operar(async () 
   void carregarCozinha();
   return "Recebimento registrado · " + reais(valor);
 }));
+function abrirPagamento() {
+  el("pagamento-pdv").hidden = false;
+  el("abrir-pagamento-pdv").hidden = true;
+  (vendaPendente ? el("finish") : opcoesPagamento[0]).focus();
+}
+function selecionarPagamento(opcao) {
+  if (vendaPendente) return;
+  meioSelecionado = opcao.dataset.meioPdv;
+  for (const item of opcoesPagamento) {
+    item.setAttribute("aria-pressed", String(item === opcao));
+    item.classList.toggle("secondary", item !== opcao);
+  }
+  el("finish").disabled = !estado.sessao || !carrinho.size;
+  el("finish").focus();
+}
+function limparPagamento() {
+  meioSelecionado = undefined;
+  for (const opcao of opcoesPagamento) {
+    opcao.setAttribute("aria-pressed", "false");
+    opcao.classList.add("secondary");
+  }
+  el("pagamento-pdv").hidden = true;
+  el("abrir-pagamento-pdv").hidden = false;
+}
+el("abrir-pagamento-pdv").onclick = abrirPagamento;
+for (const opcao of opcoesPagamento) opcao.onclick = () => selecionarPagamento(opcao);
+document.addEventListener("keydown", evento => {
+  if (el("operacao").hidden || ocupado || evento.ctrlKey || evento.altKey || evento.metaKey) return;
+  if (evento.key === "F3") {
+    evento.preventDefault();
+    abrirPagamento();
+  } else if (/^[123]$/.test(evento.key) && el("pagamento-pdv").contains(document.activeElement)) {
+    evento.preventDefault();
+    selecionarPagamento(opcoesPagamento[Number(evento.key) - 1]);
+  } else if (evento.key === "F4" && !el("pagamento-pdv").hidden) {
+    evento.preventDefault();
+    if (!el("finish").disabled) el("sale").requestSubmit(el("finish"));
+  }
+});
 el("sale").addEventListener("submit", evento => {
   evento.preventDefault();
-  if (!estado.sessao || !carrinho.size) return;
+  if (!estado.sessao || !carrinho.size || !meioSelecionado) return;
   operar(async () => {
     vendaPendente ??= {
       p_caixa: estado.sessao.id,
       p_venda: crypto.randomUUID(),
-      p_meio: meios[el("method").value],
+      p_meio: meios[meioSelecionado],
       p_itens: produtos.filter(p => carrinho.has(p.codigo)).map(p => ({
         produto_id: p.id, quantidade: carrinho.get(p.codigo)
       }))
@@ -231,10 +274,13 @@ el("sale").addEventListener("submit", evento => {
     const valor = await executar("registrar_venda", vendaPendente);
     vendaPendente = undefined;
     carrinho.clear();
+    limparPagamento();
     renderizar();
     await atualizar();
+    requestAnimationFrame(() => el("search").focus());
     return "Venda registrada · " + reais(valor);
   });
 });
 el("search").addEventListener("input", renderizarProdutos);
+limparPagamento();
 renderizar();

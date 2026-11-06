@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>R Sistemas | Protótipo do PDV</title>
+<style>
+:root{color-scheme:light;--verde:#176528;--forte:#114c21;--fundo:#eef2ef;--texto:#202922;--suave:#506056;--borda:#d7e0d8}
+*{box-sizing:border-box}body{margin:0;background:var(--fundo);color:var(--texto);font:15px/1.5 system-ui,sans-serif}
+header,main,footer{padding-inline:clamp(16px,3vw,48px)}header{background:#fff;border-bottom:1px solid var(--borda);display:flex;align-items:center;gap:18px;min-height:82px}
+header img{width:76px;height:62px;object-fit:contain}header strong{display:block;font-size:1.1rem}small,.muted{color:var(--suave)}.badge{display:inline-block;padding:5px 12px;border-radius:99px;background:#e4f1e7;color:var(--forte);font-size:.8rem;font-weight:700}.push{margin-left:auto}
+main{max-width:1600px;margin:auto;padding-block:24px}.bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}.bar h1{font-size:1.55rem;margin:0}.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(290px,350px);gap:16px;align-items:start}
+.panel{background:#fff;border:1px solid var(--borda);border-radius:14px;overflow:hidden}.panel-pad{padding:20px}.panel h2{margin:0 0 12px;font-size:1.05rem}.tools{display:flex;gap:8px;align-items:end}.tools label{flex:1}.tools input{width:100%}
+button,input,select{font:inherit;border:1px solid #aab9ad;border-radius:8px;padding:9px 12px}input,select{background:white;color:inherit}label{display:block;font-weight:650}label input,label select{display:block;margin-top:4px}
+button{background:white;color:var(--forte);font-weight:700;cursor:pointer}button.primary{background:var(--verde);color:#fff;border-color:var(--verde)}button:disabled{opacity:.5;cursor:default}:focus-visible{outline:3px solid #4ba758;outline-offset:2px}
+.quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.quick button{padding:6px 10px;font-size:.85rem}.table-wrap{overflow:auto;min-height:260px}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:11px 13px;border-top:1px solid var(--borda);white-space:nowrap}th{background:#f3f7f3;font-size:.78rem;color:var(--suave)}.num{text-align:right;font-variant-numeric:tabular-nums}td button{padding:3px 8px}.empty{text-align:center;padding:38px 12px;color:var(--suave)}
+.total{background:var(--forte);color:#fff;padding:18px 20px}.total span{display:block;font-size:.8rem;letter-spacing:.06em}.total strong{font-size:2.15rem;font-variant-numeric:tabular-nums}.side .panel-pad>button{width:100%;margin-top:10px}.side input,.side select{width:100%}.row{display:flex;justify-content:space-between;gap:12px;margin-block:10px}.notice{min-height:1.5em;color:var(--forte);font-weight:700}
+.qr{display:block;width:156px;height:156px;margin:12px auto;background:white;border:1px solid var(--borda);padding:8px}.pix-note{text-align:center;margin:0;color:var(--suave)}.actions{display:flex;gap:8px;flex-wrap:wrap}.actions button{flex:1}.log{margin:0;padding-left:19px}footer{padding-block:13px;border-top:1px solid var(--borda);color:var(--suave);font-size:.82rem}
+.meios{display:grid;gap:8px;margin-bottom:12px}.meios button{text-align:left}.meios button[aria-pressed="true"]{background:#e4f1e7;border-color:var(--verde)}
+dialog{border:1px solid var(--borda);border-radius:14px;max-width:min(400px,90vw);padding:22px}dialog::backdrop{background:#1b2a22a0}dialog input{width:100%;margin-bottom:12px}[hidden]{display:none!important}
+@media(max-width:780px){.grid{grid-template-columns:1fr}.table-wrap{min-height:0}header{gap:10px}header img{width:52px}.tools{flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<header>
+  <img src="logo.png" alt="R Sistemas">
+  <div><strong>R Sistemas</strong><small>PDV · Quiosque Do’Rafa</small></div>
+  <span class="badge push">Protótipo · dados fictícios</span>
+</header>
+<main>
+  <div class="bar">
+    <h1>Venda no balcão</h1>
+    <span class="badge" id="turno">Caixa fechado</span>
+    <button class="push" id="abrir-caixa">Abrir caixa</button>
+    <button id="fechar-caixa" hidden>Fechar caixa</button>
+  </div>
+  <div class="grid">
+    <section class="panel" aria-label="Itens da venda">
+      <div class="panel-pad">
+        <form class="tools" id="busca">
+          <label for="produto">Produto <input id="produto" list="catalogo" placeholder="Digite o código ou nome" autocomplete="off" required></label>
+          <datalist id="catalogo"></datalist>
+          <button type="submit" class="primary">Adicionar</button>
+        </form>
+        <div class="quick" id="atalhos-produtos"></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Cód.</th><th>Descrição</th><th class="num">Qtd.</th><th class="num">Unitário</th><th class="num">Total</th><th>Ação</th></tr></thead>
+          <tbody id="itens"></tbody>
+        </table>
+        <p class="empty" id="vazio">Adicione um produto para iniciar a venda.</p>
+      </div>
+      <div class="panel-pad">
+        <h2>Últimas vendas do turno</h2>
+        <ol class="log" id="vendas"></ol>
+        <small id="sem-vendas">Nenhuma venda registrada.</small>
+      </div>
+    </section>
+    <aside class="panel side" aria-label="Pagamento">
+      <div class="total"><span>TOTAL DA VENDA</span><strong id="total">R$ 0,00</strong></div>
+      <div class="panel-pad">
+        <section id="resumo">
+          <h2>Recebimento</h2>
+          <button class="primary" id="abrir-pagamento">F3 · Forma de pagamento</button>
+          <div id="pagamento" hidden>
+            <div class="meios" role="group" aria-label="Forma de pagamento">
+              <button type="button" data-meio="Dinheiro" aria-pressed="false">1 · Dinheiro</button>
+              <button type="button" data-meio="Pix" aria-pressed="false">2 · Pix</button>
+              <button type="button" data-meio="Cartão" aria-pressed="false">3 · Cartão na maquininha</button>
+            </div>
+            <div id="dinheiro" hidden>
+              <label for="recebido">Valor recebido <input id="recebido" type="number" min="0" step="0.01" inputmode="decimal"></label>
+              <div class="row"><span>Troco</span><strong id="troco">R$ 0,00</strong></div>
+            </div>
+            <p class="muted" id="orientacao"></p>
+            <button class="primary" id="finalizar">F4 · Finalizar venda</button>
+          </div>
+        </section>
+        <section id="pix" hidden>
+          <h2>Pix presencial</h2>
+          <p class="pix-note"><strong id="pix-estado"></strong></p>
+          <svg class="qr" id="qr-demo" viewBox="0 0 25 25" role="img" aria-label="Ilustração de QR Code, sem valor de pagamento"></svg>
+          <p class="pix-note">QR ilustrativo · não aceita pagamento</p>
+          <p class="pix-note" id="tempo"></p>
+          <div class="actions">
+            <button class="primary" id="confirmar-pix">Simular aprovação</button>
+            <button id="novo-pix" hidden>Gerar novo QR</button>
+            <button id="cancelar-pix">Voltar à venda</button>
+          </div>
+        </section>
+        <p id="aviso" class="notice" role="status"></p>
+      </div>
+    </aside>
+  </div>
+</main>
+<footer>Enter adiciona produto · F2 remove uma unidade do último item · F3 abre pagamento · 1 Dinheiro · 2 Pix · 3 Cartão · F4 finaliza · F9 busca produto</footer>
+<dialog id="dialogo">
+  <form id="movimento">
+    <h2 id="titulo-caixa"></h2>
+    <label for="valor-caixa" id="rotulo-caixa"></label>
+    <input id="valor-caixa" type="number" min="0" step="0.01" inputmode="decimal" required>
+    <div class="actions"><button class="primary" type="submit">Confirmar</button><button type="button" id="cancelar-caixa">Cancelar</button></div>
+  </form>
+</dialog>
+<script>
+const el = id => document.getElementById(id);
+const produtos = [
+  { codigo: "101", nome: "Brazuca Patê de Frango", preco: 2800 },
+  { codigo: "102", nome: "Café", preco: 500 },
+  { codigo: "103", nome: "Suco de laranja", preco: 850 }
+];
+const carrinho = new Map();
+const reais = centavos => (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const total = () => produtos.reduce((soma, p) => soma + p.preco * (carrinho.get(p.codigo) ?? 0), 0);
+const centavos = campo => Math.round((el(campo).valueAsNumber || 0) * 100);
+let abertura = null;
+let saldo = 0;
+let prazoPix;
+let temporizador;
+let meioSelecionado = "";
+const opcoesPagamento = [...document.querySelectorAll("[data-meio]")];
+const avisar = texto => { el("aviso").textContent = texto; };
+
+function renderizar() {
+  el("itens").replaceChildren(...produtos.filter(p => carrinho.has(p.codigo)).map(p => {
+    const linha = document.createElement("tr");
+    const qtd = carrinho.get(p.codigo);
+    for (const [indice, valor] of [p.codigo, p.nome, qtd, reais(p.preco), reais(p.preco * qtd)].entries()) {
+      const celula = linha.insertCell();
+      celula.textContent = valor;
+      if (indice >= 2) celula.className = "num";
+    }
+    const remover = document.createElement("button");
+    remover.textContent = "−";
+    remover.setAttribute("aria-label", "Remover uma unidade de " + p.nome);
+    remover.disabled = !el("pix").hidden;
+    remover.onclick = () => retirar(p.codigo);
+    linha.insertCell().append(remover);
+    return linha;
+  }));
+  el("vazio").hidden = carrinho.size > 0;
+  el("total").textContent = reais(total());
+  el("troco").textContent = reais(Math.max(0, centavos("recebido") - total()));
+  el("turno").textContent = abertura === null ? "Caixa fechado" : "Caixa aberto";
+  el("abrir-caixa").hidden = abertura !== null;
+  el("fechar-caixa").hidden = abertura === null;
+  el("fechar-caixa").disabled = !el("pix").hidden;
+  el("busca").inert = !el("pix").hidden;
+  el("atalhos-produtos").inert = !el("pix").hidden;
+}
+function adicionar(p) {
+  if (!el("pix").hidden) return;
+  carrinho.set(p.codigo, (carrinho.get(p.codigo) ?? 0) + 1);
+  avisar("");
+  renderizar();
+}
+function retirar(codigo) {
+  if (!el("pix").hidden) return;
+  const qtd = carrinho.get(codigo);
+  if (qtd > 1) carrinho.set(codigo, qtd - 1);
+  else carrinho.delete(codigo);
+  renderizar();
+}
+for (const p of produtos) {
+  el("catalogo").append(new Option(p.nome, p.codigo));
+  const botao = document.createElement("button");
+  botao.textContent = p.nome + " · " + reais(p.preco);
+  botao.onclick = () => adicionar(p);
+  el("atalhos-produtos").append(botao);
+}
+el("busca").onsubmit = evento => {
+  evento.preventDefault();
+  const busca = el("produto").value.trim().toLocaleLowerCase("pt-BR");
+  const achados = produtos.filter(p => p.codigo === busca || p.nome.toLocaleLowerCase("pt-BR").includes(busca));
+  if (achados.length !== 1) return avisar("Informe um código ou nome de produto específico.");
+  adicionar(achados[0]);
+  el("produto").value = "";
+};
+function abrirPagamento() {
+  if (!el("pix").hidden) return;
+  if (abertura === null) return avisar("Abra o caixa para receber a venda.");
+  if (!total()) return avisar("Adicione pelo menos um produto.");
+  el("pagamento").hidden = false;
+  el("abrir-pagamento").hidden = true;
+  opcoesPagamento[0].focus();
+}
+el("abrir-pagamento").onclick = abrirPagamento;
+function selecionarMeio(meio) {
+  meioSelecionado = meio;
+  for (const opcao of opcoesPagamento) {
+    opcao.setAttribute("aria-pressed", String(opcao.dataset.meio === meio));
+  }
+  el("dinheiro").hidden = meio !== "Dinheiro";
+  el("orientacao").textContent = meio === "Pix" ? "A finalização abre o QR Code no painel."
+    : meio === "Cartão" ? "Registre a venda após a aprovação na maquininha." : "";
+  if (meio) el(meio === "Dinheiro" ? "recebido" : "finalizar").focus();
+}
+for (const opcao of opcoesPagamento) opcao.onclick = () => selecionarMeio(opcao.dataset.meio);
+el("recebido").oninput = renderizar;
+
+function atualizarPix() {
+  const segundos = Math.max(0, Math.ceil((prazoPix - Date.now()) / 1000));
+  el("tempo").textContent = segundos ? "Expira em " + segundos + " s" : "Gere um novo QR para continuar.";
+  el("pix-estado").textContent = segundos ? "Aguardando pagamento" : "QR expirado";
+  el("confirmar-pix").disabled = !segundos;
+  el("novo-pix").hidden = Boolean(segundos);
+  el("qr-demo").hidden = !segundos;
+  if (!segundos) clearInterval(temporizador);
+}
+function iniciarPix() {
+  clearInterval(temporizador);
+  prazoPix = Date.now() + 30000;
+  el("resumo").hidden = true;
+  el("pix").hidden = false;
+  avisar("");
+  atualizarPix();
+  temporizador = setInterval(atualizarPix, 250);
+  renderizar();
+}
+function fecharPix() {
+  clearInterval(temporizador);
+  el("resumo").hidden = false;
+  el("pix").hidden = true;
+  renderizar();
+}
+function registrar(meio) {
+  const valor = total();
+  if (meio === "Dinheiro") saldo += valor;
+  const item = document.createElement("li");
+  item.textContent = meio + " · " + reais(valor);
+  el("vendas").prepend(item);
+  el("sem-vendas").hidden = true;
+  carrinho.clear();
+  el("recebido").value = "";
+  selecionarMeio("");
+  el("pagamento").hidden = true;
+  el("abrir-pagamento").hidden = false;
+  fecharPix();
+  avisar("Venda simulada concluída · " + reais(valor));
+}
+function finalizar() {
+  if (!el("pix").hidden) return;
+  if (el("pagamento").hidden) return abrirPagamento();
+  if (abertura === null || !total()) return avisar("Abra o caixa e adicione produtos.");
+  const meio = meioSelecionado;
+  if (!meio) return avisar("Selecione uma forma de pagamento.");
+  if (meio === "Dinheiro" && centavos("recebido") < total()) return avisar("Informe o valor recebido.");
+  if (meio === "Pix") return iniciarPix();
+  registrar(meio);
+}
+el("finalizar").onclick = finalizar;
+el("confirmar-pix").onclick = () => {
+  if (Date.now() < prazoPix) registrar("Pix");
+  else atualizarPix();
+};
+el("novo-pix").onclick = iniciarPix;
+el("cancelar-pix").onclick = () => { fecharPix(); avisar("Pix simulado cancelado. A venda está aberta."); };
+for (let y = 2; y < 23; y++) {
+  for (let x = 2; x < 23; x++) {
+    if ((x * y + x + 3 * y) % 7 > 3) continue;
+    const bloco = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    for (const [nome, valor] of Object.entries({ x, y, width: 1, height: 1, fill: "#114c21" })) bloco.setAttribute(nome, valor);
+    el("qr-demo").append(bloco);
+  }
+}
+function caixa() {
+  const abrindo = abertura === null;
+  el("titulo-caixa").textContent = abrindo ? "Abrir caixa" : "Fechar caixa";
+  el("rotulo-caixa").textContent = abrindo ? "Fundo inicial" : "Dinheiro contado · esperado " + reais(saldo);
+  el("valor-caixa").value = "";
+  el("dialogo").showModal();
+}
+el("abrir-caixa").onclick = caixa;
+el("fechar-caixa").onclick = caixa;
+el("cancelar-caixa").onclick = () => el("dialogo").close();
+el("movimento").onsubmit = evento => {
+  evento.preventDefault();
+  const valor = centavos("valor-caixa");
+  if (abertura === null) {
+    abertura = valor;
+    saldo = valor;
+    el("vendas").replaceChildren();
+    el("sem-vendas").hidden = false;
+    avisar("Caixa aberto · fundo de " + reais(valor));
+  } else {
+    avisar("Caixa fechado · diferença de " + reais(valor - saldo));
+    abertura = null;
+    el("pagamento").hidden = true;
+    el("abrir-pagamento").hidden = false;
+  }
+  el("dialogo").close();
+  renderizar();
+};
+document.addEventListener("keydown", evento => {
+  if (el("dialogo").open || !el("pix").hidden) return;
+  const meio = /^[123]$/.test(evento.key) ? opcoesPagamento[Number(evento.key) - 1].dataset.meio : undefined;
+  if (meio && !el("pagamento").hidden && el("pagamento").contains(document.activeElement) &&
+      document.activeElement !== el("recebido") && !evento.ctrlKey && !evento.altKey && !evento.metaKey) {
+    evento.preventDefault();
+    selecionarMeio(meio);
+    return;
+  }
+  const acoes = { F2: () => retirar([...carrinho.keys()].at(-1)), F3: abrirPagamento,
+    F4: finalizar, F9: () => el("produto").focus() };
+  if (!acoes[evento.key]) return;
+  evento.preventDefault();
+  acoes[evento.key]();
+});
+renderizar();
+</script>
+</body>
+</html>

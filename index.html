@@ -13,12 +13,26 @@
 <section class="intro"><p class="eyebrow">OPERAÇÃO DE BALCÃO</p><h1>Ponto de venda</h1></section>
 <form id="login" class="panel"><label for="email">E-mail</label><input id="email" type="email" autocomplete="username" required><label for="password">Senha</label><input id="password" type="password" autocomplete="current-password" required><button>Entrar</button></form><div id="operacao" hidden><label for="empresa">Estabelecimento</label><select id="empresa"></select><div class="layout">
 <section class="panel"><h2>Produtos</h2><label for="search">Pesquisar por nome ou código</label><input id="search" type="search" placeholder="Ex.: café ou 101"><div id="products" class="products"></div></section>
-<section class="panel"><h2>Venda atual</h2><div id="cart"></div><p class="total"><span>Total</span><strong id="total"></strong></p><form id="sale"><label for="method">Recebimento registrado no caixa</label><select id="method"><option>Dinheiro</option><option>Pix</option><option>Cartão</option></select><button id="finish">Finalizar venda</button></form></section>
+<section class="panel"><h2>Venda atual</h2><div id="cart"></div><p class="total"><span>Total</span><strong id="total"></strong></p>
+<form id="sale">
+<button id="abrir-pagamento-pdv" type="button">F3 · Forma de pagamento</button>
+<div id="pagamento-pdv" hidden>
+<div class="products" role="group" aria-label="Recebimento registrado no caixa">
+<button type="button" data-meio-pdv="Dinheiro" aria-pressed="false">1 · Dinheiro</button>
+<button type="button" data-meio-pdv="Pix" aria-pressed="false">2 · Pix</button>
+<button type="button" data-meio-pdv="Cartão" aria-pressed="false">3 · Cartão na maquininha</button>
+</div>
+<p>Registre a venda após conferir o recebimento.</p>
+<button id="finish">F4 ou Enter · Finalizar venda</button>
+</div>
+</form></section>
 <section class="panel cash"><h2>Movimentação de caixa</h2><p id="balance"></p><form id="cash"><label for="amount" id="amount-label"></label><input id="amount" type="number" min="0" step="0.01" required><div id="cash-actions"></div></form><p id="closing"></p></section>
 <section class="panel"><h2>Últimos registros</h2><ol id="history"></ol></section>
 </div>
 <section class="panel">
 <h2>Cozinha</h2>
+<label for="meio-pedido-cozinha">Meio de recebimento do pedido no caixa</label>
+<select id="meio-pedido-cozinha"><option>Dinheiro</option><option>Pix</option><option>Cartão</option></select>
 <button id="atualizar-cozinha" type="button">Atualizar pedidos</button>
 <p id="aviso-cozinha" role="status"></p>
 <div id="fila-cozinha"></div>

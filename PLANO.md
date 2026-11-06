@@ -22,6 +22,30 @@ O checkout de entrega deverá solicitar o endereço e apresentar o resumo antes 
 
 Novas integrações serão adicionadas conforme a demanda das lojas e os meios oferecidos por cada instituição.
 
+## Interfaces e instalação
+
+O acesso ao PDV terá entradas para **Administração** e **Vendas**. A escolha da tela não concede permissões. O servidor valida o perfil e o vínculo com o estabelecimento. Na Administração, o gestor mantém o catálogo, configura o nome exibido no PDV e cadastra caixas identificáveis, como Caixa 01 e Caixa 02, com os operadores autorizados. Em Vendas, o operador entra com a própria conta e abre um caixa autorizado. Cada turno registra o identificador do caixa e do operador. O operador de vendas tem acesso às ações de caixa e venda permitidas pelo seu perfil.
+
+O PDV deve permitir a sequência de teclado **F3 → 1 Dinheiro, 2 Pix ou 3 Cartão → F4**. Em dinheiro, o foco segue para o valor recebido. Em Pix e cartão, segue para finalizar.
+
+| Interface | Acesso e operação | Instalação |
+| --- | --- | --- |
+| Cardápio | Vitrine pública por estabelecimento, pedido e acompanhamento. O link ou QR de mesa determina o contexto da compra. | PWA própria do cardápio, instalável pelo cliente. |
+| PDV | Portal web do caixa, com vendas, recebimentos e abertura e fechamento de caixa. | Acesso pelo navegador no computador. |
+| KDS | Tela exclusiva da cozinha. A equipe vê apenas pedidos da sua loja e executa as transições de preparo permitidas. | PWA própria para o telefone da cozinha. |
+| Monitor do gestor | Tela móvel de consulta dos pedidos, recebimentos, saídas para entrega e entregas concluídas. O gestor entra com a conta da loja e pode manter a sessão no dispositivo. | PWA própria do monitor. |
+| REMO | Central logística com interface e permissões próprias. | Portal web nesta fase. PWA do entregador em fase posterior. |
+
+O monitor do gestor terá somente consultas. O servidor restringirá os dados à loja vinculada e as operações do monitor a leitura. A configuração administrativa da loja fica em uma interface separada do monitor. Caixa e cozinha terão permissões próprias no servidor. A PWA do KDS será validada com uma conta que só tem acesso à cozinha.
+
+A REMO devolverá os estados necessários à loja, incluindo saída para entrega e conclusão. A R Sistemas exibirá esses estados no monitor do gestor a partir do vínculo com o despacho. O acesso à central logística permanece separado.
+
+### Impressão na cozinha
+
+O legado contém o projeto Android DoRafaKDSPrint. O aplicativo carrega o KDS em uma WebView e oferece a ponte PrintBridge com o nome AndroidPrint para comunicação com a impressora USB. A referência de impressora térmica é a Bematech MP-4200 TH. Antes de ativar impressão automática no novo KDS, validar a ponte no telefone com a impressora física, a confirmação de impressão e o controle de reimpressão para evitar duplicatas. A compatibilidade da PWA e a compatibilidade do aplicativo Android são testes separados.
+
+No App do Rafa, os manifestos do cardápio e do KDS ficam no módulo Cardapio. A REMO antiga tem manifesto e service worker na rota principal, cuja interface autentica entregadores e encaminha os demais perfis aos seus portais.
+
 ## Infraestrutura e identidade
 
 A REMO é uma única central regional com operação própria. Estabelecimentos integrados e empresas que operam sem o PDV podem solicitar entregas. O cardápio registra o endereço no pedido. No despacho, a integração envia à API da REMO os dados necessários da entrega e uma referência para evitar duplicidade. A REMO mantém sob sua responsabilidade rotas, entregadores, rastreamento e saldo de corridas.
