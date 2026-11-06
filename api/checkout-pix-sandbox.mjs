@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   if (!ASAAS_SANDBOX_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return res.status(503).json({ erro: "Pix Sandbox indisponível." });
   }
-  const { p_slug, p_id, p_cliente, p_mesa, p_itens } = req.body ?? {};
+  const { p_slug, p_id, p_cliente = null, p_mesa = null, p_itens } = req.body ?? {};
   if (p_slug !== "loja-teste" || typeof p_id !== "string" ||
       !/^[a-f0-9-]{36}$/i.test(p_id) || !Array.isArray(p_itens) || p_itens.length > 30) {
     return res.status(400).json({ erro: "Pedido de teste inválido." });
