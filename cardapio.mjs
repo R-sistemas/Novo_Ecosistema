@@ -9,6 +9,7 @@ const estados = { novo: "Recebido", preparo: "Em preparo", pronto: "Pronto", ent
 let p_id = parametros.get("pedido");
 let tentativa;
 let ocupado = false;
+let aguardandoPix = false;
 
 async function executarComFeedback(acao) {
   if (ocupado) return;
@@ -25,11 +26,11 @@ async function executarComFeedback(acao) {
 async function acompanhar() {
   const pedido = await executar("acompanhar_pedido", { p_slug, p_id });
   if (!pedido) throw new Error("Pedido indisponível.");
-  const aguardando = pedido.pix_sandbox && !pedido.pix_confirmado;
-  el("mensagem").textContent = (aguardando ? "Aguardando Pix Sandbox" : estados[pedido.estado]) +
+  aguardandoPix = pedido.pix_sandbox && !pedido.pix_confirmado;
+  el("mensagem").textContent = (aguardandoPix ? "Aguardando Pix Sandbox" : estados[pedido.estado]) +
     " · " + moeda.format(pedido.total_centavos / 100);
-  if (!aguardando) el("pagamento-pix").hidden = true;
-  return aguardando;
+  if (!aguardandoPix) el("pagamento-pix").hidden = true;
+  return aguardandoPix;
 }
 
 async function mostrarPix(dados) {
@@ -39,6 +40,7 @@ async function mostrarPix(dados) {
     body: JSON.stringify(dados)
   });
   const pix = await resposta.json();
+  if (resposta.ok && pix.aguardaConfirmacao) return;
   if (!resposta.ok || !pix.imagem || !pix.copiaECola) {
     throw new Error(pix.erro ?? "QR Code indisponível.");
   }
@@ -115,7 +117,7 @@ executarComFeedback(async () => {
 });
 
 setInterval(() => {
-  if (p_id && !document.hidden && !el("pagamento-pix").hidden) {
+  if (p_id && aguardandoPix && !document.hidden) {
     void executarComFeedback(acompanhar);
   }
 }, 5000);

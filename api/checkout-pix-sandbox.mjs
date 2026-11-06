@@ -37,13 +37,15 @@ export default async function handler(req, res) {
   }, dados);
 
   try {
-    const clientes = await asaas("/customers?externalReference=rsistemas-teste-pix-v1&limit=1");
+    const [clientes, existentes] = await Promise.all([
+      asaas("/customers?externalReference=rsistemas-teste-pix-v1&limit=1"),
+      asaas("/payments?externalReference=" + encodeURIComponent(p_id))
+    ]);
     const cliente = clientes.data?.[0]?.id;
     if (!cliente) return res.status(503).json({ erro: "Cliente de teste do Sandbox indisponível." });
     const pedido = await banco("iniciar_checkout_pix_sandbox", { p_id, p_cliente, p_mesa, p_itens });
     let id = pedido.cobranca;
     if (!id) {
-      const existentes = await asaas("/payments?externalReference=" + encodeURIComponent(p_id));
       let cobranca = existentes.data?.[0];
       if (!cobranca && pedido.criar) {
         cobranca = await asaas("/payments", {
@@ -63,7 +65,15 @@ export default async function handler(req, res) {
         p_pedido: p_id, p_cobranca: id, p_valor: pedido.total_centavos
       });
     }
-    const pix = await asaas("/payments/" + encodeURIComponent(id) + "/pixQrCode");
+    const rota = "/payments/" + encodeURIComponent(id);
+    const estado = await asaas(rota);
+    if (estado.status === "RECEIVED" || estado.status === "CONFIRMED") {
+      return res.status(200).json({ aguardaConfirmacao: true });
+    }
+    if (estado.deleted || estado.status !== "PENDING") {
+      return res.status(409).json({ erro: "Esta cobrança Pix está indisponível para pagamento." });
+    }
+    const pix = await asaas(rota + "/pixQrCode");
     return res.status(200).json({ imagem: pix.encodedImage, copiaECola: pix.payload, expiraEm: pix.expirationDate });
   } catch (erro) {
     console.error("Checkout Pix Sandbox", erro.message);
