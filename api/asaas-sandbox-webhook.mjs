@@ -9,7 +9,14 @@ export default async function handler(req, res) {
   }
 
   const { ASAAS_SANDBOX_WEBHOOK_TOKEN: token, SUPABASE_URL: url, SUPABASE_SERVICE_ROLE_KEY: chave } = process.env;
-  if (!token || !url || !chave) return res.status(503).end();
+  if (!token || !url || !chave) {
+    console.error("Configuração do webhook incompleta", {
+      tokenConfigurado: Boolean(token),
+      urlConfigurada: Boolean(url),
+      chaveConfigurada: Boolean(chave)
+    });
+    return res.status(503).end();
+  }
 
   const recebido = req.headers["asaas-access-token"];
   if (typeof recebido !== "string" || !timingSafeEqual(hash(recebido), hash(token))) {
