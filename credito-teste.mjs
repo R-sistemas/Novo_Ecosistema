@@ -1,4 +1,4 @@
-export async function abrirCreditoTeste(dados, aoEnviar) {
+export async function abrirCreditoTeste(dados, aoEnviar, producao = false) {
   const painel = document.getElementById("painel-credito-teste");
   const formulario = document.getElementById("configurar-credito-teste");
   painel.hidden = false;
@@ -27,7 +27,8 @@ export async function abrirCreditoTeste(dados, aoEnviar) {
           async onSubmit(cartao) {
             mensagem.textContent = "Verificando pagamento…";
             try {
-              const resposta = await fetch("/api/checkout-credito-mercado-pago-teste", {
+              const ambiente = producao ? "quiosque" : "teste";
+              const resposta = await fetch("/api/checkout-credito-mercado-pago-" + ambiente, {
                 method: "POST", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ ...dados.pedido, cartao: {
                   token: cartao.token, bandeira: cartao.payment_method_id, email: cartao.payer?.email
@@ -58,4 +59,8 @@ export async function abrirCreditoTeste(dados, aoEnviar) {
       formulario.inert = false;
     }
   };
+  if (producao) {
+    document.getElementById("chave-credito-teste").value = "APP_USR-28b0f004-3565-43de-99f6-51fb3cde8735";
+    await formulario.onsubmit(new Event("submit"));
+  }
 }

@@ -14,9 +14,11 @@ A construção deve ser modular e desacoplada. As regras obrigatórias estão em
 
 ## Pagamentos online
 
-O Quiosque usa a própria conta Asaas de produção. A configuração de provedores e meios é por estabelecimento e ambiente. As credenciais ficam no servidor, vinculadas à conta da loja.
+O Quiosque usa a própria conta Mercado Pago para o Pix padrão em produção, com Asaas como alternativa. A configuração de provedores e meios é por estabelecimento e ambiente. As credenciais privadas ficam no servidor, vinculadas à conta da loja.
 
-O Asaas atende exclusivamente ao Pix. Após validar o Pix, selecionar outro provedor para cartão de crédito e débito online, com exceção do PagBank. Avaliar as taxas efetivas, o prazo de repasse, o suporte técnico e a facilidade de homologação. A página de pagamento do provedor coleta os dados do cartão. Confirmar o pagamento pelo provedor antes de liberar o pedido.
+O crédito Mercado Pago em 1x foi homologado com pedidos aprovados, pendentes e recusados. O formulário tokenizado está publicado no link específico do piloto. Falta uma compra real para conferir a confirmação pelo webhook, a entrada na cozinha e o valor líquido no extrato. O débito segue separado, pendente de habilitação pelo provedor.
+
+O checkout de entrega deverá solicitar o endereço e apresentar o resumo antes do pagamento. Pagamento online é o padrão. Pagar na entrega fica desativado por padrão e só deve aparecer quando o gestor da loja habilitar a preferência. O servidor deve aplicar a mesma regra ao receber o pedido. Para consumo no local, o QR identifica a mesa e o cliente pode pagar no caixa.
 
 Novas integrações serão adicionadas conforme a demanda das lojas e os meios oferecidos por cada instituição.
 
