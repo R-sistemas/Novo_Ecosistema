@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="supabase-key" content="sb_publishable_s0oowaHaCZkMUZgNTo6upw_zljF76Na">
+<title>REMO | Central logística</title>
+<link rel="stylesheet" href="style.css">
+<script type="module" src="remo.mjs"></script>
+</head>
+<body>
+<main>
+<h1>REMO</h1>
+<form id="login-remo" class="panel">
+  <label>E-mail <input name="email" type="email" autocomplete="username" required></label>
+  <label>Senha <input name="senha" type="password" autocomplete="current-password" required></label>
+  <button>Entrar na central</button>
+</form>
+<section id="central-remo" hidden>
+  <h2>Solicitações de despacho</h2>
+  <button id="atualizar-remo">Atualizar</button>
+  <ul id="fila-remo"></ul>
+</section>
+<p id="aviso-remo" role="status"></p>
+</main>
+</body>
+</html>

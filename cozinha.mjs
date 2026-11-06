@@ -46,6 +46,22 @@ export async function carregarCozinha() {
         const { logradouro, numero, bairro, cidade, complemento } = pedido.endereco_entrega;
         endereco.textContent = [logradouro, numero, bairro, cidade, complemento].filter(Boolean).join(", ");
         artigo.append(endereco);
+        if (pedido.estado === "pronto") {
+          const despacho = document.createElement("button");
+          despacho.textContent = "Solicitar despacho à REMO";
+          despacho.onclick = async () => {
+            despacho.disabled = true;
+            try {
+              const id = await executar("solicitar_despacho_remo", { p_pedido: pedido.id });
+              despacho.textContent = "Despacho solicitado";
+              aviso.textContent = "Solicitação REMO " + id;
+            } catch (erro) {
+              aviso.textContent = erro.message;
+              despacho.disabled = false;
+            }
+          };
+          artigo.append(despacho);
+        }
       }
       if (!pedido.recebido) {
         const receber = document.createElement("button");
