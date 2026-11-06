@@ -32,11 +32,13 @@ export async function carregarCozinha() {
     fila.replaceChildren(...pedidos.map(pedido => {
       const artigo = document.createElement("article");
       const titulo = document.createElement("h3");
-      titulo.textContent = pedido.cliente + " · " + (pedido.mesa ? "Mesa " + pedido.mesa : "Retirada");
+      const modalidade = pedido.pagamento_entrega ? "Entrega" : pedido.mesa ? "Mesa " + pedido.mesa : "Retirada";
+      titulo.textContent = pedido.cliente + " · " + modalidade;
       const resumo = document.createElement("p");
       resumo.textContent = pedido.itens.map(item => item.quantidade + " × " + item.nome).join(", ");
       const financeiro = document.createElement("p");
-      financeiro.textContent = pedido.pix_teste ? "Pix confirmado no Sandbox" : pedido.recebido ? "Recebimento registrado" :
+      financeiro.textContent = pedido.pix_teste ? "Pagamento confirmado no Sandbox" : pedido.recebido ? "Recebimento registrado" :
+        pedido.pagamento_entrega === "na_entrega" ? "Pagamento na entrega pendente" :
         pedido.estado === "entregue" ? "Entregue · recebimento pendente" : "Recebimento pendente";
       artigo.append(titulo, resumo, financeiro);
       if (!pedido.recebido) {

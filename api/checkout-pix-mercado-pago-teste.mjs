@@ -5,7 +5,7 @@ export async function checkout(req, res, { sandbox, token }) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") return res.status(405).end();
   if (!token) return res.status(503).json({ erro: "Pix indisponível." });
-  const { p_slug, p_id, p_cliente = null, p_mesa = null, p_itens, email } = req.body ?? {};
+  const { p_slug, p_id, p_cliente = null, p_mesa = null, p_itens, email, endereco, pagamento } = req.body ?? {};
   if (p_slug !== (sandbox ? "loja-teste" : "quiosque-dorafa") || typeof p_id !== "string" ||
       !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(p_id) ||
       !Array.isArray(p_itens) || p_itens.length > 30) {
@@ -16,8 +16,16 @@ export async function checkout(req, res, { sandbox, token }) {
     return res.status(400).json({ erro: "Informe um e-mail válido para gerar o Pix." });
   }
   try {
+    if (sandbox && endereco && pagamento === "na_entrega") {
+      const id = await banco("enviar_pedido_pagamento_na_entrega", {
+        p_slug, p_id, p_cliente, p_itens, p_endereco: endereco
+      });
+      return res.status(200).json({ pedido: id });
+    }
     const ambiente = sandbox ? "teste" : "quiosque";
-    const pedido = await banco("reservar_pix_mercado_pago_" + ambiente, { p_id, p_cliente, p_mesa, p_itens });
+    const pedido = sandbox && endereco
+      ? await banco("reservar_pix_entrega_teste", { p_id, p_cliente, p_itens, p_endereco: endereco })
+      : await banco("reservar_pix_mercado_pago_" + ambiente, { p_id, p_cliente, p_mesa, p_itens });
     const cliente = mercadoPago(token);
     if (sandbox && pedido.cobranca) return res.status(200).json({ aguardaConfirmacao: true });
     const ordem = pedido.cobranca ? await cliente.consultarOrdem(pedido.cobranca)

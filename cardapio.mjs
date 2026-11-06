@@ -12,8 +12,9 @@ let ocupado = false;
 let aguardandoPix = false;
 const pixTeste = p_slug === "loja-teste";
 const creditoTeste = pixTeste && parametros.get("cartao") === "credito";
+const entregaTeste = pixTeste && !p_mesa && !creditoTeste && parametros.get("entrega") === "teste";
 const creditoQuiosque = p_slug === "quiosque-dorafa" && parametros.get("cartao") === "credito";
-const pixMercadoPagoTeste = pixTeste && parametros.get("pix") === "mercado-pago";
+const pixMercadoPagoTeste = entregaTeste || (pixTeste && parametros.get("pix") === "mercado-pago");
 const pixMercadoPagoQuiosque = p_slug === "quiosque-dorafa" &&
   (parametros.get("pix") === "mercado-pago" || (!p_id && !parametros.has("pix")));
 let pixDisponivel = pixTeste;
@@ -98,7 +99,14 @@ executarComFeedback(async () => {
   if (p_slug === "quiosque-dorafa") {
     pixDisponivel = await executar("pix_online_disponivel", { p_slug }).catch(() => false);
   }
-  el("opcao-pix").hidden = creditoTeste || creditoQuiosque || !pixDisponivel;
+  el("opcao-pix").hidden = entregaTeste || creditoTeste || creditoQuiosque || !pixDisponivel;
+  if (entregaTeste) {
+    el("entrega-teste").hidden = false;
+    el("entrega-teste").disabled = false;
+    if (await executar("pagamento_na_entrega_disponivel", { p_slug }).catch(() => false)) {
+      el("pagamento-entrega").add(new Option("Pagar na entrega", "na_entrega"));
+    }
+  }
   el("rotulo-pix").textContent = pixMercadoPagoTeste ? "Simular Pix Mercado Pago"
     : pixMercadoPagoQuiosque ? "Pagar com Pix Mercado Pago"
     : pixTeste ? "Pagar com Pix Sandbox" : "Pagar com Pix";
@@ -138,19 +146,31 @@ executarComFeedback(async () => {
         el("pedido").hidden = true;
         return;
       }
-      const pix = pixDisponivel && el("pix-sandbox").checked;
+      const pagamento = entregaTeste ? el("pagamento-entrega").value : undefined;
+      const endereco = entregaTeste ? Object.fromEntries(
+        [...el("entrega-teste").querySelectorAll("input")].map(campo => [campo.name, campo.value.trim()])
+      ) : undefined;
+      const pix = entregaTeste ? pagamento === "online" : pixDisponivel && el("pix-sandbox").checked;
       const cpfCnpj = pix && !pixTeste ? el("documento-pix").value : undefined;
       const email = pix && pixMercadoPagoQuiosque ? el("email-pix").value.trim() : undefined;
-      const assinatura = JSON.stringify({ p_itens, p_cliente, pix, cpfCnpj, email });
+      const assinatura = JSON.stringify({ p_itens, p_cliente, pix, cpfCnpj, email, endereco, pagamento });
       if (tentativa?.assinatura !== assinatura) tentativa = { assinatura, id: crypto.randomUUID() };
       el("pedido").inert = true;
       try {
         const dados = { p_slug, p_mesa, p_itens, p_cliente, p_id: tentativa.id };
         if (pix) {
-          await mostrarPix({ ...dados, cpfCnpj, email });
+          await mostrarPix({ ...dados, cpfCnpj, email, endereco, pagamento });
           if (pixMercadoPagoQuiosque) parametros.set("pix", "mercado-pago");
           el("documento-pix").value = "";
           p_id = tentativa.id;
+        } else if (entregaTeste) {
+          const resposta = await fetch("/api/checkout-pix-mercado-pago-teste", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...dados, endereco, pagamento })
+          });
+          const resultado = await resposta.json();
+          if (!resposta.ok) throw new Error(resultado.erro);
+          p_id = resultado.pedido;
         } else {
           p_id = await executar("enviar_pedido", dados);
         }

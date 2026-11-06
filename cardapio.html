@@ -16,6 +16,19 @@
   <p id="total"></p>
   <label for="cliente">Seu nome</label>
   <input id="cliente" maxlength="100" required>
+  <fieldset id="entrega-teste" hidden disabled>
+    <legend>Endereço da entrega de teste</legend>
+    <label>Rua ou avenida<input name="logradouro" maxlength="150" required></label>
+    <label>Número<input name="numero" maxlength="20" required></label>
+    <label>Bairro<input name="bairro" maxlength="100" required></label>
+    <label>Cidade<input name="cidade" maxlength="100" required></label>
+    <label>Complemento<input name="complemento" maxlength="150"></label>
+    <label>Forma de pagamento
+      <select id="pagamento-entrega">
+        <option value="online">Pix Mercado Pago de teste</option>
+      </select>
+    </label>
+  </fieldset>
   <label id="opcao-pix" hidden><input id="pix-sandbox" type="checkbox"> <span id="rotulo-pix">Pagar com Pix</span></label>
   <div id="dados-pix" hidden>
     <label for="documento-pix">CPF ou CNPJ para emissão da cobrança no Asaas</label>

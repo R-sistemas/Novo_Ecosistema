@@ -24,6 +24,8 @@ Novas integrações serão adicionadas conforme a demanda das lojas e os meios o
 
 ## Infraestrutura e identidade
 
+A REMO é uma única central regional com operação própria. Estabelecimentos integrados e empresas que operam sem o PDV podem solicitar entregas. O cardápio registra o endereço no pedido. No despacho, a integração envia à API da REMO os dados necessários da entrega e uma referência para evitar duplicidade. A REMO mantém sob sua responsabilidade rotas, entregadores, rastreamento e saldo de corridas.
+
 GitHub para o código, Vercel para os aplicativos e Supabase para dados e autenticação. A REMO compartilha infraestrutura inicialmente e mantém operação independente. O cardápio público destaca a marca de cada loja. O piloto exclui campanhas, remarketing e QR de marketing. O OSRM fica fora do custo inicial até a necessidade de roteamento viário ser validada.
 
 A primeira entrega local usa a logo fornecida e aproxima a tipografia com uma fonte de sistema. Os dados são fictícios e persistem apenas no navegador. Antes da produção, substituir essa persistência por operações autenticadas e transacionais no Supabase. Nenhuma etapa da tabela está concluída até a validação em produção.
