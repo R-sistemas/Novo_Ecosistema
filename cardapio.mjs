@@ -11,6 +11,7 @@ let tentativa;
 let ocupado = false;
 let aguardandoPix = false;
 const pixTeste = p_slug === "loja-teste";
+const pixMercadoPagoTeste = pixTeste && parametros.get("pix") === "mercado-pago";
 let pixDisponivel = pixTeste;
 
 async function executarComFeedback(acao) {
@@ -36,7 +37,9 @@ async function acompanhar() {
 }
 
 async function mostrarPix(dados) {
-  const resposta = await fetch(pixTeste ? "/api/checkout-pix-sandbox" : "/api/checkout-pix-quiosque", {
+  const rota = pixMercadoPagoTeste ? "/api/checkout-pix-mercado-pago-teste"
+    : pixTeste ? "/api/checkout-pix-sandbox" : "/api/checkout-pix-quiosque";
+  const resposta = await fetch(rota, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(dados)
@@ -89,7 +92,8 @@ executarComFeedback(async () => {
     pixDisponivel = await executar("pix_online_disponivel", { p_slug }).catch(() => false);
   }
   el("opcao-pix").hidden = !pixDisponivel;
-  el("rotulo-pix").textContent = pixTeste ? "Pagar com Pix Sandbox" : "Pagar com Pix";
+  el("rotulo-pix").textContent = pixMercadoPagoTeste ? "Simular Pix Mercado Pago"
+    : pixTeste ? "Pagar com Pix Sandbox" : "Pagar com Pix";
   el("pix-sandbox").onchange = () => {
     const solicitarDocumento = !pixTeste && el("pix-sandbox").checked;
     el("dados-pix").hidden = !solicitarDocumento;
