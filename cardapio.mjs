@@ -13,10 +13,12 @@ let aguardandoPix = false;
 const pixTeste = p_slug === "loja-teste";
 const creditoTeste = pixTeste && parametros.get("cartao") === "credito";
 const entregaTeste = pixTeste && !p_mesa && !creditoTeste && parametros.get("entrega") === "teste";
-const creditoQuiosque = p_slug === "quiosque-dorafa" && parametros.get("cartao") === "credito";
+const entregaQuiosque = p_slug === "quiosque-dorafa" && !p_mesa && parametros.get("entrega") === "sim";
+const entrega = entregaTeste || entregaQuiosque;
+const creditoQuiosque = !entrega && p_slug === "quiosque-dorafa" && parametros.get("cartao") === "credito";
 const pixMercadoPagoTeste = entregaTeste || (pixTeste && parametros.get("pix") === "mercado-pago");
 const pixMercadoPagoQuiosque = p_slug === "quiosque-dorafa" &&
-  (parametros.get("pix") === "mercado-pago" || (!p_id && !parametros.has("pix")));
+  (entregaQuiosque || parametros.get("pix") === "mercado-pago" || (!p_id && !parametros.has("pix")));
 let pixDisponivel = pixTeste;
 
 async function executarComFeedback(acao) {
@@ -99,10 +101,14 @@ executarComFeedback(async () => {
   if (p_slug === "quiosque-dorafa") {
     pixDisponivel = await executar("pix_online_disponivel", { p_slug }).catch(() => false);
   }
-  el("opcao-pix").hidden = entregaTeste || creditoTeste || creditoQuiosque || !pixDisponivel;
-  if (entregaTeste) {
+  el("opcao-pix").hidden = entrega || creditoTeste || creditoQuiosque || !pixDisponivel;
+  if (entrega) {
     el("entrega-teste").hidden = false;
     el("entrega-teste").disabled = false;
+    if (entregaQuiosque) {
+      el("legenda-entrega").textContent = "Endereço da entrega";
+      el("pagamento-entrega").options[0].textContent = "Pix Mercado Pago";
+    }
     if (await executar("pagamento_na_entrega_disponivel", { p_slug }).catch(() => false)) {
       el("pagamento-entrega").add(new Option("Pagar na entrega", "na_entrega"));
     }
@@ -114,10 +120,15 @@ executarComFeedback(async () => {
     const solicitarDocumento = !pixTeste && !pixMercadoPagoQuiosque && el("pix-sandbox").checked;
     el("dados-pix").hidden = !solicitarDocumento;
     el("documento-pix").required = solicitarDocumento;
-    const solicitarEmail = pixMercadoPagoQuiosque && el("pix-sandbox").checked;
+    const solicitarEmail = pixMercadoPagoQuiosque &&
+      (entrega ? el("pagamento-entrega").value === "online" : el("pix-sandbox").checked);
     el("dados-email-pix").hidden = !solicitarEmail;
     el("email-pix").required = solicitarEmail;
   };
+  if (entrega) {
+    el("pagamento-entrega").onchange = el("pix-sandbox").onchange;
+    el("pagamento-entrega").onchange();
+  }
   el("pedido").onsubmit = evento => {
     evento.preventDefault();
     executarComFeedback(async () => {
@@ -146,11 +157,11 @@ executarComFeedback(async () => {
         el("pedido").hidden = true;
         return;
       }
-      const pagamento = entregaTeste ? el("pagamento-entrega").value : undefined;
-      const endereco = entregaTeste ? Object.fromEntries(
+      const pagamento = entrega ? el("pagamento-entrega").value : undefined;
+      const endereco = entrega ? Object.fromEntries(
         [...el("entrega-teste").querySelectorAll("input")].map(campo => [campo.name, campo.value.trim()])
       ) : undefined;
-      const pix = entregaTeste ? pagamento === "online" : pixDisponivel && el("pix-sandbox").checked;
+      const pix = entrega ? pagamento === "online" : pixDisponivel && el("pix-sandbox").checked;
       const cpfCnpj = pix && !pixTeste ? el("documento-pix").value : undefined;
       const email = pix && pixMercadoPagoQuiosque ? el("email-pix").value.trim() : undefined;
       const assinatura = JSON.stringify({ p_itens, p_cliente, pix, cpfCnpj, email, endereco, pagamento });
@@ -163,8 +174,9 @@ executarComFeedback(async () => {
           if (pixMercadoPagoQuiosque) parametros.set("pix", "mercado-pago");
           el("documento-pix").value = "";
           p_id = tentativa.id;
-        } else if (entregaTeste) {
-          const resposta = await fetch("/api/checkout-pix-mercado-pago-teste", {
+        } else if (entrega) {
+          const rota = entregaTeste ? "/api/checkout-pix-mercado-pago-teste" : "/api/checkout-pix-mercado-pago-quiosque";
+          const resposta = await fetch(rota, {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ ...dados, endereco, pagamento })
           });

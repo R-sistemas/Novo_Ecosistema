@@ -41,6 +41,12 @@ export async function carregarCozinha() {
         pedido.pagamento_entrega === "na_entrega" ? "Pagamento na entrega pendente" :
         pedido.estado === "entregue" ? "Entregue · recebimento pendente" : "Recebimento pendente";
       artigo.append(titulo, resumo, financeiro);
+      if (pedido.endereco_entrega) {
+        const endereco = document.createElement("p");
+        const { logradouro, numero, bairro, cidade, complemento } = pedido.endereco_entrega;
+        endereco.textContent = [logradouro, numero, bairro, cidade, complemento].filter(Boolean).join(", ");
+        artigo.append(endereco);
+      }
       if (!pedido.recebido) {
         const receber = document.createElement("button");
         receber.textContent = "Registrar recebimento no caixa";

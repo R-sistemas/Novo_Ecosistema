@@ -4,27 +4,31 @@ import { bancoMercadoPagoTeste as banco } from "../lib/banco-mercado-pago-teste.
 export async function checkout(req, res, { sandbox, token }) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") return res.status(405).end();
-  if (!token) return res.status(503).json({ erro: "Pix indisponível." });
   const { p_slug, p_id, p_cliente = null, p_mesa = null, p_itens, email, endereco, pagamento } = req.body ?? {};
   if (p_slug !== (sandbox ? "loja-teste" : "quiosque-dorafa") || typeof p_id !== "string" ||
       !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(p_id) ||
       !Array.isArray(p_itens) || p_itens.length > 30) {
-    return res.status(400).json({ erro: "Pedido de teste inválido." });
+    return res.status(400).json({ erro: "Pedido inválido." });
   }
-  if (!sandbox && p_itens.length && (typeof email !== "string" ||
+  if (pagamento !== undefined && (!endereco || p_mesa || !["online", "na_entrega"].includes(pagamento))) {
+    return res.status(400).json({ erro: "Confira os dados da entrega." });
+  }
+  const naEntrega = pagamento === "na_entrega";
+  if (!naEntrega && !token) return res.status(503).json({ erro: "Pix indisponível." });
+  if (!sandbox && !naEntrega && p_itens.length && (typeof email !== "string" ||
       email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
     return res.status(400).json({ erro: "Informe um e-mail válido para gerar o Pix." });
   }
   try {
-    if (sandbox && endereco && pagamento === "na_entrega") {
+    if (naEntrega) {
       const id = await banco("enviar_pedido_pagamento_na_entrega", {
         p_slug, p_id, p_cliente, p_itens, p_endereco: endereco
       });
       return res.status(200).json({ pedido: id });
     }
     const ambiente = sandbox ? "teste" : "quiosque";
-    const pedido = sandbox && endereco
-      ? await banco("reservar_pix_entrega_teste", { p_id, p_cliente, p_itens, p_endereco: endereco })
+    const pedido = pagamento === "online"
+      ? await banco("reservar_pix_entrega_" + ambiente, { p_id, p_cliente, p_itens, p_endereco: endereco })
       : await banco("reservar_pix_mercado_pago_" + ambiente, { p_id, p_cliente, p_mesa, p_itens });
     const cliente = mercadoPago(token);
     if (sandbox && pedido.cobranca) return res.status(200).json({ aguardaConfirmacao: true });
