@@ -28,6 +28,8 @@ O acesso ao PDV terá entradas para **Administração** e **Vendas**. A escolha 
 
 O PDV deve permitir a sequência de teclado **F3 → 1 Dinheiro, 2 Pix ou 3 Cartão → F4**. Em dinheiro, o foco segue para o valor recebido. Em Pix e cartão, segue para finalizar.
 
+O gestor poderá conceder e revogar a permissão de desconto por operador e estabelecimento. Para aplicar um desconto, o operador autorizado confirma a própria senha no PDV. A autorização vale para aquela venda, com registro do operador e do valor concedido. As demais permissões do perfil permanecem separadas.
+
 | Interface | Acesso e operação | Instalação |
 | --- | --- | --- |
 | Cardápio | Vitrine pública por estabelecimento, pedido e acompanhamento. O link ou QR de mesa determina o contexto da compra. | PWA própria do cardápio, instalável pelo cliente. |

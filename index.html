@@ -6,6 +6,7 @@
 <meta name="supabase-key" content="sb_publishable_s0oowaHaCZkMUZgNTo6upw_zljF76Na"><title>Caixa | R Sistemas</title>
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="administracao.css">
+<link rel="stylesheet" href="frente-caixa.css">
 <link rel="manifest" href="pdv.webmanifest">
 <link rel="apple-touch-icon" href="icone-pwa-192.png">
 <meta name="theme-color" content="#175d2d">
@@ -21,10 +22,28 @@
 <div id="operacao" hidden><label for="empresa">Estabelecimento</label><select id="empresa"></select>
 <button id="trocar-area" type="button">Trocar área</button>
 <div id="area-vendas" hidden>
-<label for="terminal-pdv">Caixa autorizado</label><select id="terminal-pdv"></select>
-<div class="layout">
-<section class="panel"><h2>Produtos</h2><label for="search">Pesquisar por nome ou código</label><input id="search" type="search" placeholder="Ex.: café ou 101"><div id="products" class="products"></div></section>
-<section class="panel"><h2>Venda atual</h2><div id="cart"></div><p class="total"><span>Total</span><strong id="total"></strong></p>
+<div class="frente-topo"><div><strong>Frente de caixa</strong><small id="operador-frente"></small></div>
+<label for="terminal-pdv">Caixa autorizado<select id="terminal-pdv"></select></label></div>
+<div class="frente-grade">
+<section class="panel frente-contexto"><h2>Identificação</h2>
+<label>Mesa <output id="mesa-frente">Balcão</output></label>
+<label>Cliente <output id="cliente-frente">Consumidor</output></label>
+<label>Comanda <output id="comanda-frente">—</output></label>
+<button id="abrir-comandas" type="button" class="secondary">F7 · Abrir comanda</button>
+<button id="voltar-balcao" type="button" class="secondary" hidden>Voltar ao balcão</button>
+<label for="search">Código ou produto</label><input id="search" type="search" placeholder="Ex.: café ou 101">
+<label for="quantidade-frente">Quantidade</label><input id="quantidade-frente" type="number" min="1" max="1000" value="1">
+<img class="frente-logo" src="logo.png" alt="R Sistemas">
+</section>
+<section class="panel frente-itens"><h2 id="titulo-venda-frente">Itens da venda</h2>
+<div class="frente-tabela"><table><thead><tr><th>Cód.</th><th>Descrição</th><th>Qtd.</th><th>Unitário</th><th>Total</th><th>Ação</th></tr></thead><tbody id="cart"></tbody></table></div>
+<p id="cart-vazio">Selecione um produto para começar.</p>
+<details id="produtos-frente" open><summary>Produtos disponíveis</summary><div id="products" class="products"></div></details>
+</section>
+<section class="panel frente-pagamento"><h2>Recebimento</h2>
+<p class="frente-linha"><span>Subtotal</span><strong id="subtotal-frente"></strong></p>
+<div id="desconto-frente" hidden><label for="valor-desconto">Desconto em reais · F6</label><input id="valor-desconto" type="number" min="0" step="0.01" inputmode="decimal"></div>
+<p class="total"><span>Total</span><strong id="total"></strong></p>
 <form id="sale">
 <button id="abrir-pagamento-pdv" type="button">F3 · Forma de pagamento</button>
 <div id="pagamento-pdv" hidden>
@@ -33,29 +52,32 @@
 <button type="button" data-meio-pdv="Pix" aria-pressed="false">2 · Pix</button>
 <button type="button" data-meio-pdv="Cartão" aria-pressed="false">3 · Cartão na maquininha</button>
 </div>
-<p>Registre a venda após conferir o recebimento.</p>
+<p id="orientacao-frente">Selecione a forma de pagamento.</p>
 <button id="finish">F4 ou Enter · Finalizar venda</button>
 </div>
 </form></section>
-<section class="panel cash"><h2>Movimentação de caixa</h2><p id="balance"></p><form id="cash"><label for="amount" id="amount-label"></label><input id="amount" type="number" min="0" step="0.01" required><div id="cash-actions"></div></form><p id="closing"></p></section>
-<section class="panel"><h2>Últimos registros</h2><ol id="history"></ol></section>
 </div>
-<section class="panel">
+<div class="frente-atalhos">F3 Pagamento · F4 Finalizar · F6 Desconto · F7 Comandas · F9 Buscar produto</div>
+<div class="layout frente-apoio">
+<details class="panel cash" open><summary>Movimentação de caixa</summary><p id="balance"></p><form id="cash"><label for="amount" id="amount-label"></label><input id="amount" type="number" min="0" step="0.01" required><div id="cash-actions"></div></form><p id="closing"></p></details>
+<details class="panel" open><summary>Histórico do caixa</summary><ol id="history"></ol></details>
+</div>
+<dialog id="dialogo-comandas" class="frente-comandas">
 <h2>Comandas de mesa a receber</h2>
 <label for="buscar-comanda">Número da comanda ou da mesa</label>
 <input id="buscar-comanda" type="search" inputmode="numeric" placeholder="Ex.: 12">
-<label for="meio-comanda">Meio de recebimento da comanda</label>
-<select id="meio-comanda"><option>Dinheiro</option><option>Pix</option><option>Cartão</option></select>
 <div id="comandas-pendentes" aria-live="polite"></div>
-</section>
-<section class="panel">
-<h2>Cozinha</h2>
+<p id="aviso-comandas" role="status"></p>
+<button id="fechar-comandas" type="button" class="secondary">Voltar</button>
+</dialog>
+<details class="panel">
+<summary>Cozinha</summary>
 <label for="meio-pedido-cozinha">Meio de recebimento do pedido no caixa</label>
 <select id="meio-pedido-cozinha"><option>Dinheiro</option><option>Pix</option><option>Cartão</option></select>
 <button id="atualizar-cozinha" type="button">Atualizar pedidos</button>
 <p id="aviso-cozinha" role="status"></p>
 <div id="fila-cozinha"></div>
-</section>
+</details>
 </div>
 <section id="area-administracao" hidden>
 <div class="admin-cabecalho">

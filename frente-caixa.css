@@ -1,0 +1,13 @@
+.frente-topo{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:10px 16px;background:#153d27;color:#fff;border-radius:12px 12px 0 0;margin-top:12px}
+.frente-topo strong,.frente-topo small{display:block}.frente-topo label{display:flex;align-items:center;gap:8px;margin:0}.frente-topo select{width:auto;margin:0;color:#252b26}
+.frente-grade{display:grid;grid-template-columns:minmax(150px,195px) minmax(0,1fr) minmax(220px,290px);gap:8px;padding:8px;background:#e7efe7;border:1px solid #d7e5d8}
+.frente-grade .panel{border-radius:8px;padding:13px}.frente-contexto output{display:block;padding:6px 8px;background:#edf4ed;border:1px solid #d7e5d8;border-radius:6px;margin:3px 0 9px;overflow-wrap:anywhere}
+.frente-contexto button{width:100%;margin-bottom:8px}.frente-logo{display:block;width:80px;margin:8px auto 0}
+.frente-itens{position:relative;isolation:isolate;min-height:345px}.frente-itens:before{content:"";position:absolute;inset:45px 0;background:url(logo.png) center / min(34%,200px) auto no-repeat;opacity:.06;z-index:-1;pointer-events:none}
+.frente-tabela{overflow:auto}.frente-tabela table{width:100%;border-collapse:collapse;font-size:.85rem}.frente-tabela th,.frente-tabela td{padding:7px;border-bottom:1px solid #dce5dd;text-align:left}.frente-tabela th{background:#e7f0e8;white-space:nowrap}.frente-tabela td:nth-child(n+3){white-space:nowrap}.frente-tabela button{padding:3px 8px}
+#cart-vazio{text-align:center;margin:34px 0;color:#536259}#produtos-frente{margin-top:12px}#produtos-frente .products{margin-top:8px}
+.frente-linha{display:flex;justify-content:space-between}.frente-pagamento .total{background:#153d27;color:#fff;padding:10px;border-radius:8px;font-size:1.2rem}.frente-pagamento .products{grid-template-columns:1fr}.frente-pagamento button{width:100%}
+.frente-atalhos{padding:8px 12px;background:#e7efe7;font-size:.83rem;border-radius:0 0 10px 10px}.frente-apoio{margin-block:12px}#area-vendas summary{cursor:pointer;font-weight:750}
+.frente-comandas{width:min(640px,calc(100% - 24px));max-height:85dvh;border:1px solid #dce5dd;border-radius:14px;padding:18px}.frente-comandas::backdrop{background:#152b20aa}
+@media(max-width:860px){.frente-grade{grid-template-columns:minmax(130px,175px) minmax(0,1fr)}.frente-pagamento{grid-column:1/-1}}
+@media(max-width:560px){.frente-grade{grid-template-columns:minmax(0,1fr)}.frente-topo label{width:100%}.frente-itens{min-height:240px}}

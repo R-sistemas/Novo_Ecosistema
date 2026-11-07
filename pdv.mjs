@@ -18,6 +18,7 @@ let catalogoAdmin = [];
 let aparencia;
 let consultaComandas = 0;
 let ultimaListaComandas;
+let comandaAberta;
 const estado = { sessao: null, fechamentos: [] };
 const carrinho = new Map();
 const meios = { Dinheiro: "dinheiro", Pix: "pix", "Cartão": "cartao" };
@@ -26,8 +27,12 @@ const opcoesPagamento = [...document.querySelectorAll("[data-meio-pdv]")];
 const reais = centavos => new Intl.NumberFormat("pt-BR", {
   style: "currency", currency: "BRL"
 }).format(centavos / 100);
-const total = () => produtos.reduce((soma, produto) =>
+const subtotal = () => comandaAberta?.total_centavos ?? produtos.reduce((soma, produto) =>
   soma + produto.preco * (carrinho.get(produto.codigo) ?? 0), 0);
+const desconto = () => !comandaAberta && empresasGerenciadas.has(el("empresa").value)
+  ? Math.round((el("valor-desconto").valueAsNumber || 0) * 100) : 0;
+const total = () => subtotal() - desconto();
+const temItens = () => Boolean(comandaAberta || carrinho.size);
 
 function botao(texto, acao, secundario = false) {
   const elemento = document.createElement("button");
@@ -165,16 +170,25 @@ function renderizarProdutos() {
   el("products").replaceChildren(...produtos
     .filter(produto => (produto.codigo + " " + produto.nome).toLocaleLowerCase("pt-BR").includes(busca))
     .map(produto => {
-      const item = botao(produto.nome, () => {
-        if (vendaPendente) return;
-        carrinho.set(produto.codigo, (carrinho.get(produto.codigo) ?? 0) + 1);
-        renderizar();
-      }, true);
+      const item = botao(produto.nome, () => adicionarProduto(produto), true);
       const detalhe = document.createElement("small");
       detalhe.textContent = produto.codigo + " · " + reais(produto.preco);
       item.append(detalhe);
       return item;
     }));
+}
+function adicionarProduto(produto) {
+  if (vendaPendente || comandaAberta) return;
+  const quantidade = el("quantidade-frente").valueAsNumber;
+  const soma = (carrinho.get(produto.codigo) ?? 0) + quantidade;
+  if (!Number.isInteger(quantidade) || quantidade < 1 || soma > 1000) {
+    el("notice").textContent = "Informe uma quantidade entre 1 e 1.000.";
+    return;
+  }
+  carrinho.set(produto.codigo, soma);
+  el("quantidade-frente").value = "1";
+  el("search").value = "";
+  renderizar();
 }
 
 function renderizar() {
@@ -185,13 +199,32 @@ function renderizar() {
   el("amount-label").textContent = sessao ? "Valor da movimentação ou dinheiro contado" : "Saldo inicial em dinheiro";
   el("cash-actions").replaceChildren(...(sessao ? ["Suprimento", "Sangria", "Fechar caixa"] : ["Abrir caixa"])
     .map(acao => botao(acao, () => operarCaixa(acao), acao !== "Abrir caixa")));
-  el("cart").replaceChildren();
-  if (!carrinho.size) el("cart").textContent = "Selecione um produto para começar.";
-  for (const produto of produtos) {
-    const quantidade = carrinho.get(produto.codigo);
-    if (!quantidade) continue;
-    const linha = document.createElement("div");
-    linha.className = "row";
+  el("mesa-frente").textContent = comandaAberta?.mesa ?? "Balcão";
+  el("cliente-frente").textContent = comandaAberta?.cliente ?? "Consumidor";
+  el("comanda-frente").textContent = comandaAberta?.comanda ?? "—";
+  el("titulo-venda-frente").textContent = comandaAberta ? "Itens da comanda" : "Itens da venda";
+  el("voltar-balcao").hidden = !comandaAberta;
+  el("search").disabled = Boolean(comandaAberta);
+  el("quantidade-frente").disabled = Boolean(comandaAberta);
+  el("produtos-frente").hidden = Boolean(comandaAberta);
+  el("desconto-frente").hidden = Boolean(comandaAberta) || !empresasGerenciadas.has(el("empresa").value);
+  el("valor-desconto").disabled = Boolean(vendaPendente);
+  el("cart-vazio").hidden = temItens();
+  const itens = comandaAberta ? comandaAberta.itens.map(item => ({
+    ...item, codigo: produtos.find(p => p.id === item.produto_id)?.codigo ?? "—",
+    preco: item.preco_centavos
+  })) : produtos.filter(p => carrinho.has(p.codigo)).map(p => ({ ...p, quantidade: carrinho.get(p.codigo) }));
+  el("cart").replaceChildren(...itens.map(produto => {
+    const { quantidade } = produto;
+    const linha = document.createElement("tr");
+    for (const texto of [produto.codigo, produto.nome, quantidade, reais(produto.preco), reais(produto.preco * quantidade)]) {
+      linha.insertCell().textContent = texto;
+    }
+    const acoes = linha.insertCell();
+    if (comandaAberta) {
+      acoes.textContent = "—";
+      return linha;
+    }
     const remover = botao("−", () => {
       if (vendaPendente) return;
       if (quantidade === 1) carrinho.delete(produto.codigo);
@@ -199,11 +232,10 @@ function renderizar() {
       renderizar();
     }, true);
     remover.setAttribute("aria-label", "Remover uma unidade de " + produto.nome);
-    linha.append(quantidade + " × " + produto.nome, reais(produto.preco * quantidade), remover);
-    el("cart").append(linha);
-  }
-  el("total").textContent = reais(total());
-  el("finish").disabled = !sessao || !carrinho.size || !meioSelecionado;
+    acoes.append(remover);
+    return linha;
+  }));
+  atualizarTotalFrente();
   for (const opcao of opcoesPagamento) opcao.disabled = Boolean(vendaPendente);
   const ultimo = estado.fechamentos.at(-1);
   el("closing").textContent = ultimo ? "Último fechamento · esperado " + reais(ultimo.esperado) +
@@ -218,6 +250,13 @@ function renderizar() {
   renderizarProdutos();
 }
 
+function atualizarTotalFrente() {
+  el("subtotal-frente").textContent = reais(subtotal());
+  el("total").textContent = reais(total());
+  el("finish").disabled = !estado.sessao || !temItens() || !meioSelecionado || total() <= 0 || desconto() < 0;
+}
+el("valor-desconto").oninput = atualizarTotalFrente;
+
 function operarCaixa(acao) {
   const campo = el("amount");
   if (!campo.reportValidity()) return;
@@ -230,7 +269,7 @@ function operarCaixa(acao) {
       if (!terminal) throw new Error("Peça ao gestor para vincular um caixa à sua conta.");
       await executar("abrir_caixa", { p_empresa: el("empresa").value, p_abertura: valor, p_terminal: terminal });
     } else if (acao === "Fechar caixa") {
-      if (carrinho.size) throw new Error("Conclua ou esvazie a venda atual antes de fechar o caixa.");
+      if (temItens()) throw new Error("Conclua ou esvazie a venda atual antes de fechar o caixa.");
       await executar("fechar_caixa", { p_caixa, p_contado: valor });
     } else {
       await executar("movimentar_caixa", { p_caixa, p_tipo: acao.toLowerCase(), p_valor: valor });
@@ -245,6 +284,7 @@ el("login").addEventListener("submit", evento => {
   evento.preventDefault();
   operar(async () => {
     usuario = await entrar(el("email").value, el("password").value);
+    el("operador-frente").textContent = "Operador · " + el("email").value;
     el("password").value = "";
     const [empresas, vinculos] = await Promise.all([
       listar("empresas?select=id,nome&order=nome"),
@@ -270,6 +310,7 @@ el("login").addEventListener("submit", evento => {
 
 el("empresa").addEventListener("change", () => operar(async () => {
   carrinho.clear();
+  comandaAberta = undefined;
   vendaPendente = undefined;
   limparPagamento();
   el("resultado-mesa").hidden = true;
@@ -299,7 +340,7 @@ el("configurar-mesa").onsubmit = evento => {
   });
 };
 el("trocar-area").onclick = () => {
-  if (carrinho.size || vendaPendente) {
+  if (temItens() || vendaPendente) {
     el("notice").textContent = "Conclua ou esvazie a venda atual antes de trocar de área.";
     return;
   }
@@ -447,6 +488,10 @@ function receberPedido(id, meio) {
     p_pedido: id,
     p_meio: meios[meio]
   });
+  if (comandaAberta?.id === id) {
+    comandaAberta = undefined;
+    limparPagamento();
+  }
   await atualizar();
   void carregarCozinha();
   void carregarComandas();
@@ -474,8 +519,17 @@ async function carregarComandas() {
       const linha = document.createElement("div");
       linha.className = "row";
       linha.append("Mesa " + comanda.mesa + " · Comanda " + comanda.comanda + " · " +
-        comanda.cliente + " · " + reais(comanda.total_centavos), botao("Receber", () =>
-        receberPedido(comanda.id, el("meio-comanda").value)));
+        comanda.cliente + " · " + reais(comanda.total_centavos), botao("Carregar comanda", () => {
+          if (carrinho.size || vendaPendente) {
+            el("aviso-comandas").textContent = "Conclua ou esvazie a venda de balcão primeiro.";
+            return;
+          }
+          comandaAberta = comanda;
+          el("dialogo-comandas").close();
+          limparPagamento();
+          renderizar();
+          abrirPagamento();
+        }));
       return linha;
     }));
     if (!comandas.length) lista.textContent = "Nenhuma comanda pendente para esta busca.";
@@ -486,6 +540,17 @@ async function carregarComandas() {
   }
 }
 el("buscar-comanda").oninput = carregarComandas;
+el("abrir-comandas").onclick = () => {
+  el("aviso-comandas").textContent = "";
+  el("dialogo-comandas").showModal();
+  void carregarComandas();
+};
+el("fechar-comandas").onclick = () => el("dialogo-comandas").close();
+el("voltar-balcao").onclick = () => {
+  comandaAberta = undefined;
+  limparPagamento();
+  renderizar();
+};
 setInterval(() => { if (!document.hidden) void carregarComandas(); }, 5000);
 function abrirPagamento() {
   el("pagamento-pdv").hidden = false;
@@ -499,7 +564,10 @@ function selecionarPagamento(opcao) {
     item.setAttribute("aria-pressed", String(item === opcao));
     item.classList.toggle("secondary", item !== opcao);
   }
-  el("finish").disabled = !estado.sessao || !carrinho.size;
+  el("orientacao-frente").textContent = meioSelecionado === "Pix" ? "Confirme o Pix recebido antes de registrar."
+    : meioSelecionado === "Cartão" ? "Confirme a aprovação na maquininha antes de registrar."
+    : "Confira o dinheiro recebido antes de registrar.";
+  atualizarTotalFrente();
   el("finish").focus();
 }
 function limparPagamento() {
@@ -510,11 +578,13 @@ function limparPagamento() {
   }
   el("pagamento-pdv").hidden = true;
   el("abrir-pagamento-pdv").hidden = false;
+  el("orientacao-frente").textContent = "Selecione a forma de pagamento.";
+  el("valor-desconto").value = "";
 }
 el("abrir-pagamento-pdv").onclick = abrirPagamento;
 for (const opcao of opcoesPagamento) opcao.onclick = () => selecionarPagamento(opcao);
 document.addEventListener("keydown", evento => {
-  if (area !== "vendas" || el("operacao").hidden || ocupado || evento.ctrlKey || evento.altKey || evento.metaKey) return;
+  if (area !== "vendas" || el("operacao").hidden || el("dialogo-comandas").open || ocupado || evento.ctrlKey || evento.altKey || evento.metaKey) return;
   if (evento.key === "F3") {
     evento.preventDefault();
     abrirPagamento();
@@ -524,21 +594,35 @@ document.addEventListener("keydown", evento => {
   } else if (evento.key === "F4" && !el("pagamento-pdv").hidden) {
     evento.preventDefault();
     if (!el("finish").disabled) el("sale").requestSubmit(el("finish"));
+  } else if (evento.key === "F6" && !el("desconto-frente").hidden) {
+    evento.preventDefault();
+    el("valor-desconto").focus();
+  } else if (evento.key === "F7") {
+    evento.preventDefault();
+    el("abrir-comandas").click();
+  } else if (evento.key === "F9" && !comandaAberta) {
+    evento.preventDefault();
+    el("search").focus();
   }
 });
 el("sale").addEventListener("submit", evento => {
   evento.preventDefault();
-  if (!estado.sessao || !carrinho.size || !meioSelecionado) return;
+  if (!estado.sessao || !temItens() || !meioSelecionado || total() <= 0 || desconto() < 0) return;
+  if (comandaAberta) {
+    void receberPedido(comandaAberta.id, meioSelecionado);
+    return;
+  }
   operar(async () => {
     vendaPendente ??= {
       p_caixa: estado.sessao.id,
       p_venda: crypto.randomUUID(),
       p_meio: meios[meioSelecionado],
+      p_desconto: desconto(),
       p_itens: produtos.filter(p => carrinho.has(p.codigo)).map(p => ({
         produto_id: p.id, quantidade: carrinho.get(p.codigo)
       }))
     };
-    const valor = await executar("registrar_venda", vendaPendente);
+    const valor = await executar("registrar_venda_com_desconto", vendaPendente);
     vendaPendente = undefined;
     carrinho.clear();
     limparPagamento();
@@ -549,5 +633,14 @@ el("sale").addEventListener("submit", evento => {
   });
 });
 el("search").addEventListener("input", renderizarProdutos);
+el("search").addEventListener("keydown", evento => {
+  if (evento.key !== "Enter") return;
+  evento.preventDefault();
+  const busca = el("search").value.trim().toLocaleLowerCase("pt-BR");
+  if (!busca) return;
+  const exato = produtos.find(p => p.codigo.toLocaleLowerCase("pt-BR") === busca);
+  const candidatos = produtos.filter(p => p.nome.toLocaleLowerCase("pt-BR").includes(busca));
+  if (exato || candidatos.length === 1) adicionarProduto(exato ?? candidatos[0]);
+});
 limparPagamento();
 renderizar();
