@@ -33,12 +33,12 @@
 <button id="voltar-balcao" type="button" class="secondary" hidden>Voltar ao balcão</button>
 <label for="search">Código ou produto</label><input id="search" type="search" placeholder="Ex.: café ou 101">
 <label for="quantidade-frente">Quantidade</label><input id="quantidade-frente" type="number" min="1" max="1000" value="1">
+<button id="abrir-produtos" type="button" class="secondary">F9 · Produtos</button>
 <img class="frente-logo" src="logo.png" alt="R Sistemas">
 </section>
 <section class="panel frente-itens"><h2 id="titulo-venda-frente">Itens da venda</h2>
 <div class="frente-tabela"><table><thead><tr><th>Cód.</th><th>Descrição</th><th>Qtd.</th><th>Unitário</th><th>Total</th><th>Ação</th></tr></thead><tbody id="cart"></tbody></table></div>
 <p id="cart-vazio">Selecione um produto para começar.</p>
-<details id="produtos-frente" open><summary>Produtos disponíveis</summary><div id="products" class="products"></div></details>
 </section>
 <section class="panel frente-pagamento"><h2>Recebimento</h2>
 <p class="frente-linha"><span>Subtotal</span><strong id="subtotal-frente"></strong></p>
@@ -53,22 +53,34 @@
 <button type="button" data-meio-pdv="Cartão" aria-pressed="false">3 · Cartão na maquininha</button>
 </div>
 <p id="orientacao-frente">Selecione a forma de pagamento.</p>
+<div id="detalhe-pagamento-frente" class="frente-etapa" hidden>
+<strong id="titulo-pagamento-frente"></strong>
+<div id="dinheiro-frente" hidden>
+<label for="valor-recebido-frente">Valor recebido (R$)</label><input id="valor-recebido-frente" type="number" min="0" step="0.01" inputmode="decimal">
+<p class="frente-linha"><span>Troco</span><strong id="troco-frente"></strong></p>
+</div></div>
 <button id="finish">F4 ou Enter · Finalizar venda</button>
 </div>
 </form></section>
 </div>
-<div class="frente-atalhos">F3 Pagamento · F4 Finalizar · F6 Desconto · F7 Comandas · F9 Buscar produto</div>
+<div class="frente-atalhos">F3 Pagamento · F4 Finalizar · F6 Desconto · F7 Abrir pedido · F9 Produtos</div>
 <div class="layout frente-apoio">
 <details class="panel cash" open><summary>Movimentação de caixa</summary><p id="balance"></p><form id="cash"><label for="amount" id="amount-label"></label><input id="amount" type="number" min="0" step="0.01" required><div id="cash-actions"></div></form><p id="closing"></p></details>
 <details class="panel" open><summary>Histórico do caixa</summary><ol id="history"></ol></details>
 </div>
 <dialog id="dialogo-comandas" class="frente-comandas">
-<h2>Comandas de mesa a receber</h2>
+<h2>Abrir pedido · Comandas a receber</h2>
 <label for="buscar-comanda">Número da comanda ou da mesa</label>
 <input id="buscar-comanda" type="search" inputmode="numeric" placeholder="Ex.: 12">
 <div id="comandas-pendentes" aria-live="polite"></div>
 <p id="aviso-comandas" role="status"></p>
 <button id="fechar-comandas" type="button" class="secondary">Voltar</button>
+</dialog>
+<dialog id="dialogo-produtos" class="frente-comandas" aria-labelledby="titulo-dialogo-produtos">
+<h2 id="titulo-dialogo-produtos">Produtos cadastrados</h2>
+<label for="buscar-produto-frente">Nome, código ou categoria</label><input id="buscar-produto-frente" type="search">
+<div id="products"></div>
+<button id="fechar-produtos" type="button" class="secondary">Voltar</button>
 </dialog>
 <details class="panel">
 <summary>Cozinha</summary>

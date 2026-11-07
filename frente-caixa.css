@@ -9,5 +9,7 @@
 .frente-linha{display:flex;justify-content:space-between}.frente-pagamento .total{background:#153d27;color:#fff;padding:10px;border-radius:8px;font-size:1.2rem}.frente-pagamento .products{grid-template-columns:1fr}.frente-pagamento button{width:100%}
 .frente-atalhos{padding:8px 12px;background:#e7efe7;font-size:.83rem;border-radius:0 0 10px 10px}.frente-apoio{margin-block:12px}#area-vendas summary{cursor:pointer;font-weight:750}
 .frente-comandas{width:min(640px,calc(100% - 24px));max-height:85dvh;border:1px solid #dce5dd;border-radius:14px;padding:18px}.frente-comandas::backdrop{background:#152b20aa}
+.frente-comandas #products section{margin-bottom:14px}.frente-comandas #products h3{margin:6px 0;font-size:1rem}.frente-etapa{padding:10px;margin:8px 0;border-radius:8px;background:#e7f0e8;animation:frente-entrada .18s ease-out}.frente-etapa strong{display:block}.frente-etapa label{margin-top:8px}
+@keyframes frente-entrada{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.frente-etapa{animation:none}}
 @media(max-width:860px){.frente-grade{grid-template-columns:minmax(130px,175px) minmax(0,1fr)}.frente-pagamento{grid-column:1/-1}}
 @media(max-width:560px){.frente-grade{grid-template-columns:minmax(0,1fr)}.frente-topo label{width:100%}.frente-itens{min-height:240px}}

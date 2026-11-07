@@ -50,7 +50,7 @@ async function atualizar() {
   el("configuracao-entrega").hidden = true;
   const [catalogo, caixas, configuracao, caixasDisponiveis] = await Promise.all([
     listar("produtos?ativo=eq.true&empresa_id=eq." + empresa + "&order=nome" +
-      (administracao ? "" : "&select=id,codigo,nome,preco_centavos")),
+      (administracao ? "" : "&select=id,codigo,nome,preco_centavos,categoria")),
     administracao ? [] : listar("caixas?empresa_id=eq." + empresa + "&operador_id=eq." + usuario + "&order=aberto_em.desc&limit=1"),
     listar("empresas?select=nome,nome_pdv,pagamento_na_entrega" +
       (administracao ? ",cardapio_cor,cardapio_fundo,cardapio_logo,cardapio_agradecimento" : "") + "&id=eq." + empresa),
@@ -166,16 +166,35 @@ for (const acao of document.querySelectorAll("[data-admin-abrir]")) {
   };
 }
 function renderizarProdutos() {
-  const busca = el("search").value.trim().toLocaleLowerCase("pt-BR");
-  el("products").replaceChildren(...produtos
-    .filter(produto => (produto.codigo + " " + produto.nome).toLocaleLowerCase("pt-BR").includes(busca))
-    .map(produto => {
-      const item = botao(produto.nome, () => adicionarProduto(produto), true);
+  const busca = el("buscar-produto-frente").value.trim().toLocaleLowerCase("pt-BR");
+  const grupos = new Map();
+  for (const produto of produtos) {
+    const categoria = produto.categoria?.trim() || "Sem categoria";
+    if (![produto.codigo,produto.nome,categoria].join(" ").toLocaleLowerCase("pt-BR").includes(busca)) continue;
+    if (!grupos.has(categoria)) grupos.set(categoria, []);
+    grupos.get(categoria).push(produto);
+  }
+  el("products").replaceChildren(...[...grupos].map(([categoria,itens]) => {
+    const secao = document.createElement("section");
+    const titulo = document.createElement("h3");
+    titulo.textContent = categoria;
+    const grade = document.createElement("div");
+    grade.className = "products";
+    grade.append(...itens.map(produto => {
+      const item = botao(produto.nome, () => {
+        adicionarProduto(produto);
+        el("dialogo-produtos").close();
+        el("search").focus();
+      }, true);
       const detalhe = document.createElement("small");
       detalhe.textContent = produto.codigo + " · " + reais(produto.preco);
       item.append(detalhe);
       return item;
     }));
+    secao.append(titulo,grade);
+    return secao;
+  }));
+  if (!grupos.size) el("products").textContent = "Nenhum produto encontrado.";
 }
 function adicionarProduto(produto) {
   if (vendaPendente || comandaAberta) return;
@@ -206,7 +225,7 @@ function renderizar() {
   el("voltar-balcao").hidden = !comandaAberta;
   el("search").disabled = Boolean(comandaAberta);
   el("quantidade-frente").disabled = Boolean(comandaAberta);
-  el("produtos-frente").hidden = Boolean(comandaAberta);
+  el("abrir-produtos").disabled = Boolean(comandaAberta || vendaPendente);
   el("desconto-frente").hidden = Boolean(comandaAberta) || !empresasGerenciadas.has(el("empresa").value);
   el("valor-desconto").disabled = Boolean(vendaPendente);
   el("cart-vazio").hidden = temItens();
@@ -253,9 +272,14 @@ function renderizar() {
 function atualizarTotalFrente() {
   el("subtotal-frente").textContent = reais(subtotal());
   el("total").textContent = reais(total());
-  el("finish").disabled = !estado.sessao || !temItens() || !meioSelecionado || total() <= 0 || desconto() < 0;
+  const recebido = el("valor-recebido-frente").valueAsNumber;
+  const recebidoCentavos = Math.round(recebido * 100);
+  el("troco-frente").textContent = reais(Number.isFinite(recebidoCentavos) ? Math.max(0, recebidoCentavos - total()) : 0);
+  el("finish").disabled = !estado.sessao || !temItens() || !meioSelecionado || total() <= 0 || desconto() < 0 ||
+    (meioSelecionado === "Dinheiro" && Number.isFinite(recebidoCentavos) && recebidoCentavos < total());
 }
 el("valor-desconto").oninput = atualizarTotalFrente;
+el("valor-recebido-frente").oninput = atualizarTotalFrente;
 
 function operarCaixa(acao) {
   const campo = el("amount");
@@ -560,6 +584,10 @@ function abrirPagamento() {
 function selecionarPagamento(opcao) {
   if (vendaPendente) return;
   meioSelecionado = opcao.dataset.meioPdv;
+  el("titulo-pagamento-frente").textContent = meioSelecionado === "Pix" ? "Pix · Conferência no caixa"
+    : meioSelecionado === "Cartão" ? "Cartão · Maquininha" : "Dinheiro · Recebimento";
+  el("dinheiro-frente").hidden = meioSelecionado !== "Dinheiro";
+  el("detalhe-pagamento-frente").hidden = false;
   for (const item of opcoesPagamento) {
     item.setAttribute("aria-pressed", String(item === opcao));
     item.classList.toggle("secondary", item !== opcao);
@@ -568,7 +596,7 @@ function selecionarPagamento(opcao) {
     : meioSelecionado === "Cartão" ? "Confirme a aprovação na maquininha antes de registrar."
     : "Confira o dinheiro recebido antes de registrar.";
   atualizarTotalFrente();
-  el("finish").focus();
+  el(meioSelecionado === "Dinheiro" ? "valor-recebido-frente" : "finish").focus();
 }
 function limparPagamento() {
   meioSelecionado = undefined;
@@ -580,15 +608,19 @@ function limparPagamento() {
   el("abrir-pagamento-pdv").hidden = false;
   el("orientacao-frente").textContent = "Selecione a forma de pagamento.";
   el("valor-desconto").value = "";
+  el("valor-recebido-frente").value = "";
+  el("detalhe-pagamento-frente").hidden = true;
 }
 el("abrir-pagamento-pdv").onclick = abrirPagamento;
 for (const opcao of opcoesPagamento) opcao.onclick = () => selecionarPagamento(opcao);
 document.addEventListener("keydown", evento => {
-  if (area !== "vendas" || el("operacao").hidden || el("dialogo-comandas").open || ocupado || evento.ctrlKey || evento.altKey || evento.metaKey) return;
+  if (area !== "vendas" || el("operacao").hidden || el("dialogo-comandas").open || el("dialogo-produtos").open ||
+      ocupado || evento.ctrlKey || evento.altKey || evento.metaKey) return;
   if (evento.key === "F3") {
     evento.preventDefault();
     abrirPagamento();
-  } else if (/^[123]$/.test(evento.key) && el("pagamento-pdv").contains(document.activeElement)) {
+  } else if (/^[123]$/.test(evento.key) && el("pagamento-pdv").contains(document.activeElement) &&
+      document.activeElement !== el("valor-recebido-frente")) {
     evento.preventDefault();
     selecionarPagamento(opcoesPagamento[Number(evento.key) - 1]);
   } else if (evento.key === "F4" && !el("pagamento-pdv").hidden) {
@@ -602,12 +634,12 @@ document.addEventListener("keydown", evento => {
     el("abrir-comandas").click();
   } else if (evento.key === "F9" && !comandaAberta) {
     evento.preventDefault();
-    el("search").focus();
+    el("abrir-produtos").click();
   }
 });
 el("sale").addEventListener("submit", evento => {
   evento.preventDefault();
-  if (!estado.sessao || !temItens() || !meioSelecionado || total() <= 0 || desconto() < 0) return;
+  if (el("finish").disabled) return;
   if (comandaAberta) {
     void receberPedido(comandaAberta.id, meioSelecionado);
     return;
@@ -632,7 +664,14 @@ el("sale").addEventListener("submit", evento => {
     return "Venda registrada · " + reais(valor);
   });
 });
-el("search").addEventListener("input", renderizarProdutos);
+el("abrir-produtos").onclick = () => {
+  el("buscar-produto-frente").value = "";
+  renderizarProdutos();
+  el("dialogo-produtos").showModal();
+  el("buscar-produto-frente").focus();
+};
+el("fechar-produtos").onclick = () => el("dialogo-produtos").close();
+el("buscar-produto-frente").oninput = renderizarProdutos;
 el("search").addEventListener("keydown", evento => {
   if (evento.key !== "Enter") return;
   evento.preventDefault();

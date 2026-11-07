@@ -30,6 +30,12 @@ O PDV deve permitir a sequência de teclado **F3 → 1 Dinheiro, 2 Pix ou 3 Cart
 
 O gestor poderá conceder e revogar a permissão de desconto por operador e estabelecimento. Para aplicar um desconto, o operador autorizado confirma a própria senha no PDV. A autorização vale para aquela venda, com registro do operador e do valor concedido. As demais permissões do perfil permanecem separadas.
 
+Na frente de caixa, a grade central mostra os itens da venda ou da comanda aberta. O catálogo do PDV abre em janela própria, agrupado por categoria. O painel de recebimento muda conforme o meio escolhido. Os estados de Pix aguardando, confirmado e expirado devem vir da cobrança real.
+
+O catálogo da loja será a fonte dos produtos. Uma opção de visibilidade deve permitir itens ativos exclusivamente no PDV. O pedido tem origem identificada como mesa, balcão ou link público e usa o mesmo registro em todas as áreas. O KDS recebe pedidos elegíveis para preparo. O PDV consulta pedidos por número ou mesa quando precisa complementar, receber ou cancelar. A origem pública por si só não exige aceite manual. A entrega usa o despacho da REMO quando aplicável.
+
+Para complementar uma comanda pendente, o PDV deve registrar os itens adicionais no pedido, preservar os preços já confirmados e enviar à cozinha apenas o que ainda precisa de preparo. Após pagamento confirmado, itens adicionais devem ter cobrança separada vinculada à comanda. O cancelamento operacional deve registrar motivo, autor e etapa do pedido. Pedido pendente pode ser cancelado conforme permissão e etapa. Pedido pago exige tratamento financeiro separado, com confirmação do estorno pelo provedor ou lançamento de devolução no caixa.
+
 | Interface | Acesso e operação | Instalação |
 | --- | --- | --- |
 | Cardápio | Vitrine pública por estabelecimento, pedido e acompanhamento. O link ou QR de mesa determina o contexto da compra. | PWA própria do cardápio, instalável pelo cliente. |
