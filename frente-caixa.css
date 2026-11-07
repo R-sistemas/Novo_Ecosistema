@@ -13,3 +13,5 @@
 @keyframes frente-entrada{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.frente-etapa{animation:none}}
 @media(max-width:860px){.frente-grade{grid-template-columns:minmax(130px,175px) minmax(0,1fr)}.frente-pagamento{grid-column:1/-1}}
 @media(max-width:560px){.frente-grade{grid-template-columns:minmax(0,1fr)}.frente-topo label{width:100%}.frente-itens{min-height:240px}}
+#motivo-cancelamento{display:block;width:100%;margin-bottom:12px;font:inherit}
+#motivo-cancelamento[hidden]{display:none}

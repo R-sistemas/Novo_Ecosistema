@@ -13,7 +13,24 @@ const acoes = {
 };
 let empresaExibida;
 let ultimaFila;
+let ultimosCancelamentos;
 let carregando = false;
+const painelCancelamentos = document.getElementById("cancelamentos-kds");
+const listaCancelamentos = document.getElementById("lista-cancelamentos-kds");
+
+function exibirCancelamentos(cancelamentos) {
+  if (!painelCancelamentos) return;
+  const atual = JSON.stringify(cancelamentos);
+  if (atual === ultimosCancelamentos) return;
+  ultimosCancelamentos = atual;
+  painelCancelamentos.hidden = !cancelamentos.length;
+  listaCancelamentos.replaceChildren(...cancelamentos.map(cancelamento => {
+    const linha = document.createElement("li");
+    const horario = new Date(cancelamento.horario).toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"});
+    linha.textContent = `Comanda ${cancelamento.comanda} · Mesa ${cancelamento.mesa} · Cancelada às ${horario}`;
+    return linha;
+  }));
+}
 
 export async function carregarCozinha() {
   const idEmpresa = empresa.value;
@@ -21,12 +38,17 @@ export async function carregarCozinha() {
     empresaExibida = idEmpresa;
     ultimaFila = undefined;
     fila.replaceChildren();
+    exibirCancelamentos([]);
   }
   if (!idEmpresa || carregando || document.getElementById("area-vendas").hidden) return;
   carregando = true;
   try {
-    const pedidos = await executar("fila_cozinha", { p_empresa: idEmpresa });
+    const [pedidos, cancelamentos] = await Promise.all([
+      executar("fila_cozinha", { p_empresa: idEmpresa }),
+      kds ? executar("cancelamentos_recentes_kds", { p_empresa: idEmpresa }) : []
+    ]);
     if (empresa.value !== idEmpresa) return;
+    exibirCancelamentos(cancelamentos);
     aviso.textContent = pedidos.length ? "" : "Nenhum pedido em andamento.";
     const atual = JSON.stringify(pedidos);
     if (atual === ultimaFila) return;
@@ -44,11 +66,12 @@ export async function carregarCozinha() {
         pedido.pagamento_entrega === "na_entrega" ? "Pagamento na entrega pendente" :
         pedido.estado === "entregue" ? "Entregue · recebimento pendente" : "Recebimento pendente";
       const etapa = document.createElement("p");
-      etapa.textContent = pedido.ajuste_pendente ? "Aguardando resolução de ajuste" : etapas[pedido.estado];
+      etapa.textContent = pedido.cancelamento_pendente ? "Preparo pausado · Cancelamento em análise" :
+        pedido.ajuste_pendente ? "Aguardando resolução de ajuste" : etapas[pedido.estado];
       etapa.className = "etapa-kds";
       artigo.append(titulo, etapa, resumo);
       if (!kds) artigo.append(financeiro);
-      if (kds && pedido.edita_comanda) {
+      if (kds && pedido.edita_comanda && !pedido.cancelamento_pendente) {
         const editar = document.createElement("button");
         editar.type = "button";
         editar.textContent = "Ajustar comanda";
@@ -87,7 +110,8 @@ export async function carregarCozinha() {
         artigo.append(receber);
       }
       for (const [destino, texto] of acoes[pedido.estado]) {
-        if ((pedido.adicional && destino === "recusado") || (destino === "entregue" && !pedido.recebido && !pedido.mesa) || (destino === "recusado" && pedido.recebido)) continue;
+        if ((destino === "recusado" && (pedido.adicional || pedido.mesa || pedido.recebido)) ||
+            (destino === "entregue" && !pedido.recebido && !pedido.mesa)) continue;
         const botao = document.createElement("button");
         botao.textContent = texto;
         botao.onclick = async () => {

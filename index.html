@@ -31,6 +31,7 @@
 <label>Comanda <output id="comanda-frente">—</output></label>
 <p id="status-ajuste-frente" role="status" hidden>Aguardando resolução de ajuste</p>
 <button id="abrir-comandas" type="button" class="secondary">F7 · Abrir comanda</button>
+<button id="abrir-cancelamentos-caixa" type="button" class="secondary">Cancelar comanda</button>
 <button id="salvar-adicionais" type="button" hidden>Enviar adicionais da comanda</button>
 <button id="voltar-balcao" type="button" class="secondary" hidden>Voltar ao balcão</button>
 <label for="search">Código ou produto</label><input id="search" type="search" placeholder="Ex.: café ou 101">
@@ -124,6 +125,26 @@
 <div id="fila-cozinha"></div>
 </details>
 </div>
+<dialog id="dialogo-cancelamentos" class="frente-comandas" aria-labelledby="titulo-cancelamentos">
+<h2 id="titulo-cancelamentos">Cancelamentos de comanda</h2>
+<p>Comandas de mesa sem cobrança ou recebimento. Depois de iniciado o preparo, o gestor decide sobre o cancelamento.</p>
+<form id="buscar-cancelamentos">
+  <label for="numero-cancelamentos">Número da comanda ou da mesa</label><input id="numero-cancelamentos" type="search" inputmode="numeric">
+  <button type="submit" class="secondary">Buscar ou atualizar</button>
+</form>
+<div id="lista-cancelamentos"></div>
+<form id="form-cancelamento" hidden>
+  <p id="comanda-cancelamento"></p>
+  <div id="decisao-cancelamento" hidden><label for="resultado-cancelamento">Decisão do gestor</label>
+  <select id="resultado-cancelamento"><option value="aprovar">Aprovar cancelamento</option><option value="negar">Negar e retomar pedido</option></select></div>
+  <label id="rotulo-motivo-cancelamento" for="motivo-cancelamento">Motivo</label>
+  <textarea id="motivo-cancelamento" minlength="3" maxlength="240" rows="2" required></textarea>
+  <button id="confirmar-cancelamento">Confirmar</button>
+</form>
+<p id="aviso-cancelamento" role="status"></p>
+<details id="historico-cancelamentos" hidden><summary>Últimas decisões</summary><ul id="lista-historico-cancelamentos"></ul></details>
+<button id="fechar-cancelamentos" type="button" class="secondary">Voltar</button>
+</dialog>
 <section id="area-administracao" hidden>
 <div class="admin-cabecalho">
   <span class="admin-etiqueta">ADMINISTRAÇÃO DA LOJA</span>
@@ -135,7 +156,8 @@
     <div><button type="button" data-admin-abrir="cadastrar-operador">Cadastrar operador</button>
     <button type="button" class="secondary" data-admin-abrir="lista-operadores">Lista de operadores</button>
     <button type="button" class="secondary" data-admin-abrir="configurar-terminal">Gerenciar caixas</button>
-    <button type="button" class="secondary" data-admin-abrir="permissao-kds">Permissões da cozinha</button></div>
+    <button type="button" class="secondary" data-admin-abrir="permissao-kds">Permissões da cozinha</button>
+    <button type="button" class="secondary" id="abrir-cancelamentos-gestor">Cancelamentos de comanda</button></div>
   </section>
   <section><h3>Cardápio e mesas</h3><p>Personalize o cardápio e gere o link de acesso de cada mesa.</p>
     <div><button type="button" data-admin-abrir="aparencia-cardapio">Editar aparência</button>

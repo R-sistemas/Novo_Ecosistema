@@ -6,6 +6,7 @@ import { aplicarTema } from "./tema-cardapio.mjs";
 import { otimizarImagem } from "./imagens-cardapio.mjs";
 import { abrirAdmin, modalAdminAtivo } from "./administracao.mjs";
 import { configurarPesagem, detalhePesagem } from "./pesagem.mjs";
+import { configurarCancelamentos } from "./cancelar-comanda.mjs";
 
 let produtos = [];
 let usuario;
@@ -333,6 +334,7 @@ function renderizar() {
   el("cliente-frente").textContent = comandaAberta?.cliente ?? "Consumidor";
   el("comanda-frente").textContent = comandaAberta?.comanda ?? "—";
   el("status-ajuste-frente").hidden = !comandaAberta?.ajuste_pendente;
+  el("status-ajuste-frente").textContent = comandaAberta?.cancelamento_pendente ? "Cancelamento aguardando o gestor" : "Aguardando resolução de ajuste";
   el("titulo-venda-frente").textContent = comandaAberta ? "Itens da comanda" : "Itens da venda";
   el("voltar-balcao").hidden = !comandaAberta;
   const ajustePendente = comandaAberta?.ajuste_pendente;
@@ -775,7 +777,7 @@ el("abrir-pagamento-pdv").onclick = abrirPagamento;
 for (const opcao of opcoesPagamento) opcao.onclick = () => selecionarPagamento(opcao);
 document.addEventListener("keydown", evento => {
   if (area !== "vendas" || el("operacao").hidden || el("dialogo-comandas").open || el("dialogo-produtos").open ||
-      el("resolver-ajuste-caixa").open || dialogoPesagem.open ||
+      el("resolver-ajuste-caixa").open || dialogoPesagem.open || el("dialogo-cancelamentos").open ||
       ocupado || evento.ctrlKey || evento.altKey || evento.metaKey) return;
   if (evento.key === "F3") {
     evento.preventDefault();
@@ -844,6 +846,17 @@ el("search").addEventListener("keydown", evento => {
 });
 limparPagamento();
 renderizar();
+configurarCancelamentos({ comandaAtual: () => comandaAberta, atualizar: (id, resultado) => {
+  if (resultado === "cancelado" && comandaAberta?.id === id) {
+    comandaAberta = undefined;
+    adicionalPendente = undefined;
+    carrinho.clear();
+    limparPagamento();
+    renderizar();
+  }
+  void carregarComandas();
+  void carregarCozinha();
+} });
 
 el("salvar-adicionais").onclick = () => operar(async () => {
   if (!estado.sessao || !comandaAberta || !carrinho.size) throw new Error("Abra o caixa e selecione os adicionais.");

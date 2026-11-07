@@ -44,8 +44,8 @@ async function acompanhar() {
     Boolean(pedido.mesa && !pedido.pago && pedido.estado !== "recusado");
   el("mensagem").textContent = (aguardandoPix ? (creditoTeste ? "Aguardando confirmação do crédito de teste"
     : creditoQuiosque ? "Aguardando confirmação do cartão"
-    : pixTeste ? "Aguardando Pix Sandbox" : "Aguardando pagamento Pix") : estados[pedido.estado]) +
-    " · " + moeda.format(pedido.total_centavos / 100);
+    : pixTeste ? "Aguardando Pix Sandbox" : "Aguardando pagamento Pix") : pedido.cancelado ? "Comanda cancelada" : estados[pedido.estado]) +
+    (pedido.cancelado ? "" : " · " + moeda.format(pedido.total_centavos / 100));
   if (pedido.mesa) {
     el("mensagem").textContent += " · Mesa " + pedido.mesa + " · Comanda " + pedido.comanda +
       (pedido.pago ? " · Pago" : aguardandoPix || pedido.estado === "recusado" ? "" : " · Pagar no caixa");
