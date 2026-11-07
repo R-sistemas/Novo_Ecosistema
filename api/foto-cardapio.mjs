@@ -1,5 +1,8 @@
+import manifestCardapio from "../lib/manifest-cardapio.mjs";
+
 export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).end();
+  if (req.query?.manifesto === "1") return manifestCardapio(req, res);
   const { id, v } = req.query ?? {};
   if (typeof id !== "string" || !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id) ||
       typeof v !== "string" || !/^[a-f0-9]{32}$/.test(v)) return res.status(404).end();
