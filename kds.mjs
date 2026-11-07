@@ -1,5 +1,6 @@
 import { entrar, executar } from "./supabase-pdv.mjs";
 import { carregarCozinha } from "./cozinha.mjs";
+import { atualizarPermissaoKds } from "./editar-comanda-kds.mjs";
 
 const el = id => document.getElementById(id);
 el("login-kds").onsubmit = async evento => {
@@ -14,7 +15,7 @@ el("login-kds").onsubmit = async evento => {
     el("operacao").hidden = false;
     formulario.hidden = true;
     el("login-aviso-kds").textContent = "";
-    await carregarCozinha();
+    await Promise.all([carregarCozinha(), atualizarPermissaoKds()]);
   } catch (erro) {
     el("login-aviso-kds").textContent = erro.message;
   } finally {
@@ -22,4 +23,7 @@ el("login-kds").onsubmit = async evento => {
     formulario.inert = false;
   }
 };
-el("empresa").onchange = carregarCozinha;
+el("empresa").onchange = () => {
+  void carregarCozinha();
+  void atualizarPermissaoKds();
+};

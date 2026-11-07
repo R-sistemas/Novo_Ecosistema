@@ -36,18 +36,26 @@ export async function carregarCozinha() {
       const titulo = document.createElement("h3");
       const modalidade = pedido.pagamento_entrega ? "Entrega" : pedido.mesa ? "Mesa " + pedido.mesa : "Retirada";
       titulo.textContent = (pedido.adicional ? "Adicionais · " : "") + pedido.cliente + " · " + modalidade;
-      if (pedido.mesa) titulo.textContent += " · Comanda " + pedido.comanda;
+      if (pedido.comanda) titulo.textContent += " · Comanda " + pedido.comanda;
       const resumo = document.createElement("p");
-      resumo.textContent = pedido.itens.map(item => item.quantidade + " × " + item.nome).join(", ");
+      resumo.textContent = pedido.itens.map(item => item.quantidade + " × " + item.nome).join(", ") || "Sem itens originais para preparar.";
       const financeiro = document.createElement("p");
       financeiro.textContent = pedido.pix_teste ? "Pagamento confirmado no Sandbox" : pedido.recebido ? "Recebimento registrado" :
         pedido.pagamento_entrega === "na_entrega" ? "Pagamento na entrega pendente" :
         pedido.estado === "entregue" ? "Entregue · recebimento pendente" : "Recebimento pendente";
       const etapa = document.createElement("p");
-      etapa.textContent = etapas[pedido.estado];
+      etapa.textContent = pedido.ajuste_pendente ? "Aguardando resolução de ajuste" : etapas[pedido.estado];
       etapa.className = "etapa-kds";
       artigo.append(titulo, etapa, resumo);
       if (!kds) artigo.append(financeiro);
+      if (kds && pedido.edita_comanda) {
+        const editar = document.createElement("button");
+        editar.type = "button";
+        editar.textContent = "Ajustar comanda";
+        editar.onclick = () => fila.dispatchEvent(new CustomEvent("ajustar-comanda", { detail: pedido.comanda }));
+        artigo.append(editar);
+      }
+      if (pedido.ajuste_pendente) return artigo;
       if (!kds && pedido.endereco_entrega) {
         const endereco = document.createElement("p");
         const { logradouro, numero, bairro, cidade, complemento } = pedido.endereco_entrega;
@@ -70,10 +78,12 @@ export async function carregarCozinha() {
           artigo.append(despacho);
         }
       }
-      if (!kds && !pedido.recebido && !pedido.mesa) {
+      if (!kds && !pedido.adicional && !pedido.recebido && !pedido.mesa) {
         const receber = document.createElement("button");
         receber.textContent = "Registrar recebimento no caixa";
-        receber.onclick = () => fila.dispatchEvent(new CustomEvent("receber-pedido", { detail: pedido.id }));
+        receber.onclick = () => fila.dispatchEvent(new CustomEvent("receber-pedido", {
+          detail: { id: pedido.id, total: pedido.total_centavos }
+        }));
         artigo.append(receber);
       }
       for (const [destino, texto] of acoes[pedido.estado]) {

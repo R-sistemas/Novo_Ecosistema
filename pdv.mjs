@@ -1,6 +1,7 @@
 import { saldo } from "./caixa.mjs";
 import { entrar, listar, executar, cadastrarOperador, cadastrarProduto, atualizarProduto } from "./supabase-pdv.mjs";
 import { carregarCozinha } from "./cozinha.mjs";
+import { carregarAjustesCaixa } from "./ajustes-caixa.mjs";
 import { aplicarTema } from "./tema-cardapio.mjs";
 import { otimizarImagem } from "./imagens-cardapio.mjs";
 import { abrirAdmin, modalAdminAtivo } from "./administracao.mjs";
@@ -199,7 +200,7 @@ function renderizarProdutos() {
   if (!grupos.size) el("products").textContent = "Nenhum produto encontrado.";
 }
 function adicionarProduto(produto) {
-  if (vendaPendente || adicionalPendente) return;
+  if (vendaPendente || adicionalPendente || comandaAberta?.ajuste_pendente) return;
   const quantidade = el("quantidade-frente").valueAsNumber;
   const soma = (carrinho.get(produto.codigo) ?? 0) + quantidade;
   if (!Number.isInteger(quantidade) || quantidade < 1 || soma > (comandaAberta ? 100 : 1000)) {
@@ -223,11 +224,13 @@ function renderizar() {
   el("mesa-frente").textContent = comandaAberta?.mesa ?? "Balcão";
   el("cliente-frente").textContent = comandaAberta?.cliente ?? "Consumidor";
   el("comanda-frente").textContent = comandaAberta?.comanda ?? "—";
+  el("status-ajuste-frente").hidden = !comandaAberta?.ajuste_pendente;
   el("titulo-venda-frente").textContent = comandaAberta ? "Itens da comanda" : "Itens da venda";
   el("voltar-balcao").hidden = !comandaAberta;
-  el("search").disabled = Boolean(adicionalPendente);
-  el("quantidade-frente").disabled = Boolean(adicionalPendente);
-  el("abrir-produtos").disabled = Boolean(adicionalPendente || vendaPendente);
+  const ajustePendente = comandaAberta?.ajuste_pendente;
+  el("search").disabled = Boolean(adicionalPendente || ajustePendente);
+  el("quantidade-frente").disabled = Boolean(adicionalPendente || ajustePendente);
+  el("abrir-produtos").disabled = Boolean(adicionalPendente || vendaPendente || ajustePendente);
   el("desconto-frente").hidden = Boolean(comandaAberta) || !empresasGerenciadas.has(el("empresa").value);
   el("valor-desconto").disabled = Boolean(vendaPendente);
   el("cart-vazio").hidden = temItens();
@@ -257,7 +260,7 @@ function renderizar() {
     return linha;
   }));
   el("salvar-adicionais").hidden = !comandaAberta || !carrinho.size;
-  el("salvar-adicionais").disabled = !estado.sessao;
+  el("salvar-adicionais").disabled = !estado.sessao || Boolean(ajustePendente);
   el("salvar-adicionais").textContent = adicionalPendente ? "Tentar envio dos adicionais novamente" : "Enviar adicionais da comanda";
   atualizarTotalFrente();
   for (const opcao of opcoesPagamento) opcao.disabled = Boolean(vendaPendente);
@@ -280,7 +283,8 @@ function atualizarTotalFrente() {
   const recebido = el("valor-recebido-frente").valueAsNumber;
   const recebidoCentavos = Math.round(recebido * 100);
   el("troco-frente").textContent = reais(Number.isFinite(recebidoCentavos) ? Math.max(0, recebidoCentavos - total()) : 0);
-  el("finish").disabled = !estado.sessao || Boolean(comandaAberta && (carrinho.size || comandaAberta.adicionais_pendentes)) || !temItens() || !meioSelecionado || total() <= 0 || desconto() < 0 ||
+  const comandaBloqueada = comandaAberta && (carrinho.size || comandaAberta.adicionais_pendentes || comandaAberta.ajuste_pendente);
+  el("finish").disabled = !estado.sessao || Boolean(comandaBloqueada) || !temItens() || !meioSelecionado || total() <= 0 || desconto() < 0 ||
     (meioSelecionado === "Dinheiro" && Number.isFinite(recebidoCentavos) && recebidoCentavos < total());
 }
 el("valor-desconto").oninput = atualizarTotalFrente;
@@ -332,6 +336,7 @@ el("login").addEventListener("submit", evento => {
     if (area === "vendas") {
       void carregarCozinha();
       void carregarComandas();
+      void carregarAjustesCaixa();
     }
     return "Estabelecimento carregado.";
   });
@@ -385,6 +390,17 @@ el("configurar-pdv").onsubmit = evento => {
 };
 el("novo-operador-perfil").onchange = () => {
   el("novo-operador-terminal").hidden = el("novo-operador-perfil").value === "cozinha";
+};
+el("permissao-kds").onsubmit = evento => {
+  evento.preventDefault();
+  operar(async () => {
+    await executar("configurar_edicao_kds", {
+      p_empresa: el("empresa").value, p_email: el("email-permissao-kds").value.trim(),
+      p_permitir: el("modo-permissao-kds").value === "conceder"
+    });
+    evento.target.reset();
+    return "Permissão da cozinha atualizada.";
+  }, true);
 };
 el("cadastrar-operador").onsubmit = evento => {
   evento.preventDefault();
@@ -510,14 +526,15 @@ el("cadastro-produto").addEventListener("submit", evento => {
     return editando ? "Produto atualizado." : "Produto cadastrado.";
   }, true);
 });
-function receberPedido(id, meio) {
+function receberPedido(id, meio, valorConferido) {
   return operar(async () => {
   if (!estado.sessao) throw new Error("Abra o caixa antes de receber o pedido.");
-  if (!window.confirm("Registrar o recebimento deste pedido em " + meio + "?")) return "";
-  const valor = await executar("receber_pedido_no_caixa", {
+  if (!window.confirm("Registrar " + reais(valorConferido) + " em " + meio + "?")) return "";
+  const valor = await executar("receber_comanda_conferida", {
     p_caixa: estado.sessao.id,
     p_pedido: id,
-    p_meio: meios[meio]
+    p_meio: meios[meio],
+    p_total: valorConferido
   });
   if (comandaAberta?.id === id) {
     comandaAberta = undefined;
@@ -530,7 +547,7 @@ function receberPedido(id, meio) {
   });
 }
 el("fila-cozinha").addEventListener("receber-pedido", evento => {
-  void receberPedido(evento.detail, el("meio-pedido-cozinha").value);
+  void receberPedido(evento.detail.id, el("meio-pedido-cozinha").value, evento.detail.total);
 });
 
 async function carregarComandas() {
@@ -590,7 +607,11 @@ el("voltar-balcao").onclick = () => {
   limparPagamento();
   renderizar();
 };
-setInterval(() => { if (!document.hidden) void carregarComandas(); }, 5000);
+setInterval(() => {
+  if (document.hidden) return;
+  void carregarComandas();
+  void carregarAjustesCaixa();
+}, 5000);
 function abrirPagamento() {
   el("pagamento-pdv").hidden = false;
   el("abrir-pagamento-pdv").hidden = true;
@@ -630,6 +651,7 @@ el("abrir-pagamento-pdv").onclick = abrirPagamento;
 for (const opcao of opcoesPagamento) opcao.onclick = () => selecionarPagamento(opcao);
 document.addEventListener("keydown", evento => {
   if (area !== "vendas" || el("operacao").hidden || el("dialogo-comandas").open || el("dialogo-produtos").open ||
+      el("resolver-ajuste-caixa").open ||
       ocupado || evento.ctrlKey || evento.altKey || evento.metaKey) return;
   if (evento.key === "F3") {
     evento.preventDefault();
@@ -656,7 +678,7 @@ el("sale").addEventListener("submit", evento => {
   evento.preventDefault();
   if (el("finish").disabled) return;
   if (comandaAberta) {
-    void receberPedido(comandaAberta.id, meioSelecionado);
+    void receberPedido(comandaAberta.id, meioSelecionado, comandaAberta.total_centavos);
     return;
   }
   operar(async () => {

@@ -16,6 +16,9 @@
 #fila-cozinha article{padding:16px;border:1px solid #dce5dd;border-radius:12px;background:#fff}
 #fila-cozinha h3{margin:0}#fila-cozinha button{margin:4px 6px 0 0;min-height:44px}
 .etapa-kds{color:#166b21;font-weight:750;margin:6px 0}
+#editar-comanda-kds{width:min(540px,calc(100% - 24px));max-height:calc(100dvh - 24px);border:1px solid #dce5dd;border-radius:14px;padding:20px;color:inherit}
+#editar-comanda-kds::backdrop{background:#152b1b88}
+#editar-comanda-kds button{min-height:44px}
 </style>
 </head>
 <body data-area="kds">
@@ -33,10 +36,31 @@
   <div id="area-vendas">
     <label for="empresa">Estabelecimento</label><select id="empresa"></select>
     <button id="atualizar-cozinha" type="button">Atualizar pedidos</button>
+    <button id="buscar-comanda-kds" class="secondary" type="button" hidden>Abrir comanda</button>
     <p id="aviso-cozinha" role="status"></p>
     <div id="fila-cozinha"></div>
   </div>
 </section>
+<dialog id="editar-comanda-kds" aria-labelledby="titulo-edicao-kds">
+  <h2 id="titulo-edicao-kds">Ajustar comanda</h2>
+  <form id="localizar-comanda-kds">
+    <label for="numero-comanda-kds">Número da comanda</label>
+    <input id="numero-comanda-kds" type="number" min="1" required>
+    <button>Buscar</button>
+  </form>
+  <p id="resumo-comanda-kds"></p>
+  <form id="salvar-ajuste-kds" hidden>
+    <label for="acao-ajuste-kds">Ação</label>
+    <select id="acao-ajuste-kds"><option value="adicionar">Adicionar item</option><option value="retirar">Retirar item</option></select>
+    <label for="produto-ajuste-kds">Produto</label><select id="produto-ajuste-kds" required></select>
+    <label for="quantidade-ajuste-kds">Quantidade</label><input id="quantidade-ajuste-kds" type="number" min="1" max="100" value="1" required>
+    <label for="motivo-ajuste-kds">Motivo</label><input id="motivo-ajuste-kds" minlength="3" maxlength="240" required>
+    <button>Registrar ajuste</button>
+  </form>
+  <p id="aviso-ajuste-kds" role="status"></p>
+  <ul id="historico-ajuste-kds" aria-label="Histórico de ajustes"></ul>
+  <button id="fechar-ajuste-kds" type="button" class="secondary">Fechar</button>
+</dialog>
 </main>
 </body>
 </html>

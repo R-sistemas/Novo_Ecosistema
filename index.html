@@ -29,6 +29,7 @@
 <label>Mesa <output id="mesa-frente">Balcão</output></label>
 <label>Cliente <output id="cliente-frente">Consumidor</output></label>
 <label>Comanda <output id="comanda-frente">—</output></label>
+<p id="status-ajuste-frente" role="status" hidden>Aguardando resolução de ajuste</p>
 <button id="abrir-comandas" type="button" class="secondary">F7 · Abrir comanda</button>
 <button id="salvar-adicionais" type="button" hidden>Enviar adicionais da comanda</button>
 <button id="voltar-balcao" type="button" class="secondary" hidden>Voltar ao balcão</button>
@@ -83,6 +84,22 @@
 <div id="products"></div>
 <button id="fechar-produtos" type="button" class="secondary">Voltar</button>
 </dialog>
+<section id="ajustes-caixa" class="panel" hidden aria-labelledby="titulo-ajustes-caixa">
+<h2 id="titulo-ajustes-caixa">Ajustes de pedidos</h2>
+<div id="lista-ajustes-caixa"></div>
+</section>
+<dialog id="resolver-ajuste-caixa" class="frente-comandas" aria-labelledby="titulo-resolver-ajuste">
+<h2 id="titulo-resolver-ajuste">Resolver ajuste</h2><p id="resumo-ajuste-caixa"></p>
+<form id="form-resolver-ajuste">
+<label for="decisao-ajuste-caixa">Decisão</label>
+<select id="decisao-ajuste-caixa"><option value="aplicar">Aplicar ajuste combinado</option><option value="encerrar">Encerrar sem alterar a comanda</option></select>
+<label for="nota-ajuste-caixa">Como a solicitação foi resolvida?</label>
+<input id="nota-ajuste-caixa" minlength="3" maxlength="240" required>
+<button>Salvar decisão</button>
+</form>
+<p id="aviso-ajuste-caixa" role="status"></p>
+<button id="fechar-ajuste-caixa" type="button" class="secondary">Voltar</button>
+</dialog>
 <details class="panel">
 <summary>Cozinha</summary>
 <label for="meio-pedido-cozinha">Meio de recebimento do pedido no caixa</label>
@@ -101,7 +118,8 @@
 <nav class="admin-atalhos" aria-label="Áreas da administração">
   <section><h3>Equipe e caixas</h3><p>Cadastre acessos para Vendas ou Cozinha e atribua os caixas da loja.</p>
     <div><button type="button" data-admin-abrir="cadastrar-operador">Cadastrar operador</button>
-    <button type="button" class="secondary" data-admin-abrir="configurar-terminal">Gerenciar caixas</button></div>
+    <button type="button" class="secondary" data-admin-abrir="configurar-terminal">Gerenciar caixas</button>
+    <button type="button" class="secondary" data-admin-abrir="permissao-kds">Permissões da cozinha</button></div>
   </section>
   <section><h3>Cardápio e mesas</h3><p>Personalize o cardápio e gere o link de acesso de cada mesa.</p>
     <div><button type="button" data-admin-abrir="aparencia-cardapio">Editar aparência</button>
@@ -112,6 +130,14 @@
     <button type="button" class="secondary" data-admin-abrir="configuracao-entrega">Pagamento na entrega</button></div>
   </section>
 </nav>
+<form id="permissao-kds" class="panel">
+<h2>Permissões da cozinha</h2>
+<label for="email-permissao-kds">E-mail da conta vinculada à cozinha</label>
+<input id="email-permissao-kds" type="email" required>
+<label for="modo-permissao-kds">Ajustes de comanda</label>
+<select id="modo-permissao-kds"><option value="conceder">Conceder acesso</option><option value="revogar">Revogar acesso</option></select>
+<button>Salvar permissão</button>
+</form>
 <form id="aparencia-cardapio" class="panel">
 <h2>Aparência do cardápio</h2>
 <label for="cor-cardapio">Cor dos botões</label><input id="cor-cardapio" type="color" value="#175d2d">
