@@ -1,0 +1,17 @@
+#area-administracao{--admin-tinta:#173123;--admin-suave:#506359;--admin-borda:#dce6dd;margin-block:16px 28px}
+.admin-cabecalho{padding:clamp(20px,4vw,38px);background:#173d2a;color:#fff;border-radius:18px}
+.admin-etiqueta{font-size:.75rem;letter-spacing:.12em;font-weight:750;color:#c0e5c9}
+.admin-cabecalho h2{font-size:clamp(1.65rem,4vw,2.5rem);margin:4px 0}.admin-cabecalho p{margin:0;color:#e1efe4}
+.admin-atalhos{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px;margin-block:16px}
+.admin-atalhos section{display:flex;flex-direction:column;align-items:flex-start;padding:18px;border:1px solid var(--admin-borda);border-radius:15px;background:#fff}
+.admin-atalhos h3{margin:0;color:var(--admin-tinta)}.admin-atalhos p,.admin-catalogo p{margin:4px 0 14px;color:var(--admin-suave)}
+.admin-atalhos section>div,.admin-produto-acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto}
+.admin-catalogo-cabecalho{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}.admin-catalogo h2{margin:0}
+#catalogo-gestor{list-style:none;padding:0;margin:0}#catalogo-gestor li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-top:1px solid var(--admin-borda);flex-wrap:wrap}
+#catalogo-gestor small{display:block;color:var(--admin-suave)}
+.admin-modal{width:min(640px,calc(100% - 24px));max-height:calc(100dvh - 24px);padding:0;border:1px solid var(--admin-borda);border-radius:18px;color:var(--admin-tinta);box-shadow:0 20px 80px #12271945}
+.admin-modal::backdrop{background:#13251eb0}.admin-modal .panel{border:0;padding:20px;border-radius:0}
+.admin-modal .panel h2{padding-right:82px;margin-bottom:16px}.admin-modal-fechar{position:absolute;right:12px;top:12px}
+.admin-modal-status{margin:0;padding:0 20px 16px;font-weight:650}.admin-modal-status:empty{display:none}
+.admin-modal input[type=color]{height:44px;padding:4px}.admin-modal button{min-height:40px}
+@media(max-width:540px){.admin-modal{max-height:96dvh;margin:auto auto 0;border-radius:18px 18px 0 0}.admin-modal .panel{padding:16px}.admin-catalogo{padding:16px}}

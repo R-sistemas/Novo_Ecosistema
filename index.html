@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="supabase-key" content="sb_publishable_s0oowaHaCZkMUZgNTo6upw_zljF76Na"><title>Caixa | R Sistemas</title>
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="administracao.css">
 <link rel="manifest" href="pdv.webmanifest">
 <link rel="apple-touch-icon" href="icone-pwa-192.png">
 <meta name="theme-color" content="#175d2d">
@@ -57,6 +58,25 @@
 </section>
 </div>
 <section id="area-administracao" hidden>
+<div class="admin-cabecalho">
+  <span class="admin-etiqueta">ADMINISTRAÇÃO DA LOJA</span>
+  <h2 id="admin-nome-loja"></h2>
+  <p>Gerencie o catálogo, a equipe e as configurações da operação.</p>
+</div>
+<nav class="admin-atalhos" aria-label="Áreas da administração">
+  <section><h3>Equipe e caixas</h3><p>Cadastre acessos para Vendas ou Cozinha e atribua os caixas da loja.</p>
+    <div><button type="button" data-admin-abrir="cadastrar-operador">Cadastrar operador</button>
+    <button type="button" class="secondary" data-admin-abrir="configurar-terminal">Gerenciar caixas</button></div>
+  </section>
+  <section><h3>Cardápio e mesas</h3><p>Personalize o cardápio e gere o link de acesso de cada mesa.</p>
+    <div><button type="button" data-admin-abrir="aparencia-cardapio">Editar aparência</button>
+    <button type="button" class="secondary" data-admin-abrir="configurar-mesa">Obter link da mesa</button></div>
+  </section>
+  <section><h3>Configurações da loja</h3><p>Defina o nome do PDV e as opções de pagamento na entrega.</p>
+    <div><button type="button" class="secondary" data-admin-abrir="configurar-pdv">Nome do PDV</button>
+    <button type="button" class="secondary" data-admin-abrir="configuracao-entrega">Pagamento na entrega</button></div>
+  </section>
+</nav>
 <form id="aparencia-cardapio" class="panel">
 <h2>Aparência do cardápio</h2>
 <label for="cor-cardapio">Cor dos botões</label><input id="cor-cardapio" type="color" value="#175d2d">
@@ -114,7 +134,12 @@
 <button>Salvar produto</button>
 <button id="cancelar-produto" class="secondary" type="button">Limpar edição</button>
 </form>
-<section class="panel"><h2>Produtos ativos</h2><ul id="catalogo-gestor"></ul></section>
+<section class="panel admin-catalogo">
+<div class="admin-catalogo-cabecalho"><div><h2>Catálogo de produtos</h2><p id="admin-contagem"></p></div>
+<button type="button" data-admin-abrir="cadastro-produto">+ Novo produto</button></div>
+<label for="buscar-produto-admin">Buscar produto</label><input id="buscar-produto-admin" type="search" placeholder="Nome, código ou categoria">
+<ul id="catalogo-gestor"></ul>
+</section>
 <form id="configuracao-entrega" class="panel" hidden>
 <h2>Configuração de entrega</h2>
 <label><input id="pagamento-na-entrega" type="checkbox"> Oferecer pagamento na entrega</label>

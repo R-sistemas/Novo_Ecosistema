@@ -3,6 +3,7 @@ import { entrar, listar, executar, cadastrarOperador, cadastrarProduto, atualiza
 import { carregarCozinha } from "./cozinha.mjs";
 import { aplicarTema } from "./tema-cardapio.mjs";
 import { otimizarImagem } from "./imagens-cardapio.mjs";
+import { abrirAdmin, modalAdminAtivo } from "./administracao.mjs";
 
 let produtos = [];
 let usuario;
@@ -13,6 +14,7 @@ let meioSelecionado;
 let area;
 let terminais = [];
 let produtoEditado;
+let catalogoAdmin = [];
 let aparencia;
 let consultaComandas = 0;
 let ultimaListaComandas;
@@ -55,6 +57,7 @@ async function atualizar() {
   terminais = caixasDisponiveis;
   if (administracao) {
     const config = configuracao[0];
+    el("admin-nome-loja").textContent = config.nome;
     aparencia = { logo: config.cardapio_logo, agradecimento: config.cardapio_agradecimento };
     el("aparencia-cardapio").reset();
     el("cor-cardapio").value = config.cardapio_cor;
@@ -69,18 +72,8 @@ async function atualizar() {
     el("cadastro-produto").hidden = false;
     el("pagamento-na-entrega").checked = configuracao[0].pagamento_na_entrega;
     el("configuracao-entrega").hidden = false;
-    el("catalogo-gestor").replaceChildren(...catalogo.map(produto => {
-      const linha = document.createElement("li");
-      linha.append(produto.nome + " · " + reais(produto.preco_centavos) + " ",
-        botao("Editar", () => editarProduto(produto), true),
-        botao("Desativar", () => operar(async () => {
-          if (!window.confirm("Retirar " + produto.nome + " do catálogo ativo?")) return "";
-          await atualizarProduto(empresa, produto.id, { ativo: false });
-          await atualizar();
-          return "Produto retirado do catálogo.";
-        }), true));
-      return linha;
-    }));
+    catalogoAdmin = catalogo;
+    renderizarCatalogoAdmin();
     return;
   }
   const caixa = caixas[0];
@@ -104,18 +97,68 @@ async function atualizar() {
   renderizar();
 }
 
-async function operar(acao) {
+async function operar(acao, fecharModal = false) {
   if (ocupado) return;
   ocupado = true;
+  const admin = modalAdminAtivo();
   el("operacao").inert = true;
+  if (admin) {
+    admin.modal.inert = true;
+    admin.status.textContent = "Aguarde…";
+  }
   try {
-    el("notice").textContent = await acao();
+    const mensagem = await acao();
+    if (admin && fecharModal) admin.modal.close();
+    (admin && !fecharModal ? admin.status : el("notice")).textContent = mensagem;
   } catch (erro) {
-    el("notice").textContent = erro.message;
+    (admin?.status ?? el("notice")).textContent = erro.message;
   } finally {
     ocupado = false;
     el("operacao").inert = false;
+    if (admin) admin.modal.inert = false;
   }
+}
+function renderizarCatalogoAdmin() {
+  const busca = el("buscar-produto-admin").value.trim().toLocaleLowerCase("pt-BR");
+  const visiveis = catalogoAdmin.filter(p =>
+    [p.nome,p.codigo,p.categoria].join(" ").toLocaleLowerCase("pt-BR").includes(busca));
+  el("admin-contagem").textContent = visiveis.length + " de " + catalogoAdmin.length + " produtos ativos";
+  const empresa = el("empresa").value;
+  el("catalogo-gestor").replaceChildren(...visiveis.map(produto => {
+    const linha = document.createElement("li");
+    const dados = document.createElement("div");
+    const nome = document.createElement("strong");
+    nome.textContent = produto.nome;
+    const detalhe = document.createElement("small");
+    detalhe.textContent = [produto.codigo, produto.categoria, reais(produto.preco_centavos)].filter(Boolean).join(" · ");
+    dados.append(nome, detalhe);
+    const acoes = document.createElement("div");
+    acoes.className = "admin-produto-acoes";
+    acoes.append(botao("Editar", () => {
+      editarProduto(produto);
+      abrirAdmin("cadastro-produto");
+    }, true), botao("Desativar", () => operar(async () => {
+      if (!window.confirm("Retirar " + produto.nome + " do catálogo ativo?")) return "";
+      await atualizarProduto(empresa, produto.id, { ativo: false });
+      await atualizar();
+      return "Produto retirado do catálogo.";
+    }), true));
+    linha.append(dados, acoes);
+    return linha;
+  }));
+  if (!visiveis.length) {
+    const vazio = document.createElement("li");
+    vazio.textContent = "Nenhum produto encontrado.";
+    el("catalogo-gestor").append(vazio);
+  }
+}
+el("buscar-produto-admin").oninput = renderizarCatalogoAdmin;
+for (const acao of document.querySelectorAll("[data-admin-abrir]")) {
+  acao.onclick = () => {
+    const id = acao.dataset.adminAbrir;
+    if (id === "cadastro-produto") editarProduto();
+    abrirAdmin(id);
+  };
 }
 function renderizarProdutos() {
   const busca = el("search").value.trim().toLocaleLowerCase("pt-BR");
@@ -268,7 +311,7 @@ el("configurar-pdv").onsubmit = evento => {
     await executar("configurar_nome_pdv", { p_empresa: el("empresa").value, p_nome: el("nome-pdv").value.trim() });
     await atualizar();
     return "Nome do PDV atualizado.";
-  });
+  }, true);
 };
 el("novo-operador-perfil").onchange = () => {
   el("novo-operador-terminal").hidden = el("novo-operador-perfil").value === "cozinha";
@@ -290,7 +333,7 @@ el("cadastrar-operador").onsubmit = evento => {
     el("novo-operador-perfil").onchange();
     await atualizar();
     return perfil === "cozinha" ? "Conta exclusiva do KDS cadastrada." : "Operador cadastrado e vinculado ao estabelecimento.";
-  });
+  }, true);
 };
 el("editar-terminal").onchange = () => {
   const terminal = terminais.find(t => t.id === el("editar-terminal").value);
@@ -306,7 +349,7 @@ el("configurar-terminal").onsubmit = evento => {
     });
     await atualizar();
     return "Caixa e operador configurados.";
-  });
+  }, true);
 };
 
 el("cash").addEventListener("submit", evento => evento.preventDefault());
@@ -339,7 +382,7 @@ el("restaurar-aparencia").onclick = () => {
   el("aparencia-cardapio").reset();
   aparencia = { logo: null, agradecimento: null };
   previaAparencia();
-  el("notice").textContent = "Visual padrão na prévia. Salve para publicar.";
+  modalAdminAtivo().status.textContent = "Visual padrão na prévia. Salve para publicar.";
 };
 el("aparencia-cardapio").onsubmit = evento => {
   evento.preventDefault();
@@ -349,7 +392,7 @@ el("aparencia-cardapio").onsubmit = evento => {
       p_logo: aparencia.logo, p_agradecimento: aparencia.agradecimento
     });
     return "Aparência publicada no cardápio.";
-  });
+  }, true);
 };
 el("configuracao-entrega").addEventListener("submit", evento => {
   evento.preventDefault();
@@ -359,7 +402,7 @@ el("configuracao-entrega").addEventListener("submit", evento => {
       p_habilitado: el("pagamento-na-entrega").checked
     });
     return "Configuração de entrega salva.";
-  });
+  }, true);
 });
 function editarProduto(produto) {
   produtoEditado = produto;
@@ -371,7 +414,6 @@ function editarProduto(produto) {
   }
   el("produto-preco").value = produto.preco_centavos / 100;
   el("produto-queridinho").checked = produto.queridinho;
-  el("cadastro-produto").scrollIntoView({ block: "start" });
 }
 el("cancelar-produto").onclick = () => editarProduto();
 el("cadastro-produto").addEventListener("submit", evento => {
@@ -394,7 +436,7 @@ el("cadastro-produto").addEventListener("submit", evento => {
     editarProduto();
     await atualizar();
     return editando ? "Produto atualizado." : "Produto cadastrado.";
-  });
+  }, true);
 });
 function receberPedido(id, meio) {
   return operar(async () => {
