@@ -75,7 +75,7 @@ async function atualizar() {
     el("status").textContent = "Administração";
     el("nome-pdv").value = nomePdv;
     el("editar-terminal").replaceChildren(new Option("Novo caixa", ""),
-      ...terminais.map(t => new Option(t.nome + " · " + t.email, t.id)));
+      ...terminais.map(t => new Option(t.nome + " · " + (t.email ?? "Sem operador ativo"), t.id)));
     el("configurar-terminal").reset();
     el("cadastro-produto").hidden = false;
     el("pagamento-na-entrega").checked = configuracao[0].pagamento_na_entrega;
@@ -184,12 +184,23 @@ async function carregarOperadores(apenasCozinha = false) {
     } else {
       lista.replaceChildren(...operadores.map(operador => {
         const linha = document.createElement("li");
+        linha.className = "row";
+        const descricao = document.createElement("span");
         const email = document.createElement("strong");
         email.textContent = operador.email;
         const perfis = [];
         if (operador.vendas) perfis.push(operador.caixas.length ? `Vendas (${operador.caixas.join(", ")})` : "Vendas (sem caixa atribuído)");
         if (operador.cozinha) perfis.push(operador.edita_comanda ? "Cozinha · ajustes autorizados" : "Cozinha");
-        linha.append(email, document.createElement("br"), perfis.join(" / "));
+        descricao.append(email, document.createElement("br"), perfis.join(" / "));
+        linha.append(descricao, botao("Remover da loja", () => {
+          if (!window.confirm(`Remover o acesso de ${operador.email} a esta loja? O histórico dos turnos será mantido.`)) return;
+          void operar(async () => {
+            await executar("remover_operador_loja", { p_empresa: empresa, p_email: operador.email });
+            await carregarOperadores();
+            await atualizar();
+            return "Acesso à loja removido.";
+          });
+        }, true));
         return linha;
       }));
       aviso.textContent = operadores.length ? "" : "Nenhum operador cadastrado nesta loja.";
