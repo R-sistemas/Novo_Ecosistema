@@ -26,7 +26,7 @@ Novas integrações serão adicionadas conforme a demanda das lojas e os meios o
 
 O acesso ao PDV terá entradas para **Administração** e **Vendas**. A escolha da tela não concede permissões. O servidor valida o perfil e o vínculo com o estabelecimento. Na Administração, o gestor mantém o catálogo, configura o nome exibido no PDV e cadastra caixas identificáveis, como Caixa 01 e Caixa 02, com os operadores autorizados. Em Vendas, o operador entra com a própria conta e abre um caixa autorizado. Cada turno registra o identificador do caixa e do operador. O operador de vendas tem acesso às ações de caixa e venda permitidas pelo seu perfil.
 
-O PDV permite a sequência de teclado **F3 → 1 Dinheiro, 2 Pix ou 3 Cartão → F4**. Em dinheiro, o foco segue para o valor recebido. Em cartão na maquininha, segue para finalizar. No Pix automático, o operador informa o e-mail do pagador e gera o QR Code. A confirmação do Mercado Pago registra a venda e o movimento de caixa uma única vez.
+O PDV permite a sequência de teclado **F3 → 1 Dinheiro, 2 Pix ou 3 Cartão → F4**. Em dinheiro, o foco segue para o valor recebido. Em cartão na maquininha, segue para finalizar. No Pix automático, o servidor preenche o e-mail técnico exigido pela integração e o caixa gera o QR Code. O Pix do Mercado Pago no cardápio usa o mesmo endereço técnico. A confirmação do provedor registra a venda e o movimento de caixa uma única vez.
 
 O gestor poderá conceder e revogar a permissão de desconto por operador e estabelecimento. Para aplicar um desconto, o operador autorizado confirma a própria senha no PDV. A autorização vale para aquela venda, com registro do operador e do valor concedido. As demais permissões do perfil permanecem separadas.
 

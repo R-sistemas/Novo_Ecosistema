@@ -1,10 +1,10 @@
-import { mercadoPago } from "../lib/mercado-pago.mjs";
+import { emailPixMercadoPago, mercadoPago } from "../lib/mercado-pago.mjs";
 import { bancoMercadoPagoTeste as banco } from "../lib/banco-mercado-pago-teste.mjs";
 
 export async function checkout(req, res, { sandbox, token }) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") return res.status(405).end();
-  const { p_slug, p_id, p_cliente = null, p_mesa = null, p_itens, email, endereco, pagamento } = req.body ?? {};
+  const { p_slug, p_id, p_cliente = null, p_mesa = null, p_itens, endereco, pagamento } = req.body ?? {};
   if (p_slug !== (sandbox ? "loja-teste" : "quiosque-dorafa") || typeof p_id !== "string" ||
       !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(p_id) ||
       !Array.isArray(p_itens) || p_itens.length > 30) {
@@ -15,10 +15,6 @@ export async function checkout(req, res, { sandbox, token }) {
   }
   const naEntrega = pagamento === "na_entrega";
   if (!naEntrega && !token) return res.status(503).json({ erro: "Pix indisponível." });
-  if (!sandbox && !naEntrega && p_itens.length && (typeof email !== "string" ||
-      email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
-    return res.status(400).json({ erro: "Informe um e-mail válido para gerar o Pix." });
-  }
   try {
     if (naEntrega) {
       const id = await banco("enviar_pedido_pagamento_na_entrega", {
@@ -35,7 +31,7 @@ export async function checkout(req, res, { sandbox, token }) {
     const ordem = pedido.cobranca ? await cliente.consultarOrdem(pedido.cobranca)
       : await cliente.criarPix({
         pedidoId: p_id, totalCentavos: pedido.total_centavos,
-        email: sandbox ? "test_payer@example.com" : email,
+        email: emailPixMercadoPago(sandbox),
         pagadorTeste: sandbox ? { first_name: "APRO" } : undefined
       });
     if (!/^ORD[A-Z0-9]+$/.test(ordem.id) || /^ORDTST/.test(ordem.id) !== sandbox ||

@@ -11,7 +11,6 @@ const finais = {
 
 export function configurarPixPdv({ caixa, atualizar, recebido }) {
   const painel = el("pix-frente");
-  const email = el("email-pix-frente");
   const status = el("status-pix-frente");
   const imagem = el("qr-pix-frente");
   const codigo = el("codigo-pix-frente");
@@ -19,11 +18,9 @@ export function configurarPixPdv({ caixa, atualizar, recebido }) {
   let ocupado = false;
   let verificandoCaixa;
 
-  function exibir({ teste, mensagem = "", imagem: qr, copiaECola } = {}) {
+  function exibir({ mensagem = "", imagem: qr, copiaECola } = {}) {
     painel.hidden = false;
     const aberta = Boolean(cobranca);
-    el("dados-pix-frente").hidden = aberta || Boolean(teste);
-    email.disabled = aberta || Boolean(teste);
     el("consultar-pix-frente").hidden = !aberta;
     el("cancelar-pix-frente").hidden = !aberta;
     el("consultar-pix-frente").disabled = ocupado;
@@ -40,20 +37,19 @@ export function configurarPixPdv({ caixa, atualizar, recebido }) {
   async function aplicar(resultado, contexto) {
     if (!resultado) {
       cobranca = undefined;
-      exibir({ teste: contexto.teste, mensagem: "Nenhuma cobrança em aberto neste caixa." });
+      exibir({ mensagem: "Nenhuma cobrança em aberto neste caixa." });
       atualizar(false);
       return;
     }
     if (resultado.estado === "confirmado") {
       cobranca = undefined;
       painel.hidden = true;
-      email.disabled = true;
       await recebido(resultado);
       return;
     }
     if (finais[resultado.estado]) {
       cobranca = undefined;
-      exibir({ teste: resultado.teste, mensagem: finais[resultado.estado] });
+      exibir({ mensagem: finais[resultado.estado] });
       atualizar(false, resultado);
       return;
     }
@@ -84,24 +80,20 @@ export function configurarPixPdv({ caixa, atualizar, recebido }) {
     }
   }
 
-  async function iniciar(dados, teste) {
+  async function iniciar(dados) {
     if (ocupado || cobranca) return;
-    if (!teste) {
-      email.required = true;
-      if (!email.reportValidity()) { email.focus(); return; }
-    }
-    const contexto = { ...dados, id: crypto.randomUUID(), teste };
+    const contexto = { ...dados, id: crypto.randomUUID() };
     cobranca = contexto;
     ocupado = true;
-    exibir({ teste, mensagem: "Preparando o QR Code…" });
+    exibir({ mensagem: "Preparando o QR Code…" });
     atualizar(true);
     try {
-      const resultado = await api({ ...dados, acao: "criar", p_id: contexto.id, p_email: teste ? null : email.value.trim() });
+      const resultado = await api({ ...dados, acao: "criar", p_id: contexto.id });
       await aplicar(resultado, contexto);
     } catch (erro) {
       if (erro.status === 400) {
         cobranca = undefined;
-        exibir({ teste, mensagem: erro.message });
+        exibir({ mensagem: erro.message });
         atualizar(false);
       } else status.textContent = erro.message;
     } finally {
@@ -118,8 +110,8 @@ export function configurarPixPdv({ caixa, atualizar, recebido }) {
   };
   setInterval(() => { if (!document.hidden && cobranca) void consultar(); }, 5000);
   return {
-    selecionar(teste) { if (!cobranca) exibir({ teste }); },
-    ocultar() { painel.hidden = true; email.disabled = true; email.required = false; email.value = ""; },
+    selecionar() { if (!cobranca) exibir(); },
+    ocultar() { painel.hidden = true; },
     iniciar,
     atual: () => cobranca,
     async recuperar(forcar = false) {

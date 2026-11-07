@@ -130,10 +130,6 @@ executarComFeedback(async () => {
     const solicitarDocumento = !pixTeste && !pixMercadoPagoQuiosque && pixEscolhido();
     el("dados-pix").hidden = !solicitarDocumento;
     el("documento-pix").required = solicitarDocumento;
-    const solicitarEmail = pixMercadoPagoQuiosque &&
-      (entrega ? el("pagamento-entrega").value === "online" : pixEscolhido());
-    el("dados-email-pix").hidden = !solicitarEmail;
-    el("email-pix").required = solicitarEmail;
   };
   if (pagamentoMesa) {
     el("pagamento-mesa").hidden = false;
@@ -192,14 +188,13 @@ executarComFeedback(async () => {
       ) : undefined;
       const pix = entrega ? pagamento === "online" : pixDisponivel && pixEscolhido();
       const cpfCnpj = pix && !pixTeste ? el("documento-pix").value : undefined;
-      const email = pix && pixMercadoPagoQuiosque ? el("email-pix").value.trim() : undefined;
-      const assinatura = JSON.stringify({ p_itens, p_cliente, pix, cpfCnpj, email, endereco, pagamento });
+      const assinatura = JSON.stringify({ p_itens, p_cliente, pix, cpfCnpj, endereco, pagamento });
       if (tentativa?.assinatura !== assinatura) tentativa = { assinatura, id: crypto.randomUUID() };
       el("pedido").inert = true;
       try {
         const dados = { p_slug, p_mesa, p_itens, p_cliente, p_id: tentativa.id };
         if (pix) {
-          await mostrarPix({ ...dados, cpfCnpj, email, endereco, pagamento });
+          await mostrarPix({ ...dados, cpfCnpj, endereco, pagamento });
           if (pixMercadoPagoQuiosque) parametros.set("pix", "mercado-pago");
           el("documento-pix").value = "";
           p_id = tentativa.id;

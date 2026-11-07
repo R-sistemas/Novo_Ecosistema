@@ -792,7 +792,7 @@ function selecionarPagamento(opcao) {
   if (vendaPendente || pixFrente.atual()) return;
   meioSelecionado = opcao.dataset.meioPdv;
   const pixAutomatico = meioSelecionado === "Pix" && ambientePixFrente;
-  if (pixAutomatico) pixFrente.selecionar(ambientePixFrente === "sandbox");
+  if (pixAutomatico) pixFrente.selecionar();
   else pixFrente.ocultar();
   el("titulo-pagamento-frente").textContent = meioSelecionado === "Pix" ? (pixAutomatico ? "Pix automático" : "Pix · Conferência no caixa")
     : meioSelecionado === "Cartão" ? "Cartão · Maquininha" : "Dinheiro · Recebimento";
@@ -806,7 +806,7 @@ function selecionarPagamento(opcao) {
     : meioSelecionado === "Cartão" ? "Confirme a aprovação na maquininha antes de registrar."
     : "Confira o dinheiro recebido antes de registrar.";
   atualizarTotalFrente();
-  el(meioSelecionado === "Dinheiro" ? "valor-recebido-frente" : pixAutomatico && ambientePixFrente !== "sandbox" ? "email-pix-frente" : "finish").focus();
+  el(meioSelecionado === "Dinheiro" ? "valor-recebido-frente" : "finish").focus();
 }
 function limparPagamento() {
   pixFrente.ocultar();
@@ -860,7 +860,7 @@ el("sale").addEventListener("submit", evento => {
     void pixFrente.iniciar({ p_caixa: estado.sessao.id, p_pedido: comandaAberta?.id ?? null,
       p_total: total(), p_desconto: desconto(), p_itens: produtos.filter(p => carrinho.has(p.codigo)).map(p => ({
         produto_id: p.id, quantidade: carrinho.get(p.codigo)
-      })) }, ambientePixFrente === "sandbox");
+      })) });
     return;
   }
   if (comandaAberta) {
