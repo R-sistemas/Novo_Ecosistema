@@ -1,6 +1,9 @@
+import { monitorGestor } from "../lib/monitor-gestor.mjs";
+
 const uuid = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
 
 export default async function handler(req, res) {
+  if (req.query?.monitor === "1") return monitorGestor(req, res);
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") return res.status(405).end();
   const { SUPABASE_URL: url, SUPABASE_SERVICE_ROLE_KEY: chave } = process.env;

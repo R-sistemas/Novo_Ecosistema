@@ -1,0 +1,30 @@
+.monitor{max-width:850px}
+header #sair-monitor{margin-left:auto}
+.monitor-capa{background:linear-gradient(120deg,#143a26,#206938);color:#fff;border-radius:18px;padding:clamp(20px,5vw,36px);margin-bottom:16px}
+.monitor-capa p{margin:0;color:#e1f1e4}
+.monitor-capa .monitor-rotulo{font-size:.78rem;font-weight:750;letter-spacing:.09em;text-transform:uppercase}
+.monitor-capa h1{font-size:clamp(1.6rem,6vw,2.6rem);line-height:1.2;margin:8px 0}
+#login-monitor{max-width:460px}
+.monitor button,header #sair-monitor{min-height:44px}
+#aviso-monitor:empty,#nota-lista-monitor:empty{display:none}
+.monitor-filtros{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:16px 0}
+.monitor-filtros input,.monitor-filtros select{margin:0;min-height:44px}
+.monitor-filtros>div{flex:1 1 145px;min-width:0}
+.monitor-metricas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 16px}
+.monitor-metricas div{background:#fff;border:1px solid #dce5dd;border-radius:14px;padding:14px;min-width:0}
+.monitor-metricas dt,.monitor-metricas .monitor-detalhe{color:#536259;font-size:.86rem;font-weight:400}
+.monitor-metricas dd{color:#175d2d;font-size:clamp(1.15rem,4vw,1.75rem);font-weight:750;margin:2px 0;overflow-wrap:anywhere}
+.monitor-abas{display:flex;gap:4px;padding:4px;background:#e4eee5;border-radius:12px;margin-bottom:10px}
+.monitor-abas button{flex:1;padding-inline:4px;font-size:clamp(.8rem,3.6vw,1rem);border:0;background:transparent;color:#175d2d}
+.monitor-abas button[aria-pressed=true]{background:#175d2d;color:#fff}
+.monitor-lista{list-style:none;padding:0;margin:0}
+.monitor-lista li{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 10px;padding:11px 0;border-bottom:1px solid #e3ebe4}
+.monitor-lista li:last-child{border:0}
+.monitor-lista strong,.monitor-lista small{display:block}
+.monitor-lista small,#sincronizado-monitor,#nota-lista-monitor{color:#536259}
+.monitor-lista li>span{text-align:right;font-weight:750;font-variant-numeric:tabular-nums}
+@media(max-width:530px){
+  .monitor{padding:14px}
+  .monitor-metricas{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .monitor-metricas div:nth-child(2){grid-column:1/-1;grid-row:1}
+}

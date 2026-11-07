@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#175d2d">
+  <title>Monitor do gestor | R Sistemas</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="monitor.css">
+  <link rel="manifest" href="monitor.webmanifest">
+  <link rel="apple-touch-icon" href="icone-pwa-192.png">
+  <script type="module" src="instalar-pwa.mjs"></script>
+  <script type="module" src="monitor.mjs"></script>
+</head>
+<body>
+  <header>
+    <img src="logo.png" alt="">
+    <div><strong>R Sistemas</strong><small>Monitor do gestor</small></div>
+    <button id="sair-monitor" class="secondary" type="button" hidden>Sair</button>
+  </header>
+  <main class="monitor">
+    <section class="monitor-capa">
+      <p class="monitor-rotulo">Acompanhamento da operação</p>
+      <h1 id="nome-monitor">Monitor do gestor</h1>
+      <p>Pedidos, recebimentos e entregas em um só lugar.</p>
+    </section>
+    <button id="instalar-pwa" type="button" class="secondary" hidden>Instalar monitor</button>
+    <form id="login-monitor" class="panel" hidden>
+      <h2>Entre com a conta de gestor</h2>
+      <label for="email-monitor">E-mail</label>
+      <input id="email-monitor" type="email" autocomplete="username" required>
+      <label for="senha-monitor">Senha</label>
+      <input id="senha-monitor" type="password" autocomplete="current-password" required>
+      <button>Entrar</button>
+    </form>
+    <p id="aviso-monitor" role="status">Carregando monitor…</p>
+    <section id="painel-monitor" hidden aria-label="Operação da loja">
+      <div class="monitor-filtros">
+        <div id="filtro-loja">
+          <label for="loja-monitor">Estabelecimento</label>
+          <select id="loja-monitor"></select>
+        </div>
+        <div>
+          <label for="dia-monitor">Dia da operação</label>
+          <input id="dia-monitor" type="date" required>
+        </div>
+        <button id="atualizar-monitor" class="secondary" type="button">Atualizar</button>
+      </div>
+      <div id="dados-monitor" hidden>
+        <dl class="monitor-metricas">
+          <div><dt>Pedidos do dia</dt><dd id="total-monitor"></dd><dd id="preparo-monitor" class="monitor-detalhe"></dd></div>
+          <div><dt>Recebido bruto</dt><dd id="recebido-monitor"></dd><dd id="origens-monitor" class="monitor-detalhe"></dd></div>
+          <div><dt>Entregas em rota</dt><dd id="rota-monitor"></dd><dd id="entregues-monitor" class="monitor-detalhe"></dd></div>
+        </dl>
+        <div class="monitor-abas" role="group" aria-label="Tipo de acompanhamento">
+          <button type="button" data-aba="pedidos" aria-pressed="true">Pedidos</button>
+          <button type="button" data-aba="recebimentos" aria-pressed="false">Recebimentos</button>
+          <button type="button" data-aba="entregas" aria-pressed="false">Entregas</button>
+        </div>
+        <section class="panel" aria-labelledby="titulo-lista-monitor">
+          <h2 id="titulo-lista-monitor">Pedidos</h2>
+          <ul id="lista-monitor" class="monitor-lista"></ul>
+          <p id="nota-lista-monitor"></p>
+        </section>
+        <p id="sincronizado-monitor"></p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

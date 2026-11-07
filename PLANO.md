@@ -44,7 +44,7 @@ Para complementar uma comanda pendente, o PDV deve registrar os itens adicionais
 | Monitor do gestor | Tela móvel de consulta dos pedidos, recebimentos, saídas para entrega e entregas concluídas. O gestor entra com a conta da loja e pode manter a sessão no dispositivo. | PWA própria do monitor. |
 | REMO | Central logística com interface e permissões próprias. | Portal web nesta fase. PWA do entregador em fase posterior. |
 
-O monitor do gestor terá somente consultas. O servidor restringirá os dados à loja vinculada e as operações do monitor a leitura. A configuração administrativa da loja fica em uma interface separada do monitor. Caixa e cozinha terão permissões próprias no servidor. A PWA do KDS será validada com uma conta que só tem acesso à cozinha.
+O monitor do gestor oferece somente consultas e tem PWA própria em `/monitor.html`. A conta de gestor vê os estabelecimentos aos quais está vinculada e acompanha por dia os pedidos, o bruto recebido no caixa e online e os estados de entrega da REMO. O monitor mantém a sessão em cookies restritos ao seu endpoint e atualiza enquanto a tela está visível. Configuração da loja, caixa e cozinha têm interfaces separadas.
 
 A REMO devolverá os estados necessários à loja, incluindo saída para entrega e conclusão. A R Sistemas exibirá esses estados no monitor do gestor a partir do vínculo com o despacho. O acesso à central logística permanece separado.
 

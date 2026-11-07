@@ -1,0 +1,13 @@
+{
+  "rewrites": [
+    { "source": "/api/monitor-gestor", "destination": "/api/cadastrar-operador?monitor=1" }
+  ],
+  "headers": [
+    {
+      "source": "/monitor.html",
+      "headers": [
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'" }
+      ]
+    }
+  ]
+}
