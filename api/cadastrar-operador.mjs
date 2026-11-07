@@ -7,10 +7,11 @@ export default async function handler(req, res) {
   if (!url || !chave) return res.status(503).json({ erro: "Cadastro indisponível." });
   const sessao = req.headers.authorization;
   if (typeof sessao !== "string" || !/^Bearer \S+$/.test(sessao)) return res.status(401).end();
-  const { empresa, email, senha, caixa } = req.body ?? {};
+  const { empresa, email, senha, caixa, perfil = "vendas" } = req.body ?? {};
   if (typeof empresa !== "string" || !uuid.test(empresa) ||
       typeof email !== "string" || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
       typeof senha !== "string" || senha.length < 12 || senha.length > 72 ||
+      !["vendas", "cozinha"].includes(perfil) || (perfil === "cozinha" && caixa !== null) ||
       (caixa !== null && (typeof caixa !== "string" || !caixa.trim() || caixa.length > 60))) {
     return res.status(400).json({ erro: "Confira o e-mail, a senha inicial e o nome do caixa." });
   }
@@ -41,13 +42,17 @@ export default async function handler(req, res) {
       });
     }
     const operador = (await criada.json()).id;
-    const vinculo = await chamar("/rest/v1/rpc/vincular_novo_operador_pdv", {
-      method: "POST", body: { p_gestor: gestor, p_empresa: empresa, p_operador: operador, p_caixa: caixa }
+    const cozinha = perfil === "cozinha";
+    const rpc = cozinha ? "vincular_novo_usuario_kds" : "vincular_novo_operador_pdv";
+    const vinculo = await chamar("/rest/v1/rpc/" + rpc, {
+      method: "POST", body: { p_gestor: gestor, p_empresa: empresa, p_operador: operador, ...(cozinha ? {} : { p_caixa: caixa }) }
     });
     if (!vinculo.ok) {
       if ([400, 401, 403, 409].includes(vinculo.status)) {
         const reversao = await chamar("/auth/v1/admin/users/" + operador, { method: "DELETE" });
-        if (reversao.ok) return res.status(409).json({ erro: "Cadastro revertido. Confira se o nome do caixa já está em uso." });
+        if (reversao.ok) return res.status(409).json({
+          erro: cozinha ? "Cadastro revertido. Confira o acesso à loja." : "Cadastro revertido. Confira se o nome do caixa já está em uso."
+        });
       }
       throw new Error("Vínculo da conta não confirmado.");
     }

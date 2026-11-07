@@ -82,9 +82,11 @@
 </form>
 <form id="cadastrar-operador" class="panel">
 <h2>Cadastrar operador</h2>
+<label for="novo-operador-perfil">Área do operador</label>
+<select id="novo-operador-perfil"><option value="vendas">Vendas</option><option value="cozinha">Cozinha · KDS</option></select>
 <label for="novo-operador-email">E-mail do operador</label><input id="novo-operador-email" type="email" maxlength="254" required>
 <label for="novo-operador-senha">Senha inicial</label><input id="novo-operador-senha" type="password" minlength="12" maxlength="72" autocomplete="new-password" required>
-<label for="novo-operador-caixa">Nome de um novo caixa (opcional)</label><input id="novo-operador-caixa" maxlength="60" placeholder="Ex.: Caixa 02">
+<div id="novo-operador-terminal"><label for="novo-operador-caixa">Nome de um novo caixa (opcional)</label><input id="novo-operador-caixa" maxlength="60" placeholder="Ex.: Caixa 02"></div>
 <button>Cadastrar operador</button>
 </form>
 <form id="configurar-pdv" class="panel">

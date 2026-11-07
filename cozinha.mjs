@@ -3,6 +3,8 @@ import { executar } from "./supabase-pdv.mjs";
 const fila = document.getElementById("fila-cozinha");
 const aviso = document.getElementById("aviso-cozinha");
 const empresa = document.getElementById("empresa");
+const kds = document.body.dataset.area === "kds";
+const etapas = { novo: "Novo", preparo: "Em preparo", pronto: "Pronto", entregue: "Entregue" };
 const acoes = {
   novo: [["preparo", "Iniciar preparo"], ["recusado", "Recusar"]],
   preparo: [["pronto", "Marcar pronto"]],
@@ -41,8 +43,12 @@ export async function carregarCozinha() {
       financeiro.textContent = pedido.pix_teste ? "Pagamento confirmado no Sandbox" : pedido.recebido ? "Recebimento registrado" :
         pedido.pagamento_entrega === "na_entrega" ? "Pagamento na entrega pendente" :
         pedido.estado === "entregue" ? "Entregue · recebimento pendente" : "Recebimento pendente";
-      artigo.append(titulo, resumo, financeiro);
-      if (pedido.endereco_entrega) {
+      const etapa = document.createElement("p");
+      etapa.textContent = etapas[pedido.estado];
+      etapa.className = "etapa-kds";
+      artigo.append(titulo, etapa, resumo);
+      if (!kds) artigo.append(financeiro);
+      if (!kds && pedido.endereco_entrega) {
         const endereco = document.createElement("p");
         const { logradouro, numero, bairro, cidade, complemento } = pedido.endereco_entrega;
         endereco.textContent = [logradouro, numero, bairro, cidade, complemento].filter(Boolean).join(", ");
@@ -64,7 +70,7 @@ export async function carregarCozinha() {
           artigo.append(despacho);
         }
       }
-      if (!pedido.recebido && !pedido.mesa) {
+      if (!kds && !pedido.recebido && !pedido.mesa) {
         const receber = document.createElement("button");
         receber.textContent = "Registrar recebimento no caixa";
         receber.onclick = () => fila.dispatchEvent(new CustomEvent("receber-pedido", { detail: pedido.id }));

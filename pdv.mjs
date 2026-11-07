@@ -270,21 +270,26 @@ el("configurar-pdv").onsubmit = evento => {
     return "Nome do PDV atualizado.";
   });
 };
+el("novo-operador-perfil").onchange = () => {
+  el("novo-operador-terminal").hidden = el("novo-operador-perfil").value === "cozinha";
+};
 el("cadastrar-operador").onsubmit = evento => {
   evento.preventDefault();
   operar(async () => {
     const senha = el("novo-operador-senha");
+    const perfil = el("novo-operador-perfil").value;
     try {
       await cadastrarOperador({
         empresa: el("empresa").value, email: el("novo-operador-email").value.trim(),
-        senha: senha.value, caixa: el("novo-operador-caixa").value.trim() || null
+        senha: senha.value, perfil, caixa: perfil === "vendas" ? el("novo-operador-caixa").value.trim() || null : null
       });
     } finally {
       senha.value = "";
     }
     evento.target.reset();
+    el("novo-operador-perfil").onchange();
     await atualizar();
-    return "Operador cadastrado e vinculado ao estabelecimento.";
+    return perfil === "cozinha" ? "Conta exclusiva do KDS cadastrada." : "Operador cadastrado e vinculado ao estabelecimento.";
   });
 };
 el("editar-terminal").onchange = () => {

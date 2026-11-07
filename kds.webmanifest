@@ -1,0 +1,15 @@
+{
+  "id": "/kds.html",
+  "name": "R Sistemas · Cozinha KDS",
+  "short_name": "Cozinha KDS",
+  "start_url": "/kds.html",
+  "scope": "/kds.html",
+  "display": "standalone",
+  "lang": "pt-BR",
+  "background_color": "#f3f6f3",
+  "theme_color": "#175d2d",
+  "icons": [
+    { "src": "/icone-pwa-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icone-pwa-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
