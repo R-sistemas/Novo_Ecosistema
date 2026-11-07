@@ -63,16 +63,7 @@
 <label for="valor-recebido-frente">Valor recebido (R$)</label><input id="valor-recebido-frente" type="number" min="0" step="0.01" inputmode="decimal">
 <p class="frente-linha"><span>Troco</span><strong id="troco-frente"></strong></p>
 </div>
-<div id="pix-frente" hidden>
-  <p id="status-pix-frente" role="status"></p>
-  <img id="qr-pix-frente" alt="QR Code para pagar esta venda via Pix" width="220" height="220" hidden>
-  <div id="copiar-pix-frente" hidden>
-    <label for="codigo-pix-frente">Pix copia e cola</label><input id="codigo-pix-frente" readonly disabled>
-    <button id="botao-copiar-pix-frente" type="button" class="secondary">Copiar código</button>
-  </div>
-  <button id="consultar-pix-frente" type="button" class="secondary" hidden>Consultar cobrança</button>
-  <button id="cancelar-pix-frente" type="button" class="secondary" hidden>Cancelar cobrança Pix</button>
-</div></div>
+</div>
 <button id="finish">F4 ou Enter · Finalizar venda</button>
 </div>
 </form></section>
@@ -269,5 +260,26 @@
 </form>
 </section>
 </div><p id="notice" role="status" aria-live="polite"></p>
+<dialog id="pix-frente" class="frente-comandas" aria-labelledby="titulo-pix-modal">
+  <span id="marca-pix-sucesso" aria-hidden="true" hidden>✓</span>
+  <h2 id="titulo-pix-modal">Pagamento via Pix</h2>
+  <p id="status-pix-frente" role="status"></p>
+  <div id="validade-pix-frente" hidden>
+    <label for="progresso-pix-frente">Validade do Pix <span id="tempo-pix-frente"></span></label>
+    <progress id="progresso-pix-frente" max="100" value="100"></progress>
+  </div>
+  <img id="qr-pix-frente" alt="QR Code para pagar esta venda via Pix" width="240" height="240" hidden>
+  <div id="copiar-pix-frente" hidden>
+    <label for="codigo-pix-frente">Pix copia e cola</label>
+    <div class="pix-acoes"><input id="codigo-pix-frente" readonly disabled>
+      <button id="botao-copiar-pix-frente" type="button" class="secondary">Copiar código</button></div>
+  </div>
+  <div id="acoes-pix-frente" class="pix-acoes">
+    <button id="consultar-pix-frente" type="button" class="secondary" hidden>Consultar cobrança</button>
+    <button id="cancelar-pix-frente" type="button" class="secondary" hidden>Cancelar cobrança</button>
+    <button id="voltar-pix-frente" type="button" class="secondary">Voltar ao caixa</button>
+  </div>
+  <form id="confirmar-pix-frente" method="dialog" hidden><button id="ok-pix-frente">OK</button></form>
+</dialog>
 </main>
 </body></html>
