@@ -16,7 +16,7 @@ async function requisitar(caminho, dados, token, metodo = dados === undefined ? 
   });
   const corpo = await resposta.text();
   const resultado = corpo ? JSON.parse(corpo) : null;
-  if (!resposta.ok) throw new Error(resultado?.erro ?? resultado?.message ?? resultado?.msg ?? "Não foi possível concluir a solicitação.");
+  if (!resposta.ok) throw Object.assign(new Error(resultado?.erro ?? resultado?.message ?? resultado?.msg ?? "Não foi possível concluir a solicitação."), { status: resposta.status });
   return resultado;
 }
 
@@ -50,6 +50,7 @@ export async function entrar(email, password) {
 
 export const listar = consulta => solicitar("/rest/v1/" + consulta);
 export const executar = (nome, dados) => solicitar("/rest/v1/rpc/" + nome, dados);
+export const executarApi = (caminho, dados) => solicitar("/api/" + caminho, dados, "POST", "");
 export const cadastrarProduto = dados => solicitar("/rest/v1/produtos", dados);
 export const cadastrarOperador = dados => solicitar("/api/cadastrar-operador", dados, "POST", "");
 export const atualizarProduto = (empresa, id, dados) =>

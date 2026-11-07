@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { mercadoPago, pagamentoMercadoPagoRecebido, pixMercadoPagoRecebido } from "../lib/mercado-pago.mjs";
 import { bancoMercadoPagoTeste as banco } from "../lib/banco-mercado-pago-teste.mjs";
+import { conciliarOrdemPixFrente, referenciaPixFrente } from "../lib/pix-frente-caixa.mjs";
 
 export async function receberNotificacao(req, res, { segredo, token, sandbox }) {
   if (req.method !== "POST") return res.status(405).end();
@@ -46,6 +47,11 @@ export async function receberNotificacao(req, res, { segredo, token, sandbox }) 
     const ordem = await mercadoPago(token).consultarOrdem(id.toUpperCase());
     console.info(log, id, ordem.status, ordem.status_detail);
     const pedidoId = ordem.external_reference;
+    if (referenciaPixFrente(pedidoId)) {
+      if (ordem.id !== id.toUpperCase()) throw new Error("ID da ordem Pix divergente.");
+      await conciliarOrdemPixFrente(ordem, sandbox ? "sandbox" : "producao");
+      return res.status(200).end();
+    }
     const totalCentavos = Math.round(Number(ordem.total_amount) * 100);
     const dados = { pedidoId, totalCentavos };
     const credito = pagamentoMercadoPagoRecebido(ordem, dados, "credit_card");

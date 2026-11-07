@@ -49,6 +49,7 @@
 <p class="total"><span>Total</span><strong id="total"></strong></p>
 <form id="sale">
 <button id="abrir-pagamento-pdv" type="button">F3 · Forma de pagamento</button>
+<button id="retomar-pix-frente" type="button" class="secondary" hidden>Retomar Pix em aberto</button>
 <div id="pagamento-pdv" hidden>
 <div class="products" role="group" aria-label="Recebimento registrado no caixa">
 <button type="button" data-meio-pdv="Dinheiro" aria-pressed="false">1 · Dinheiro</button>
@@ -61,6 +62,17 @@
 <div id="dinheiro-frente" hidden>
 <label for="valor-recebido-frente">Valor recebido (R$)</label><input id="valor-recebido-frente" type="number" min="0" step="0.01" inputmode="decimal">
 <p class="frente-linha"><span>Troco</span><strong id="troco-frente"></strong></p>
+</div>
+<div id="pix-frente" hidden>
+  <div id="dados-pix-frente"><label for="email-pix-frente">E-mail do pagador</label><input id="email-pix-frente" type="email" maxlength="254" autocomplete="off" disabled></div>
+  <p id="status-pix-frente" role="status"></p>
+  <img id="qr-pix-frente" alt="QR Code para pagar esta venda via Pix" width="220" height="220" hidden>
+  <div id="copiar-pix-frente" hidden>
+    <label for="codigo-pix-frente">Pix copia e cola</label><input id="codigo-pix-frente" readonly disabled>
+    <button id="botao-copiar-pix-frente" type="button" class="secondary">Copiar código</button>
+  </div>
+  <button id="consultar-pix-frente" type="button" class="secondary" hidden>Consultar cobrança</button>
+  <button id="cancelar-pix-frente" type="button" class="secondary" hidden>Cancelar cobrança Pix</button>
 </div></div>
 <button id="finish">F4 ou Enter · Finalizar venda</button>
 </div>

@@ -26,7 +26,7 @@ Novas integrações serão adicionadas conforme a demanda das lojas e os meios o
 
 O acesso ao PDV terá entradas para **Administração** e **Vendas**. A escolha da tela não concede permissões. O servidor valida o perfil e o vínculo com o estabelecimento. Na Administração, o gestor mantém o catálogo, configura o nome exibido no PDV e cadastra caixas identificáveis, como Caixa 01 e Caixa 02, com os operadores autorizados. Em Vendas, o operador entra com a própria conta e abre um caixa autorizado. Cada turno registra o identificador do caixa e do operador. O operador de vendas tem acesso às ações de caixa e venda permitidas pelo seu perfil.
 
-O PDV deve permitir a sequência de teclado **F3 → 1 Dinheiro, 2 Pix ou 3 Cartão → F4**. Em dinheiro, o foco segue para o valor recebido. Em Pix e cartão, segue para finalizar.
+O PDV permite a sequência de teclado **F3 → 1 Dinheiro, 2 Pix ou 3 Cartão → F4**. Em dinheiro, o foco segue para o valor recebido. Em cartão na maquininha, segue para finalizar. No Pix automático, o operador informa o e-mail do pagador e gera o QR Code. A confirmação do Mercado Pago registra a venda e o movimento de caixa uma única vez.
 
 O gestor poderá conceder e revogar a permissão de desconto por operador e estabelecimento. Para aplicar um desconto, o operador autorizado confirma a própria senha no PDV. A autorização vale para aquela venda, com registro do operador e do valor concedido. As demais permissões do perfil permanecem separadas.
 
@@ -72,4 +72,6 @@ A primeira entrega local usa a logo fornecida e aproxima a tipografia com uma fo
 
 O PDV permite acrescentar produtos a comandas de mesa já entregues e ainda sem recebimento ou cobrança online. O catálogo permite ocultar produtos do cardápio público e definir se os adicionais precisam de cozinha. Itens de balcão sem preparo entram no mesmo total e podem ser recebidos imediatamente. Os que exigem preparo geram um lote próprio no KDS, com somente as novas quantidades. O recebimento fica bloqueado até a entrega dos lotes. Preços originais são preservados, o servidor calcula os totais e a repetição de uma solicitação não duplica itens nem recebimentos.
 
-Validação transacional com rollback em tests/adicionais-comanda.sql cobre visibilidade pública, preço histórico, repetição, lote de cozinha, item sem preparo, bloqueio de recebimento antecipado, comanda paga e acesso sem vínculo. A inclusão durante o preparo original, adicionais após pagamento com cobrança vinculada e cancelamento com motivo permanecem etapas seguintes. Pix presencial automático também permanece pendente.
+Validação transacional com rollback em tests/adicionais-comanda.sql cobre visibilidade pública, preço histórico, repetição, lote de cozinha, item sem preparo, bloqueio de recebimento antecipado, comanda paga e acesso sem vínculo. Adicionais após pagamento com cobrança vinculada permanecem uma etapa futura.
+
+O Pix automático do Quiosque cobre vendas de balcão e comandas de mesa entregues. O caixa pode retomar uma cobrança aberta após entrar novamente. Uma nova cobrança pode ser gerada após o Mercado Pago confirmar o cancelamento ou a expiração da anterior. A validação incluiu confirmação de balcão e comanda no Sandbox e emissão, retomada e cancelamento de um QR de produção. O primeiro recebimento real no PDV permanece por validar.

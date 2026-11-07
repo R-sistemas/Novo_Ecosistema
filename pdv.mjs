@@ -7,6 +7,7 @@ import { otimizarImagem } from "./imagens-cardapio.mjs";
 import { abrirAdmin, modalAdminAtivo } from "./administracao.mjs";
 import { configurarPesagem, detalhePesagem } from "./pesagem.mjs";
 import { configurarCancelamentos } from "./cancelar-comanda.mjs";
+import { configurarPixPdv } from "./pix-pdv.mjs";
 
 let produtos = [];
 let usuario;
@@ -23,6 +24,7 @@ let consultaComandas = 0;
 let ultimaListaComandas;
 let comandaAberta;
 let adicionalPendente;
+let ambientePixFrente;
 const estado = { sessao: null, fechamentos: [] };
 const carrinho = new Map();
 const meios = { Dinheiro: "dinheiro", Pix: "pix", "Cartão": "cartao" };
@@ -35,13 +37,44 @@ const opcoesPagamento = [...document.querySelectorAll("[data-meio-pdv]")];
 const reais = centavos => new Intl.NumberFormat("pt-BR", {
   style: "currency", currency: "BRL"
 }).format(centavos / 100);
+const pixFrente = configurarPixPdv({
+  caixa: () => estado.sessao?.id,
+  atualizar: (ativo, resultado) => {
+    if (ativo) {
+      abrirPagamento();
+      meioSelecionado = "Pix";
+      el("titulo-pagamento-frente").textContent = "Pix automático";
+      el("orientacao-frente").textContent = "A venda será registrada quando o Mercado Pago confirmar.";
+      el("dinheiro-frente").hidden = true;
+      el("detalhe-pagamento-frente").hidden = false;
+    }
+    if (resultado?.itens && !resultado.pedido && !carrinho.size) {
+      for (const item of resultado.itens) {
+        const produto = produtos.find(p => p.id === item.produto_id);
+        if (produto) carrinho.set(produto.codigo, item.quantidade);
+      }
+      if (resultado.desconto) el("valor-desconto").value = resultado.desconto / 100;
+    }
+    renderizar();
+  },
+  recebido: async resultado => {
+    comandaAberta = undefined;
+    carrinho.clear();
+    limparPagamento();
+    renderizar();
+    el("notice").textContent = "Pix confirmado · " + reais(resultado.valor);
+    await atualizar();
+    void carregarComandas();
+    void carregarCozinha();
+  }
+});
 const precoAdicional = produto => comandaAberta?.itens.find(i => i.produto_id === produto.id && !i.pesagem)?.preco_centavos ?? produto.preco;
-const subtotal = () => (comandaAberta?.total_centavos ?? 0) + produtos.reduce((soma, produto) =>
+const subtotal = () => pixFrente.atual()?.itens ? pixFrente.atual().valor + pixFrente.atual().desconto : (comandaAberta?.total_centavos ?? 0) + produtos.reduce((soma, produto) =>
   soma + precoAdicional(produto) * (carrinho.get(produto.codigo) ?? 0), 0);
 const desconto = () => !comandaAberta && empresasGerenciadas.has(el("empresa").value)
   ? Math.round((el("valor-desconto").valueAsNumber || 0) * 100) : 0;
-const total = () => subtotal() - desconto();
-const temItens = () => Boolean(comandaAberta || carrinho.size);
+const total = () => pixFrente.atual()?.valor ?? subtotal() - desconto();
+const temItens = () => Boolean(comandaAberta || carrinho.size || pixFrente.atual());
 
 function botao(texto, acao, secundario = false) {
   const elemento = document.createElement("button");
@@ -57,18 +90,20 @@ async function atualizar() {
   const administracao = area === "administracao";
   const terminalAnterior = el("terminal-pdv").value;
   el("configuracao-entrega").hidden = true;
-  const [catalogo, caixas, configuracao, caixasDisponiveis] = await Promise.all([
+  const [catalogo, caixas, configuracao, caixasDisponiveis, pixDisponivel] = await Promise.all([
     listar("produtos?ativo=eq.true&empresa_id=eq." + empresa + "&order=nome" +
       (administracao ? "" : "&select=id,codigo,nome,preco_centavos,categoria,vendido_por_peso")),
     administracao ? [] : listar("caixas?empresa_id=eq." + empresa + "&operador_id=eq." + usuario + "&order=aberto_em.desc&limit=1"),
     listar("empresas?select=nome,nome_pdv,pagamento_na_entrega" +
       (administracao ? ",cardapio_cor,cardapio_fundo,cardapio_logo,cardapio_agradecimento" : "") + "&id=eq." + empresa),
     administracao ? executar("listar_terminais_gestor", { p_empresa: empresa })
-      : listar("terminais_pdv?select=id,nome&empresa_id=eq." + empresa + "&operador_id=eq." + usuario + "&order=nome")
+      : listar("terminais_pdv?select=id,nome&empresa_id=eq." + empresa + "&operador_id=eq." + usuario + "&order=nome"),
+    administracao ? null : executar("pix_frente_disponivel", { p_empresa: empresa })
   ]);
   const nomePdv = configuracao[0].nome_pdv ?? configuracao[0].nome;
   el("nome-pdv-exibido").textContent = nomePdv;
   terminais = caixasDisponiveis;
+  ambientePixFrente = pixDisponivel;
   if (administracao) {
     const config = configuracao[0];
     el("admin-nome-loja").textContent = config.nome;
@@ -109,6 +144,7 @@ async function atualizar() {
     esperado: saldo(sessao), contado: Number(caixa.contado_centavos), movimentos
   }] : [];
   renderizar();
+  if (estado.sessao) await pixFrente.recuperar().catch(erro => { el("notice").textContent = erro.message; });
 }
 
 async function operar(acao, fecharModal = false) {
@@ -260,7 +296,7 @@ function renderizarProdutos() {
   if (!grupos.size) el("products").textContent = "Nenhum produto encontrado.";
 }
 function adicionarProduto(produto) {
-  if (vendaPendente || adicionalPendente || comandaAberta?.ajuste_pendente) return;
+  if (vendaPendente || adicionalPendente || pixFrente.atual() || comandaAberta?.ajuste_pendente || comandaAberta?.pix_presencial_pendente) return;
   if (produto.vendido_por_peso) {
     abrirPesagem(produto);
     return;
@@ -278,7 +314,7 @@ function adicionarProduto(produto) {
 }
 
 function abrirPesagem(produto) {
-  if (!estado.sessao || !comandaAberta || comandaAberta.ajuste_pendente) {
+  if (!estado.sessao || !comandaAberta || comandaAberta.ajuste_pendente || comandaAberta.pix_presencial_pendente || pixFrente.atual()) {
     el("notice").textContent = "Abra o caixa e uma comanda de mesa para lançar este produto.";
     return;
   }
@@ -333,21 +369,28 @@ function renderizar() {
   el("mesa-frente").textContent = comandaAberta?.mesa ?? "Balcão";
   el("cliente-frente").textContent = comandaAberta?.cliente ?? "Consumidor";
   el("comanda-frente").textContent = comandaAberta?.comanda ?? "—";
-  el("status-ajuste-frente").hidden = !comandaAberta?.ajuste_pendente;
-  el("status-ajuste-frente").textContent = comandaAberta?.cancelamento_pendente ? "Cancelamento aguardando o gestor" : "Aguardando resolução de ajuste";
+  const pixAtivo = pixFrente.atual();
+  el("retomar-pix-frente").hidden = !sessao || !ambientePixFrente || Boolean(pixAtivo);
+  const outroPix = comandaAberta?.pix_presencial_pendente && !pixAtivo;
+  el("status-ajuste-frente").hidden = !comandaAberta?.ajuste_pendente && !outroPix;
+  el("status-ajuste-frente").textContent = outroPix ? "Comanda com cobrança Pix em aberto" :
+    comandaAberta?.cancelamento_pendente ? "Cancelamento aguardando o gestor" : "Aguardando resolução de ajuste";
   el("titulo-venda-frente").textContent = comandaAberta ? "Itens da comanda" : "Itens da venda";
   el("voltar-balcao").hidden = !comandaAberta;
-  const ajustePendente = comandaAberta?.ajuste_pendente;
-  el("search").disabled = Boolean(adicionalPendente || ajustePendente);
-  el("quantidade-frente").disabled = Boolean(adicionalPendente || ajustePendente);
-  el("abrir-produtos").disabled = Boolean(adicionalPendente || vendaPendente || ajustePendente);
+  const ajustePendente = comandaAberta?.ajuste_pendente || outroPix;
+  el("empresa").disabled = Boolean(pixAtivo);
+  el("abrir-comandas").disabled = el("voltar-balcao").disabled = el("abrir-cancelamentos-caixa").disabled = Boolean(pixAtivo);
+  el("search").disabled = Boolean(adicionalPendente || ajustePendente || pixAtivo);
+  el("quantidade-frente").disabled = Boolean(adicionalPendente || ajustePendente || pixAtivo);
+  el("abrir-produtos").disabled = Boolean(adicionalPendente || vendaPendente || ajustePendente || pixAtivo);
   el("desconto-frente").hidden = Boolean(comandaAberta) || !empresasGerenciadas.has(el("empresa").value);
-  el("valor-desconto").disabled = Boolean(vendaPendente);
+  el("valor-desconto").disabled = Boolean(vendaPendente || pixAtivo);
   el("cart-vazio").hidden = temItens();
-  const itens = [...(comandaAberta ? comandaAberta.itens.map(item => ({
+  const itensBase = pixAtivo?.itens ?? comandaAberta?.itens ?? [];
+  const itens = [...itensBase.map(item => ({
     ...item, codigo: produtos.find(p => p.id === item.produto_id)?.codigo ?? "—",
     preco: item.preco_centavos, original: true
-  })) : []), ...produtos.filter(p => carrinho.has(p.codigo)).map(p => ({ ...p, preco: precoAdicional(p), nome: comandaAberta ? "Adicional · " + p.nome : p.nome, quantidade: carrinho.get(p.codigo) }))];
+  })), ...produtos.filter(p => !pixAtivo?.itens && carrinho.has(p.codigo)).map(p => ({ ...p, preco: precoAdicional(p), nome: comandaAberta ? "Adicional · " + p.nome : p.nome, quantidade: carrinho.get(p.codigo) }))];
   el("cart").replaceChildren(...itens.map(produto => {
     const { quantidade } = produto;
     const linha = document.createElement("tr");
@@ -358,12 +401,12 @@ function renderizar() {
     }
     const acoes = linha.insertCell();
     if (produto.original) {
-      if (produto.pesagem && estado.sessao && !ajustePendente) acoes.append(botao("Retirar", () => abrirPesagem(produto), true));
+      if (produto.pesagem && estado.sessao && !ajustePendente && !pixAtivo) acoes.append(botao("Retirar", () => abrirPesagem(produto), true));
       else acoes.textContent = "—";
       return linha;
     }
     const remover = botao("−", () => {
-      if (vendaPendente || adicionalPendente) return;
+      if (vendaPendente || adicionalPendente || pixFrente.atual()) return;
       if (quantidade === 1) carrinho.delete(produto.codigo);
       else carrinho.set(produto.codigo, quantidade - 1);
       renderizar();
@@ -373,10 +416,10 @@ function renderizar() {
     return linha;
   }));
   el("salvar-adicionais").hidden = !comandaAberta || !carrinho.size;
-  el("salvar-adicionais").disabled = !estado.sessao || Boolean(ajustePendente);
+  el("salvar-adicionais").disabled = !estado.sessao || Boolean(ajustePendente || pixAtivo);
   el("salvar-adicionais").textContent = adicionalPendente ? "Tentar envio dos adicionais novamente" : "Enviar adicionais da comanda";
   atualizarTotalFrente();
-  for (const opcao of opcoesPagamento) opcao.disabled = Boolean(vendaPendente);
+  for (const opcao of opcoesPagamento) opcao.disabled = Boolean(vendaPendente || pixAtivo);
   const ultimo = estado.fechamentos.at(-1);
   el("closing").textContent = ultimo ? "Último fechamento · esperado " + reais(ultimo.esperado) +
     " · contado " + reais(ultimo.contado) + " · diferença " + reais(ultimo.contado - ultimo.esperado) : "";
@@ -396,8 +439,10 @@ function atualizarTotalFrente() {
   const recebido = el("valor-recebido-frente").valueAsNumber;
   const recebidoCentavos = Math.round(recebido * 100);
   el("troco-frente").textContent = reais(Number.isFinite(recebidoCentavos) ? Math.max(0, recebidoCentavos - total()) : 0);
-  const comandaBloqueada = comandaAberta && (carrinho.size || comandaAberta.adicionais_pendentes || comandaAberta.ajuste_pendente);
-  el("finish").disabled = !estado.sessao || Boolean(comandaBloqueada) || !temItens() || !meioSelecionado || total() <= 0 || desconto() < 0 ||
+  const comandaBloqueada = comandaAberta && (carrinho.size || comandaAberta.adicionais_pendentes || comandaAberta.ajuste_pendente || comandaAberta.pix_presencial_pendente);
+  el("finish").textContent = meioSelecionado === "Pix" && ambientePixFrente ? "F4 ou Enter · Gerar QR Code" : "F4 ou Enter · Finalizar venda";
+  el("finish").hidden = Boolean(pixFrente.atual());
+  el("finish").disabled = !estado.sessao || Boolean(comandaBloqueada || pixFrente.atual()) || !temItens() || !meioSelecionado || total() <= 0 || desconto() < 0 ||
     (meioSelecionado === "Dinheiro" && Number.isFinite(recebidoCentavos) && recebidoCentavos < total());
 }
 el("valor-desconto").oninput = atualizarTotalFrente;
@@ -744,9 +789,12 @@ function abrirPagamento() {
   (vendaPendente ? el("finish") : opcoesPagamento[0]).focus();
 }
 function selecionarPagamento(opcao) {
-  if (vendaPendente) return;
+  if (vendaPendente || pixFrente.atual()) return;
   meioSelecionado = opcao.dataset.meioPdv;
-  el("titulo-pagamento-frente").textContent = meioSelecionado === "Pix" ? "Pix · Conferência no caixa"
+  const pixAutomatico = meioSelecionado === "Pix" && ambientePixFrente;
+  if (pixAutomatico) pixFrente.selecionar(ambientePixFrente === "sandbox");
+  else pixFrente.ocultar();
+  el("titulo-pagamento-frente").textContent = meioSelecionado === "Pix" ? (pixAutomatico ? "Pix automático" : "Pix · Conferência no caixa")
     : meioSelecionado === "Cartão" ? "Cartão · Maquininha" : "Dinheiro · Recebimento";
   el("dinheiro-frente").hidden = meioSelecionado !== "Dinheiro";
   el("detalhe-pagamento-frente").hidden = false;
@@ -754,13 +802,14 @@ function selecionarPagamento(opcao) {
     item.setAttribute("aria-pressed", String(item === opcao));
     item.classList.toggle("secondary", item !== opcao);
   }
-  el("orientacao-frente").textContent = meioSelecionado === "Pix" ? "Confirme o Pix recebido antes de registrar."
+  el("orientacao-frente").textContent = meioSelecionado === "Pix" ? (pixAutomatico ? "Gere o QR Code para o cliente pagar." : "Confirme o Pix recebido antes de registrar.")
     : meioSelecionado === "Cartão" ? "Confirme a aprovação na maquininha antes de registrar."
     : "Confira o dinheiro recebido antes de registrar.";
   atualizarTotalFrente();
-  el(meioSelecionado === "Dinheiro" ? "valor-recebido-frente" : "finish").focus();
+  el(meioSelecionado === "Dinheiro" ? "valor-recebido-frente" : pixAutomatico && ambientePixFrente !== "sandbox" ? "email-pix-frente" : "finish").focus();
 }
 function limparPagamento() {
+  pixFrente.ocultar();
   meioSelecionado = undefined;
   for (const opcao of opcoesPagamento) {
     opcao.setAttribute("aria-pressed", "false");
@@ -774,6 +823,10 @@ function limparPagamento() {
   el("detalhe-pagamento-frente").hidden = true;
 }
 el("abrir-pagamento-pdv").onclick = abrirPagamento;
+el("retomar-pix-frente").onclick = () => operar(async () => {
+  const retomado = await pixFrente.recuperar(true);
+  return retomado ? "" : "Nenhum Pix em aberto neste caixa.";
+});
 for (const opcao of opcoesPagamento) opcao.onclick = () => selecionarPagamento(opcao);
 document.addEventListener("keydown", evento => {
   if (area !== "vendas" || el("operacao").hidden || el("dialogo-comandas").open || el("dialogo-produtos").open ||
@@ -783,7 +836,7 @@ document.addEventListener("keydown", evento => {
     evento.preventDefault();
     abrirPagamento();
   } else if (/^[123]$/.test(evento.key) && el("pagamento-pdv").contains(document.activeElement) &&
-      document.activeElement !== el("valor-recebido-frente")) {
+      !document.activeElement.matches("input")) {
     evento.preventDefault();
     selecionarPagamento(opcoesPagamento[Number(evento.key) - 1]);
   } else if (evento.key === "F4" && !el("pagamento-pdv").hidden) {
@@ -803,6 +856,13 @@ document.addEventListener("keydown", evento => {
 el("sale").addEventListener("submit", evento => {
   evento.preventDefault();
   if (el("finish").disabled) return;
+  if (meioSelecionado === "Pix" && ambientePixFrente) {
+    void pixFrente.iniciar({ p_caixa: estado.sessao.id, p_pedido: comandaAberta?.id ?? null,
+      p_total: total(), p_desconto: desconto(), p_itens: produtos.filter(p => carrinho.has(p.codigo)).map(p => ({
+        produto_id: p.id, quantidade: carrinho.get(p.codigo)
+      })) }, ambientePixFrente === "sandbox");
+    return;
+  }
   if (comandaAberta) {
     void receberPedido(comandaAberta.id, meioSelecionado, comandaAberta.total_centavos);
     return;
