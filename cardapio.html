@@ -6,13 +6,25 @@
 <meta name="supabase-key" content="sb_publishable_s0oowaHaCZkMUZgNTo6upw_zljF76Na">
 <title>Cardápio | R Sistemas</title>
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="cardapio.css">
 <script type="module" src="cardapio.mjs"></script>
 </head>
 <body>
-<main>
-<h1 id="loja">Cardápio</h1>
+<header><div class="limite cabecalho">
+  <span class="marca" id="marca-loja" aria-hidden="true"></span>
+  <div><strong id="loja" class="loja">Cardápio</strong><br><small>Cardápio digital</small></div>
+  <span class="selo" id="contexto-cardapio" hidden></span>
+</div></header>
+<main class="limite">
+<section id="vitrine" hidden>
+  <label class="busca"><input id="busca-cardapio" type="search" aria-label="Buscar produto" placeholder="Busque seu produto favorito"></label>
+  <section id="secao-destaques" hidden><h2>Queridinhos</h2><div id="destaques" class="faixa" tabindex="0" aria-label="Queridinhos" role="region"></div></section>
+  <section id="catalogo"><h2 class="catalogo-titulo">Cardápio</h2><div id="categorias" class="categorias" aria-label="Categorias"></div><div id="produtos" class="itens"></div></section>
+</section>
+<dialog id="carrinho-cardapio" aria-labelledby="titulo-carrinho">
+<div class="linha"><h2 id="titulo-carrinho">Seu pedido</h2><button class="secundario" id="fechar-carrinho" type="button">Voltar</button></div>
 <form class="panel" id="pedido" hidden>
-  <div id="produtos"></div>
+  <div id="itens-carrinho"></div>
   <p id="total"></p>
   <label for="cliente">Seu nome</label>
   <input id="cliente" maxlength="100" required>
@@ -42,15 +54,30 @@
   <label id="dados-email-pix" hidden>E-mail para o Pix do Mercado Pago
     <input id="email-pix" type="email" maxlength="254" autocomplete="email">
   </label>
-  <button>Enviar pedido</button>
+  <p class="passo" id="passo-pedido">Próximo passo · Confira como deseja pagar</p>
+  <button class="primario largura" id="enviar-pedido">Confirmar pedido</button>
+  <p id="erro-pedido" role="status"></p>
 </form>
+</dialog>
+<dialog id="detalhe" aria-labelledby="detalhe-nome">
+  <div class="linha"><h2 id="detalhe-nome"></h2><button class="secundario" id="fechar-detalhe" type="button">Voltar</button></div>
+  <div id="detalhe-foto" class="detail-foto"></div>
+  <strong id="detalhe-preco"></strong><p id="detalhe-descricao"></p><p id="detalhe-composicao"></p>
+  <div class="linha"><span>Quantidade</span><div class="quantidade">
+    <button class="secundario" id="detalhe-menos" type="button" aria-label="Diminuir quantidade">−</button>
+    <strong id="detalhe-quantidade" aria-live="polite">1</strong>
+    <button class="secundario" id="detalhe-mais" type="button" aria-label="Aumentar quantidade">+</button>
+  </div></div>
+  <button class="primario largura" id="detalhe-adicionar" type="button">Adicionar ao pedido</button>
+</dialog>
 <section id="pagamento-pix" class="panel" hidden>
   <h2 id="titulo-pix">Pix</h2>
   <img id="qr-pix" width="220" height="220" alt="QR Code Pix">
   <label for="pix-codigo">Pix copia e cola</label>
   <input id="pix-codigo" readonly>
 </section>
-<p id="mensagem" role="status"></p>
+<img id="arte-agradecimento" class="agradecimento" alt="Obrigado pelo pedido" hidden>
+<p id="mensagem" class="status painel-status" role="status"></p>
 <button id="acompanhar" hidden>Atualizar andamento</button>
 <section id="painel-credito-teste" hidden>
   <h2 id="titulo-credito">Crédito de homologação</h2>
@@ -64,5 +91,10 @@
   <p id="status-credito-teste" role="status" tabindex="-1"></p>
 </section>
 </main>
+<nav id="barra-cardapio" hidden aria-label="Navegação do cardápio"><div class="limite barra">
+  <button class="secundario" id="inicio-cardapio" type="button">Início</button>
+  <button class="secundario" id="categorias-cardapio" type="button">Categorias</button>
+  <button class="primario" id="ver-pedido" type="button"><span>Ver pedido <span id="contador"></span><small class="guia-texto" id="guia-carrinho" hidden>Próximo passo</small></span><strong id="total-barra"></strong></button>
+</div></nav>
 </body>
 </html>

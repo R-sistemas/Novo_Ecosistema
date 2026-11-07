@@ -1,4 +1,6 @@
 import { executar } from "./supabase-pdv.mjs";
+import { aplicarTema } from "./tema-cardapio.mjs";
+import { montarVitrine } from "./vitrine-cardapio.mjs";
 
 const el = id => document.getElementById(id);
 const parametros = new URLSearchParams(location.search);
@@ -10,6 +12,7 @@ let p_id = parametros.get("pedido");
 let tentativa;
 let ocupado = false;
 let aguardandoPix = false;
+let acompanhamentoAtivo = false;
 const pixTeste = p_slug === "loja-teste";
 const creditoTeste = pixTeste && parametros.get("cartao") === "credito";
 const entregaTeste = pixTeste && !p_mesa && !creditoTeste && parametros.get("entrega") === "teste";
@@ -27,7 +30,7 @@ async function executarComFeedback(acao) {
   try {
     await acao();
   } catch (erro) {
-    el("mensagem").textContent = erro.message;
+    el(el("carrinho-cardapio").open ? "erro-pedido" : "mensagem").textContent = erro.message;
   } finally {
     ocupado = false;
   }
@@ -37,6 +40,8 @@ async function acompanhar() {
   const pedido = await executar("acompanhar_pedido", { p_slug, p_id });
   if (!pedido) throw new Error("Pedido indisponível.");
   aguardandoPix = (pedido.pix_sandbox || pedido.pix_producao) && !pedido.pix_confirmado;
+  acompanhamentoAtivo = aguardandoPix || !["entregue", "recusado"].includes(pedido.estado) ||
+    Boolean(pedido.mesa && !pedido.pago && pedido.estado !== "recusado");
   el("mensagem").textContent = (aguardandoPix ? (creditoTeste ? "Aguardando confirmação do crédito de teste"
     : creditoQuiosque ? "Aguardando confirmação do cartão"
     : pixTeste ? "Aguardando Pix Sandbox" : "Aguardando pagamento Pix") : estados[pedido.estado]) +
@@ -46,6 +51,8 @@ async function acompanhar() {
       (pedido.pago ? " · Pago" : aguardandoPix || pedido.estado === "recusado" ? "" : " · Pagar no caixa");
   }
   if (!aguardandoPix) el("pagamento-pix").hidden = true;
+  const arte = el("arte-agradecimento");
+  arte.hidden = !arte.getAttribute("src") || aguardandoPix || pedido.estado === "recusado";
   return aguardandoPix;
 }
 
@@ -73,35 +80,30 @@ el("acompanhar").onclick = () => executarComFeedback(acompanhar);
 
 executarComFeedback(async () => {
   if (!p_slug) throw new Error("Abra o link do cardápio do estabelecimento.");
+  const menu = await executar("ver_cardapio", { p_slug });
+  if (!menu) throw new Error("Cardápio indisponível.");
+  el("loja").textContent = menu.nome;
+  aplicarTema(document.documentElement, menu.cor, menu.fundo);
+  const marca = el("marca-loja");
+  marca.textContent = menu.nome.split(/\s+/).slice(0, 2).map(p => p[0]).join("").toUpperCase();
+  if (menu.logo) {
+    const logo = document.createElement("img");
+    logo.src = menu.logo;
+    logo.alt = "";
+    marca.replaceChildren(logo);
+  }
+  if (menu.agradecimento) el("arte-agradecimento").src = menu.agradecimento;
+  if (p_mesa || entrega) {
+    el("contexto-cardapio").textContent = p_mesa ? "Pedido na mesa" : "Entrega";
+    el("contexto-cardapio").hidden = false;
+  }
   if (p_id) {
     el("acompanhar").hidden = false;
     if (await acompanhar() && !creditoTeste && !creditoQuiosque) await mostrarPix({ p_slug, p_id, p_itens: [] });
     return;
   }
-  const menu = await executar("ver_cardapio", { p_slug });
-  if (!menu) throw new Error("Cardápio indisponível.");
-  el("loja").textContent = menu.nome;
   if (!menu.produtos.length) throw new Error("Nenhum produto disponível.");
-
-  const campos = menu.produtos.map(produto => {
-    const rotulo = document.createElement("label");
-    const campo = document.createElement("input");
-    campo.type = "number";
-    campo.min = "0";
-    campo.max = "100";
-    campo.value = "0";
-    rotulo.append(produto.nome + " · " + moeda.format(produto.preco_centavos / 100), campo);
-    el("produtos").append(rotulo);
-    return { produto, campo };
-  });
-  const totalizar = () => {
-    const total = campos.reduce((soma, { produto, campo }) =>
-      soma + produto.preco_centavos * (campo.valueAsNumber || 0), 0);
-    el("total").textContent = "Total · " + moeda.format(total / 100);
-  };
-  el("pedido").addEventListener("input", totalizar);
-  totalizar();
-  el("pedido").hidden = false;
+  const carrinho = montarVitrine(menu.produtos);
   if (p_slug === "quiosque-dorafa") {
     pixDisponivel = await executar("pix_online_disponivel", { p_slug }).catch(() => false);
   }
@@ -143,12 +145,25 @@ executarComFeedback(async () => {
     el("pagamento-entrega").onchange = el("pix-sandbox").onchange;
     el("pagamento-entrega").onchange();
   }
+  el("pedido").hidden = false;
+  el("vitrine").hidden = false;
+  el("barra-cardapio").hidden = false;
+  function fecharCompra() {
+    el("carrinho-cardapio").close();
+    el("vitrine").hidden = true;
+    el("barra-cardapio").hidden = true;
+    window.scrollTo(0, 0);
+  }
+  el("pedido").addEventListener("change", evento => {
+    if (!evento.target.matches("fieldset input[type=radio], #pagamento-entrega, #pix-sandbox")) return;
+    el("passo-pedido").textContent = "Próximo passo · Confirme seu pedido";
+    el("enviar-pedido").classList.add("guiado");
+  });
   el("pedido").onsubmit = evento => {
     evento.preventDefault();
     executarComFeedback(async () => {
-      const p_itens = campos.filter(({ campo }) => campo.valueAsNumber > 0).map(({ produto, campo }) => ({
-        produto_id: produto.id, quantidade: campo.valueAsNumber
-      }));
+      el("erro-pedido").textContent = "";
+      const p_itens = carrinho.itens();
       if (!p_itens.length) throw new Error("Escolha pelo menos um produto.");
       const p_cliente = el("cliente").value.trim();
       if (creditoTeste || creditoQuiosque) {
@@ -156,8 +171,7 @@ executarComFeedback(async () => {
           el("titulo-credito").textContent = "Cartão de crédito";
           el("aviso-credito").textContent = "Piloto do Quiosque Do’Rafa";
         }
-        const totalCentavos = campos.reduce((soma, { produto, campo }) =>
-          soma + produto.preco_centavos * (campo.valueAsNumber || 0), 0);
+        const totalCentavos = carrinho.total();
         const { abrirCreditoTeste } = await import("./credito-teste.mjs");
         await abrirCreditoTeste({
           totalCentavos, pedido: { p_slug, p_mesa, p_itens, p_cliente, p_id: crypto.randomUUID() }
@@ -169,6 +183,7 @@ executarComFeedback(async () => {
           await acompanhar();
         }, creditoQuiosque);
         el("pedido").hidden = true;
+        fecharCompra();
         return;
       }
       const pagamento = entrega ? el("pagamento-entrega").value : undefined;
@@ -204,6 +219,7 @@ executarComFeedback(async () => {
         parametros.delete("mesa");
         history.replaceState(null, "", "?" + parametros);
         el("pedido").hidden = true;
+        fecharCompra();
         el("acompanhar").hidden = false;
         await acompanhar();
       } finally {
@@ -214,7 +230,7 @@ executarComFeedback(async () => {
 });
 
 setInterval(() => {
-  if (p_id && aguardandoPix && !document.hidden) {
+  if (p_id && acompanhamentoAtivo && !document.hidden) {
     void executarComFeedback(acompanhar);
   }
 }, 5000);

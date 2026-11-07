@@ -52,5 +52,5 @@ export const listar = consulta => solicitar("/rest/v1/" + consulta);
 export const executar = (nome, dados) => solicitar("/rest/v1/rpc/" + nome, dados);
 export const cadastrarProduto = dados => solicitar("/rest/v1/produtos", dados);
 export const cadastrarOperador = dados => solicitar("/api/cadastrar-operador", dados, "POST", "");
-export const desativarProduto = (empresa, id) =>
-  solicitar("/rest/v1/produtos?empresa_id=eq." + empresa + "&id=eq." + id, { ativo: false }, "PATCH");
+export const atualizarProduto = (empresa, id, dados) =>
+  solicitar("/rest/v1/produtos?empresa_id=eq." + empresa + "&id=eq." + id, dados, "PATCH");

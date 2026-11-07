@@ -52,6 +52,23 @@
 </section>
 </div>
 <section id="area-administracao" hidden>
+<form id="aparencia-cardapio" class="panel">
+<h2>Aparência do cardápio</h2>
+<label for="cor-cardapio">Cor dos botões</label><input id="cor-cardapio" type="color" value="#175d2d">
+<label for="fundo-cardapio">Fundo</label><select id="fundo-cardapio">
+<option value="#f4f6f2">Padrão</option><option value="#ffffff">Branco</option>
+<option value="#f1f3f5">Cinza claro</option><option value="#f8f4eb">Bege suave</option></select>
+<label for="logo-cardapio">Logo da loja</label><input id="logo-cardapio" type="file" accept="image/png,image/jpeg,image/webp">
+<label for="agradecimento-cardapio">Imagem de agradecimento</label><input id="agradecimento-cardapio" type="file" accept="image/png,image/jpeg,image/webp">
+<div id="previa-aparencia" class="panel" style="background:var(--fundo,#f4f6f2)">
+<img id="previa-logo" alt="Logo da loja" width="60" height="60" style="object-fit:contain" hidden>
+<strong id="previa-nome"></strong>
+<button type="button" style="background:var(--verde,#175d2d);color:var(--texto-botao,#fff);border-color:var(--verde,#175d2d)">Ver pedido</button>
+<img id="previa-agradecimento" alt="Arte de agradecimento" style="display:block;max-width:180px;margin-top:8px" hidden>
+</div>
+<button type="button" class="secondary" id="restaurar-aparencia">Restaurar padrão</button>
+<button>Salvar aparência</button>
+</form>
 <form id="configurar-mesa" class="panel">
 <h2>Link do cardápio da mesa</h2>
 <label for="numero-mesa">Número da mesa</label><input id="numero-mesa" type="number" min="1" max="999" step="1" required>
@@ -82,7 +99,13 @@
 <label for="produto-codigo">Código</label><input id="produto-codigo" maxlength="32" required>
 <label for="produto-nome">Nome</label><input id="produto-nome" maxlength="100" required>
 <label for="produto-preco">Preço (R$)</label><input id="produto-preco" type="number" min="0.01" step="0.01" required>
+<label for="produto-categoria">Categoria</label><input id="produto-categoria" maxlength="60">
+<label for="produto-descricao">Descrição</label><input id="produto-descricao" maxlength="500">
+<label for="produto-composicao">Composição</label><input id="produto-composicao" maxlength="500">
+<label for="produto-foto">Foto do produto</label><input id="produto-foto" type="file" accept="image/png,image/jpeg,image/webp">
+<label><input id="produto-queridinho" type="checkbox" style="width:auto"> Exibir nos Queridinhos</label>
 <button>Salvar produto</button>
+<button id="cancelar-produto" class="secondary" type="button">Limpar edição</button>
 </form>
 <section class="panel"><h2>Produtos ativos</h2><ul id="catalogo-gestor"></ul></section>
 <form id="configuracao-entrega" class="panel" hidden>

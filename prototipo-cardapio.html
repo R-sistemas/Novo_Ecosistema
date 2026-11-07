@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#175d2d">
+<title>Quiosque Do’Rafa | Protótipo do cardápio</title>
+<style>
+:root{--verde:#175d2d;--escuro:#142c1c;--fundo:#f4f6f2;--borda:#dce5dc;--texto:#202b22;--suave:#526258}
+*{box-sizing:border-box}body{margin:0;background:var(--fundo);color:var(--texto);font:15px/1.45 system-ui,sans-serif}button,input{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible{outline:3px solid #7cb989;outline-offset:2px}button:disabled{opacity:.5;cursor:default}[hidden]{display:none!important}
+.limite{width:min(100% - 32px,760px);margin-inline:auto}header{background:#fff;border-bottom:1px solid var(--borda)}.cabecalho{display:flex;align-items:center;gap:12px;padding-block:12px}.marca{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:#e5f0e6;color:var(--verde);font-weight:850}.loja{font-size:1rem;font-weight:800}.muted,small{color:var(--suave)}.selo{margin-left:auto;color:var(--verde);background:#e5f0e6;padding:5px 9px;border-radius:20px;font-size:.78rem;font-weight:750;white-space:nowrap}
+main{padding-block:16px calc(95px + env(safe-area-inset-bottom))}.busca{display:block;margin-bottom:14px}.busca input,.campo input{width:100%;background:#fff;border:1px solid var(--borda);border-radius:12px;padding:12px 14px;color:inherit}.hero{border-radius:20px;background:var(--escuro);color:#fff;min-height:168px;position:relative;overflow:hidden;display:flex;align-items:center}.hero img{position:absolute;inset:0 0 0 auto;width:56%;height:100%;object-fit:cover}.hero:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,var(--escuro) 40%,transparent 95%)}.hero div{position:relative;z-index:1;padding:20px;max-width:72%}.hero h1{font-size:clamp(1.4rem,5vw,2.1rem);line-height:1.08;margin:5px 0}.hero p{margin:0;color:#e4f3e7;font-size:.85rem}
+h2{font-size:1.16rem;margin:20px 0 10px}.destaques{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.destaque,.item{background:#fff;border:1px solid var(--borda);border-radius:14px;overflow:hidden}.destaque{padding:0;text-align:left;color:inherit}.destaque img{display:block;width:100%;height:112px;object-fit:cover}.destaque span{display:block;padding:9px 11px;font-weight:750}.destaque small{display:block;font-weight:650;margin-top:3px}
+.categorias{display:flex;gap:8px;overflow:auto;padding:2px 0 6px}.categorias button,.secundario{background:#fff;border:1px solid var(--borda);border-radius:10px;color:var(--verde);padding:8px 12px;font-weight:700;white-space:nowrap}.categorias button[aria-pressed=true]{background:var(--verde);color:#fff;border-color:var(--verde)}.itens{display:grid;gap:8px}.item{display:flex;align-items:center;gap:12px;padding:10px}.item img,.sem-foto{width:68px;height:68px;object-fit:cover;border-radius:10px;flex:none}.sem-foto{display:grid;place-items:center;background:#e8efe7;font-size:1.45rem}.item h3{margin:0;font-size:.96rem}.item p{margin:3px 0;color:var(--suave);font-size:.82rem}.item strong{font-size:.88rem}.mais{margin-left:auto;min-width:42px;min-height:42px;border:0;border-radius:12px;color:var(--verde);background:#e5f0e6;font-size:1.25rem;font-weight:800;flex:none}
+nav{position:fixed;z-index:2;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--borda);padding-block:8px calc(8px + env(safe-area-inset-bottom))}.barra{display:flex;align-items:center;gap:8px}.barra button{min-height:44px}.primario{border:0;border-radius:10px;background:var(--verde);color:#fff;padding:10px 14px;font-weight:750}.barra .primario{flex:1;display:flex;justify-content:space-between;align-items:center;gap:6px}.barra .secundario{padding-inline:9px;font-size:.83rem}
+dialog{width:min(100% - 20px,520px);max-height:85dvh;margin:auto auto 10px;border:1px solid var(--borda);border-radius:20px;padding:18px;color:var(--texto);overflow:auto}dialog::backdrop{background:#132b21aa}.linha{display:flex;align-items:center;justify-content:space-between;gap:10px}.linha h2{margin:0}.linha-pedido{border-bottom:1px solid var(--borda);padding-block:10px}.quantidade{display:flex;align-items:center;gap:7px}.quantidade button{min-width:35px;min-height:35px}.campo{display:block;margin-block:10px}fieldset{border:1px solid var(--borda);border-radius:10px;margin:12px 0;padding:8px 12px}fieldset label{display:block;padding:5px 0}.status{border-radius:12px;background:#e5f0e6;padding:12px;color:var(--escuro)}.largura{width:100%}.rodape{display:flex;gap:6px;align-items:center;margin-top:18px}.rodape img{width:38px;height:30px;object-fit:contain}
+@media(min-width:600px){.destaque img{height:148px}dialog{margin:auto}.hero{min-height:200px}}
+.destaques{grid-template-columns:repeat(3,minmax(0,1fr))}.destaque .sem-foto{width:100%;height:112px;border-radius:0;font-size:2rem}.destaque span.sem-foto{display:grid}.faixa{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(190px,42%);gap:8px;overflow-x:auto;scroll-snap-type:x proximity;padding-bottom:8px}.faixa .item{scroll-snap-align:start}.faixa .item img,.faixa .sem-foto{width:48px;height:48px}.faixa .item p{display:none}.faixa h3{overflow-wrap:anywhere}.grupo-categoria h3{margin:12px 0 6px}.grupo-categoria .item h3{margin:0}.paginacao-banner{display:flex;justify-content:center;gap:5px;margin-top:6px}.paginacao-banner button{border:0;border-radius:8px;background:#e3ebe3;color:var(--verde);min-width:38px;min-height:36px}.paginacao-banner button[aria-current=true]{background:var(--verde);color:#fff}.hero img[hidden]{display:none}
+@media(max-width:480px){.destaque span{padding:7px;font-size:.8rem}.destaque img,.destaque .sem-foto{height:82px}.faixa{grid-auto-columns:76%}}
+.faixa{grid-auto-columns:clamp(154px,48vw,220px);gap:12px}.faixa .item{display:grid;align-content:start;padding:0;gap:0}.produto-detalhe{background:#fff;border:0;padding:0;text-align:left;color:inherit;width:100%}.faixa .produto-detalhe img,.faixa .produto-detalhe .sem-foto{width:100%;height:142px;border-radius:0;display:grid}.produto-detalhe .legenda{padding:10px 12px;min-height:72px}.faixa .mais{margin:0 10px 10px auto}.destaque img,.destaque .sem-foto{height:110px}.detail-foto img,.detail-foto .sem-foto{display:grid;width:100%;height:clamp(160px,54vw,265px);object-fit:cover;border-radius:14px;margin-block:12px}.passo{font-size:.83rem;color:var(--verde);font-weight:750;margin:10px 0}.guiado{outline:2px solid #8ad598;outline-offset:2px;animation:guia 1.3s ease-in-out 3}.agradecimento{display:block;width:100%;border-radius:14px;margin-top:10px}.item .mais{font-size:1.1rem}
+@keyframes guia{50%{box-shadow:0 0 0 5px #78c88970}}@media(prefers-reduced-motion:reduce){.guiado{animation:none}}
+html,body{max-width:100%;overflow-x:clip}.faixa{min-width:0;max-width:100%;overscroll-behavior-x:contain}.barra .primario{min-width:0;white-space:normal}.barra .primario strong{white-space:nowrap}.guia-texto{display:block;font-size:.74rem;font-weight:650;color:#d9f4df}
+html:has(dialog[open]){overflow:hidden}
+.faixa .produto-detalhe img,.faixa .produto-detalhe .sem-foto{height:auto;aspect-ratio:1;object-fit:cover}.faixa .legenda{height:76px;display:flex;flex-direction:column;justify-content:space-between;gap:4px}.faixa .legenda h3{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.itens{grid-template-columns:minmax(0,1fr)}.grupo-categoria{min-width:0}.faixa{grid-auto-columns:clamp(112px,36vw,165px);gap:9px;touch-action:pan-x pan-y}.faixa .legenda{height:68px;padding:7px 9px}.faixa .legenda h3{font-size:.84rem;line-height:1.2}.faixa .mais{min-height:36px;margin:0 8px 8px auto}
+.faixa .item{grid-template-rows:auto 1fr}.faixa .legenda{height:auto;min-height:0;padding-bottom:3px}.rodape-produto{display:flex;align-items:center;justify-content:space-between;align-self:end;gap:2px;padding:0 7px 6px}.rodape-produto strong{white-space:nowrap}.faixa .rodape-produto .mais{margin:0;min-width:44px;min-height:44px;padding:0;font-size:1.25rem}
+@media(max-width:599px){
+  dialog{position:fixed;inset:0;width:100%;max-width:100%;height:100dvh;max-height:100dvh;margin:0;border:0;border-radius:0;padding:calc(16px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom));overscroll-behavior:contain}
+  dialog input:not([type=radio]){font-size:16px}
+  .detail-foto img{object-fit:contain;background:#f4f6f2}
+  #detalhe-adicionar{margin-top:12px;min-height:48px}
+}
+</style>
+</head>
+<body>
+<header><div class="limite cabecalho">
+  <div class="marca" aria-hidden="true">DR</div>
+  <div><div class="loja">Quiosque Do’Rafa</div><small>Cardápio digital · Protótipo</small></div>
+  <span class="selo">Mesa 12 · Exemplo</span>
+</div></header>
+<main class="limite" id="inicio">
+  <label class="busca"><input id="busca" type="search" aria-label="Buscar produto" placeholder="Busque seu produto favorito"></label>
+  <section aria-label="Espaço publicitário de demonstração">
+    <div class="hero">
+      <img id="banner-foto" alt="">
+      <div><p>ESPAÇO PUBLICITÁRIO · DEMONSTRAÇÃO</p><h1 id="banner-titulo"></h1><p id="banner-texto"></p></div>
+    </div>
+    <div class="paginacao-banner" id="paginacao-banner" aria-label="Banners de demonstração"></div>
+  </section>
+  <section id="secao-destaques"><h2>Queridinhos</h2><div id="destaques" class="faixa" tabindex="0" role="region" aria-label="Queridinhos"></div></section>
+  <section id="catalogo"><h2>Cardápio</h2><div id="categorias" class="categorias" aria-label="Categorias"></div><div id="produtos" class="itens"></div></section>
+  <div class="rodape"><img src="logo.png" alt=""><small>Cardápio por R Sistemas</small></div>
+</main>
+<nav aria-label="Navegação do cardápio"><div class="limite barra">
+  <button class="secundario" id="voltar-inicio">Início</button>
+  <button class="secundario" id="ir-categorias">Categorias</button>
+  <button class="primario" id="ver-pedido"><span><span id="rotulo-ver-pedido">Ver pedido</span> <span id="contador"></span><small class="guia-texto" id="guia-carrinho" hidden>Próximo passo</small></span><strong id="total-barra"></strong></button>
+</div></nav>
+<dialog id="pedido" aria-labelledby="titulo-pedido">
+  <div class="linha"><h2 id="titulo-pedido">Seu pedido</h2><button class="secundario" id="fechar">Voltar</button></div>
+  <div id="confirmacao" hidden></div>
+  <form id="checkout">
+    <div id="itens-pedido"></div>
+    <p class="linha"><strong>Total</strong><strong id="total-pedido"></strong></p>
+    <label class="campo">Seu nome<input id="nome" maxlength="100" autocomplete="given-name" required></label>
+    <p class="passo" id="passo-pagamento">Próximo passo · Confira como deseja pagar</p>
+    <fieldset id="formas-pagamento"><legend>Como deseja pagar?</legend>
+      <label><input type="radio" name="pagamento" value="caixa" checked> Pagar no caixa</label>
+      <label><input type="radio" name="pagamento" value="pix"> Pagar agora via Pix</label>
+    </fieldset>
+    <button class="primario largura" id="confirmar">Confirmar pedido · Mesa 12</button>
+  </form>
+</dialog>
+<dialog id="detalhe" aria-labelledby="detalhe-nome">
+  <div class="linha"><h2 id="detalhe-nome"></h2><button class="secundario" id="fechar-detalhe">Voltar</button></div>
+  <div class="detail-foto" id="detalhe-foto"></div>
+  <strong id="detalhe-preco"></strong>
+  <p id="detalhe-descricao"></p>
+  <p><strong>Composição</strong><br><span id="detalhe-composicao"></span></p>
+  <div class="linha"><span>Quantidade</span><div class="quantidade">
+    <button class="secundario" id="detalhe-menos" aria-label="Diminuir quantidade">−</button>
+    <strong id="detalhe-quantidade" aria-live="polite"></strong>
+    <button class="secundario" id="detalhe-mais" aria-label="Aumentar quantidade">+</button>
+  </div></div>
+  <button class="primario largura guiado" id="detalhe-adicionar">Adicionar ao pedido</button>
+</dialog>
+<script>
+const el = id => document.getElementById(id);
+const reais = centavos => (centavos / 100).toLocaleString("pt-BR", {style:"currency",currency:"BRL"});
+const produtos = [
+  {id:"coxinha", nome:"Coxinha de frango", categoria:"Salgados", descricao:"Massa crocante e recheio de frango.", composicao:"Massa empanada e frango desfiado temperado.", preco:850, foto:"coxinha.webp"},
+  {id:"refri", nome:"Refrigerante em lata", categoria:"Bebidas", descricao:"Lata de 350 ml. Sabores variados.", composicao:"Consulte os ingredientes no rótulo do sabor escolhido.", preco:650, foto:"refrigerante.webp"},
+  {id:"brazuca", nome:"Brazuca Patê de Frango", categoria:"Lanches", descricao:"Sanduíche com patê de frango.", composicao:"Pão e patê de frango.", preco:2800},
+  {id:"cafe", nome:"Café", categoria:"Bebidas", descricao:"Café passado, servido quente.", preco:500},
+  {id:"agua", nome:"Água mineral", categoria:"Bebidas", descricao:"Garrafa de 500 ml.", preco:400},
+  {id:"suco", nome:"Suco de laranja", categoria:"Bebidas", descricao:"Suco servido gelado.", preco:850},
+  {id:"pastel", nome:"Pastel de queijo", categoria:"Salgados", descricao:"Pastel crocante.", preco:950},
+  {id:"misto", nome:"Misto quente", categoria:"Lanches", descricao:"Sanduíche tostado.", preco:1400}
+];
+const categorias = [...new Set(produtos.map(p => p.categoria))];
+const banners = [
+  {titulo:"Sua marca aqui", texto:"Espaço para parceiros nos cardápios da rede."},
+  {titulo:"Conheça a R Sistemas", texto:"Cardápio, caixa e cozinha conectados."},
+  {titulo:"Destaque da semana", texto:"Exemplo de campanha para um produto.", foto:"coxinha.webp"},
+  {titulo:"Parceiros da rede", texto:"Exemplo de anúncio institucional."},
+  {titulo:"Novidades da R Sistemas", texto:"Exemplo de divulgação em todas as lojas."}
+];
+const carrinho = new Map();
+let categoria = "Todos";
+let simulacao;
+const dialogo = el("pedido");
+let produtoAberto;
+let qtdDetalhe = 1;
+const normalizar = texto => texto.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+const quantidade = id => carrinho.get(id) ?? 0;
+const total = () => produtos.reduce((soma,p) => soma + p.preco * quantidade(p.id),0);
+const no = (tag, texto, classe) => {
+  const item = document.createElement(tag);
+  if (texto) item.textContent = texto;
+  if (classe) item.className = classe;
+  return item;
+};
+function foto(p) {
+  if (!p.foto) return no("span", p.id === "cafe" ? "☕" : "🥪", "sem-foto");
+  const img = no("img");
+  img.src = "prototipo-cardapio-assets/" + p.foto;
+  img.alt = "";
+  img.loading = "lazy";
+  img.decoding = "async";
+  return img;
+}
+function alterar(p, delta) {
+  const novo = quantidade(p.id) + delta;
+  if (novo > 0) carrinho.set(p.id, novo);
+  else carrinho.delete(p.id);
+  renderizarPedido();
+  if (delta > 0 && !dialogo.open && !simulacao) {
+    const botao = el("ver-pedido");
+    botao.classList.remove("guiado");
+    requestAnimationFrame(() => requestAnimationFrame(() => botao.classList.add("guiado")));
+  }
+}
+function atualizarDetalhe() {
+  el("detalhe-quantidade").textContent = qtdDetalhe;
+  el("detalhe-menos").disabled = qtdDetalhe <= 1;
+  el("detalhe-adicionar").textContent = "Adicionar · " + reais(produtoAberto.preco * qtdDetalhe);
+}
+function abrirDetalhe(produto) {
+  produtoAberto = produto;
+  qtdDetalhe = 1;
+  el("detalhe-nome").textContent = produto.nome;
+  el("detalhe-foto").replaceChildren(foto(produto));
+  el("detalhe-preco").textContent = reais(produto.preco);
+  el("detalhe-descricao").textContent = produto.descricao;
+  el("detalhe-composicao").textContent = produto.composicao ?? "Composição a informar pela loja.";
+  atualizarDetalhe();
+  el("detalhe").showModal();
+}
+el("fechar-detalhe").onclick = () => el("detalhe").close();
+el("detalhe-menos").onclick = () => { qtdDetalhe--; atualizarDetalhe(); };
+el("detalhe-mais").onclick = () => { qtdDetalhe++; atualizarDetalhe(); };
+el("detalhe-adicionar").onclick = () => {
+  el("detalhe").close();
+  alterar(produtoAberto,qtdDetalhe);
+};
+function exibirProduto(p) {
+    const linha = no("article", "", "item");
+    const texto = no("div", "", "legenda");
+    const caracteres = Array.from(p.nome);
+    const nome = caracteres.length > 32 ? caracteres.slice(0,31).join("").trimEnd() + "…" : p.nome;
+    const titulo = no("h3", nome);
+    titulo.title = p.nome;
+    texto.append(titulo);
+    const adicionar = no("button", "+", "mais");
+    adicionar.setAttribute("aria-label", "Adicionar " + p.nome);
+    adicionar.onclick = () => alterar(p, 1);
+    const detalhes = no("button", "", "produto-detalhe");
+    detalhes.setAttribute("aria-label", "Ver detalhes de " + p.nome);
+    detalhes.onclick = () => abrirDetalhe(p);
+    detalhes.append(foto(p),texto);
+    const rodape = no("div", "", "rodape-produto");
+    rodape.append(no("strong",reais(p.preco)),adicionar);
+    linha.append(detalhes,rodape);
+    return linha;
+}
+function renderizarCatalogo() {
+  const busca = normalizar(el("busca").value.trim());
+  el("secao-destaques").hidden = Boolean(busca) || categoria !== "Todos";
+  for (const botao of el("categorias").children) {
+    botao.setAttribute("aria-pressed", String(botao.textContent === categoria));
+  }
+  const itens = produtos.filter(p => (categoria === "Todos" || p.categoria === categoria) &&
+    normalizar(p.nome + " " + p.descricao).includes(busca));
+  el("produtos").replaceChildren(...categorias.map(nome => {
+    const grupo = itens.filter(p => p.categoria === nome);
+    if (!grupo.length) return null;
+    const secao = no("section", "", "grupo-categoria");
+    const faixa = no("div", "", "faixa");
+    faixa.tabIndex = 0;
+    faixa.setAttribute("role", "region");
+    faixa.setAttribute("aria-label", nome);
+    faixa.append(...grupo.map(p => exibirProduto(p)));
+    secao.append(no("h3", nome), faixa);
+    return secao;
+  }).filter(Boolean));
+  if (!itens.length) el("produtos").append(no("p","Nenhum produto encontrado.","muted"));
+}
+function renderizarPedido() {
+  const itens = produtos.filter(p => quantidade(p.id));
+  const qtd = itens.reduce((s,p) => s + quantidade(p.id),0);
+  el("contador").textContent = qtd ? "(" + qtd + ")" : "";
+  el("guia-carrinho").hidden = !qtd || Boolean(simulacao);
+  el("total-barra").textContent = reais(total());
+  el("total-pedido").textContent = reais(total());
+  el("confirmar").disabled = !qtd;
+  el("itens-pedido").replaceChildren(...itens.map(p => {
+    const linha = no("div","","linha linha-pedido");
+    const texto = no("div",p.nome);
+    texto.append(no("div",reais(p.preco * quantidade(p.id)),"muted"));
+    const controles = no("div","","quantidade");
+    for (const delta of [-1,1]) {
+      const botao = no("button",delta < 0 ? "−" : "+","secundario");
+      botao.type = "button";
+      botao.setAttribute("aria-label",(delta < 0 ? "Retirar " : "Adicionar ") + p.nome);
+      botao.onclick = () => alterar(p,delta);
+      controles.append(botao);
+      if (delta < 0) controles.append(no("strong",String(quantidade(p.id))));
+    }
+    linha.append(texto,controles);
+    return linha;
+  }));
+  if (!qtd) el("itens-pedido").append(no("p","Seu pedido está vazio.","muted"));
+}
+el("destaques").append(...produtos.slice(0, 3).map(exibirProduto));
+for (const nome of ["Todos",...categorias]) {
+  const botao = no("button",nome);
+  botao.onclick = () => { categoria = nome; renderizarCatalogo(); };
+  el("categorias").append(botao);
+}
+let bannerAtual = 0;
+function mostrarBanner(indice) {
+  bannerAtual = indice;
+  const banner = banners[indice];
+  el("banner-titulo").textContent = banner.titulo;
+  el("banner-texto").textContent = banner.texto;
+  const imagem = el("banner-foto");
+  imagem.hidden = !banner.foto;
+  if (banner.foto) imagem.src = "prototipo-cardapio-assets/" + banner.foto;
+  [...el("paginacao-banner").children].forEach((botao, i) =>
+    botao.setAttribute("aria-current", String(i === indice)));
+}
+for (const [indice, banner] of banners.entries()) {
+  const botao = no("button", String(indice + 1));
+  botao.setAttribute("aria-label", "Banner " + (indice + 1) + " · " + banner.titulo);
+  botao.onclick = () => mostrarBanner(indice);
+  el("paginacao-banner").append(botao);
+}
+mostrarBanner(0);
+if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  setInterval(() => {
+    if (!document.hidden && !dialogo.open) mostrarBanner((bannerAtual + 1) % banners.length);
+  }, 6500);
+}
+el("busca").oninput = () => { categoria = "Todos"; renderizarCatalogo(); };
+el("voltar-inicio").onclick = () => window.scrollTo({top:0,behavior:"smooth"});
+el("ir-categorias").onclick = () => el("catalogo").scrollIntoView({behavior:"smooth"});
+el("ver-pedido").onclick = () => {
+  el("ver-pedido").classList.remove("guiado");
+  el("formas-pagamento").classList.add("guiado");
+  dialogo.showModal();
+};
+el("formas-pagamento").onclick = evento => {
+  if (evento.target.type !== "radio") return;
+  el("formas-pagamento").classList.remove("guiado");
+  el("passo-pagamento").textContent = "Próximo passo · Confirme seu pedido";
+  el("confirmar").classList.add("guiado");
+};
+el("fechar").onclick = () => dialogo.close();
+function mostrarSituacao() {
+  const painel = el("confirmacao");
+  const mensagem = simulacao.pix && simulacao.etapa === 0 ? "Aguardando Pix de demonstração"
+    : ["Pedido recebido","Em preparo","Pronto para servir","Entregue"][simulacao.etapa - 1];
+  const status = no("p",mensagem,"status");
+  status.setAttribute("role","status");
+  painel.replaceChildren(no("p","Mesa 12 · Comanda 104 · " + reais(simulacao.total)),status);
+  if (simulacao.pix && simulacao.etapa === 0) {
+    painel.append(no("p","Em produção, o QR Code e o Pix Copia e Cola aparecem aqui. Este protótipo simula a confirmação.","muted"));
+  } else {
+    const arte = no("img", "", "agradecimento");
+    arte.src = "prototipo-cardapio-assets/agradecimento.svg";
+    arte.alt = "Quiosque Do’Rafa agradece pelo pedido.";
+    painel.prepend(arte);
+    painel.append(no("p",simulacao.pix ? "Pix confirmado na simulação." : "Pagamento pendente no caixa.","muted"));
+  }
+  const botao = no("button",simulacao.etapa === 0 ? "Simular confirmação do Pix"
+    : simulacao.etapa < 4 ? "Simular próxima etapa" : "Voltar ao cardápio","primario largura");
+  botao.onclick = () => {
+    if (simulacao.etapa < 4) { simulacao.etapa++; mostrarSituacao(); return; }
+    simulacao = undefined;
+    painel.hidden = true;
+    el("checkout").hidden = false;
+    el("rotulo-ver-pedido").textContent = "Ver pedido";
+    renderizarPedido();
+    dialogo.close();
+  };
+  painel.append(botao);
+}
+el("checkout").onsubmit = evento => {
+  evento.preventDefault();
+  if (!carrinho.size) return;
+  const pix = new FormData(evento.target).get("pagamento") === "pix";
+  simulacao = {pix, etapa:pix ? 0 : 1, total:total()};
+  carrinho.clear();
+  evento.target.reset();
+  el("confirmar").classList.remove("guiado");
+  el("passo-pagamento").textContent = "Próximo passo · Confira como deseja pagar";
+  renderizarPedido();
+  el("checkout").hidden = true;
+  el("confirmacao").hidden = false;
+  el("rotulo-ver-pedido").textContent = "Acompanhar pedido";
+  mostrarSituacao();
+};
+renderizarCatalogo();
+renderizarPedido();
+</script>
+</body>
+</html>

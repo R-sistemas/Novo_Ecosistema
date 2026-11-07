@@ -1,6 +1,8 @@
 import { saldo } from "./caixa.mjs";
-import { entrar, listar, executar, cadastrarOperador, cadastrarProduto, desativarProduto } from "./supabase-pdv.mjs";
+import { entrar, listar, executar, cadastrarOperador, cadastrarProduto, atualizarProduto } from "./supabase-pdv.mjs";
 import { carregarCozinha } from "./cozinha.mjs";
+import { aplicarTema } from "./tema-cardapio.mjs";
+import { otimizarImagem } from "./imagens-cardapio.mjs";
 
 let produtos = [];
 let usuario;
@@ -10,6 +12,8 @@ let vendaPendente;
 let meioSelecionado;
 let area;
 let terminais = [];
+let produtoEditado;
+let aparencia;
 let consultaComandas = 0;
 let ultimaListaComandas;
 const estado = { sessao: null, fechamentos: [] };
@@ -38,9 +42,11 @@ async function atualizar() {
   const terminalAnterior = el("terminal-pdv").value;
   el("configuracao-entrega").hidden = true;
   const [catalogo, caixas, configuracao, caixasDisponiveis] = await Promise.all([
-    listar("produtos?ativo=eq.true&empresa_id=eq." + empresa + "&order=nome"),
+    listar("produtos?ativo=eq.true&empresa_id=eq." + empresa + "&order=nome" +
+      (administracao ? "" : "&select=id,codigo,nome,preco_centavos")),
     administracao ? [] : listar("caixas?empresa_id=eq." + empresa + "&operador_id=eq." + usuario + "&order=aberto_em.desc&limit=1"),
-    listar("empresas?select=nome,nome_pdv,pagamento_na_entrega&id=eq." + empresa),
+    listar("empresas?select=nome,nome_pdv,pagamento_na_entrega" +
+      (administracao ? ",cardapio_cor,cardapio_fundo,cardapio_logo,cardapio_agradecimento" : "") + "&id=eq." + empresa),
     administracao ? executar("listar_terminais_gestor", { p_empresa: empresa })
       : listar("terminais_pdv?select=id,nome&empresa_id=eq." + empresa + "&operador_id=eq." + usuario + "&order=nome")
   ]);
@@ -48,6 +54,13 @@ async function atualizar() {
   el("nome-pdv-exibido").textContent = nomePdv;
   terminais = caixasDisponiveis;
   if (administracao) {
+    const config = configuracao[0];
+    aparencia = { logo: config.cardapio_logo, agradecimento: config.cardapio_agradecimento };
+    el("aparencia-cardapio").reset();
+    el("cor-cardapio").value = config.cardapio_cor;
+    el("fundo-cardapio").value = config.cardapio_fundo;
+    el("previa-nome").textContent = config.nome;
+    previaAparencia();
     el("status").textContent = "Administração";
     el("nome-pdv").value = nomePdv;
     el("editar-terminal").replaceChildren(new Option("Novo caixa", ""),
@@ -59,9 +72,10 @@ async function atualizar() {
     el("catalogo-gestor").replaceChildren(...catalogo.map(produto => {
       const linha = document.createElement("li");
       linha.append(produto.nome + " · " + reais(produto.preco_centavos) + " ",
+        botao("Editar", () => editarProduto(produto), true),
         botao("Desativar", () => operar(async () => {
           if (!window.confirm("Retirar " + produto.nome + " do catálogo ativo?")) return "";
-          await desativarProduto(empresa, produto.id);
+          await atualizarProduto(empresa, produto.id, { ativo: false });
           await atualizar();
           return "Produto retirado do catálogo.";
         }), true));
@@ -216,6 +230,7 @@ el("empresa").addEventListener("change", () => operar(async () => {
   vendaPendente = undefined;
   limparPagamento();
   el("resultado-mesa").hidden = true;
+  editarProduto();
   estado.sessao = null;
   estado.fechamentos = [];
   produtos = [];
@@ -290,6 +305,47 @@ el("configurar-terminal").onsubmit = evento => {
 };
 
 el("cash").addEventListener("submit", evento => evento.preventDefault());
+function previaAparencia() {
+  aplicarTema(el("previa-aparencia"), el("cor-cardapio").value, el("fundo-cardapio").value);
+  for (const tipo of ["logo", "agradecimento"]) {
+    const img = el("previa-" + tipo);
+    img.hidden = !aparencia[tipo];
+    if (aparencia[tipo]) img.src = aparencia[tipo];
+    else img.removeAttribute("src");
+  }
+}
+el("cor-cardapio").oninput = previaAparencia;
+el("fundo-cardapio").onchange = previaAparencia;
+for (const tipo of ["logo", "agradecimento"]) {
+  el(tipo + "-cardapio").onchange = () => operar(async () => {
+    const campo = el(tipo + "-cardapio");
+    if (!campo.files.length) return "";
+    try {
+      aparencia[tipo] = await otimizarImagem(campo.files[0], tipo === "logo"
+        ? { lado: 320, limite: 32000, quadrada: false } : { lado: 900, quadrada: false });
+      previaAparencia();
+      return "Imagem otimizada. Salve a aparência para publicar.";
+    } finally {
+      campo.value = "";
+    }
+  });
+}
+el("restaurar-aparencia").onclick = () => {
+  el("aparencia-cardapio").reset();
+  aparencia = { logo: null, agradecimento: null };
+  previaAparencia();
+  el("notice").textContent = "Visual padrão na prévia. Salve para publicar.";
+};
+el("aparencia-cardapio").onsubmit = evento => {
+  evento.preventDefault();
+  operar(async () => {
+    await executar("configurar_aparencia_cardapio", {
+      p_empresa: el("empresa").value, p_cor: el("cor-cardapio").value, p_fundo: el("fundo-cardapio").value,
+      p_logo: aparencia.logo, p_agradecimento: aparencia.agradecimento
+    });
+    return "Aparência publicada no cardápio.";
+  });
+};
 el("configuracao-entrega").addEventListener("submit", evento => {
   evento.preventDefault();
   operar(async () => {
@@ -300,6 +356,19 @@ el("configuracao-entrega").addEventListener("submit", evento => {
     return "Configuração de entrega salva.";
   });
 });
+function editarProduto(produto) {
+  produtoEditado = produto;
+  el("cadastro-produto").reset();
+  el("cadastro-produto").querySelector("h2").textContent = produto ? "Editar produto" : "Cadastrar produto";
+  if (!produto) return;
+  for (const campo of ["codigo", "nome", "categoria", "descricao", "composicao"]) {
+    el("produto-" + campo).value = produto[campo] ?? "";
+  }
+  el("produto-preco").value = produto.preco_centavos / 100;
+  el("produto-queridinho").checked = produto.queridinho;
+  el("cadastro-produto").scrollIntoView({ block: "start" });
+}
+el("cancelar-produto").onclick = () => editarProduto();
 el("cadastro-produto").addEventListener("submit", evento => {
   evento.preventDefault();
   operar(async () => {
@@ -309,10 +378,17 @@ el("cadastro-produto").addEventListener("submit", evento => {
     if (!codigo || !nome || !Number.isSafeInteger(preco_centavos) || preco_centavos < 1) {
       throw new Error("Informe código, nome e preço válido.");
     }
-    await cadastrarProduto({ empresa_id: el("empresa").value, codigo, nome, preco_centavos });
-    evento.target.reset();
+    const empresa = el("empresa").value;
+    const foto = el("produto-foto").files[0];
+    const dados = { codigo, nome, preco_centavos, queridinho: el("produto-queridinho").checked };
+    for (const campo of ["categoria", "descricao", "composicao"]) dados[campo] = el("produto-" + campo).value.trim() || null;
+    if (foto) dados.foto_cardapio = await otimizarImagem(foto);
+    const editando = Boolean(produtoEditado);
+    if (editando) await atualizarProduto(empresa, produtoEditado.id, dados);
+    else await cadastrarProduto({ empresa_id: empresa, ...dados });
+    editarProduto();
     await atualizar();
-    return "Produto cadastrado.";
+    return editando ? "Produto atualizado." : "Produto cadastrado.";
   });
 });
 function receberPedido(id, meio) {

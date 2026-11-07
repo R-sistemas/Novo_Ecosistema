@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 290" role="img" aria-labelledby="titulo">
+  <title id="titulo">Obrigado pelo pedido, Quiosque Do’Rafa</title>
+  <rect width="680" height="290" rx="28" fill="#173923"/>
+  <circle cx="575" cy="132" r="124" fill="#245533"/>
+  <circle cx="575" cy="132" r="78" fill="#306941"/>
+  <path d="M535 131l26 26 53-58" fill="none" stroke="#d4f1d9" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <g font-family="system-ui,sans-serif" fill="#f4fbf4">
+    <text x="42" y="76" font-size="23" font-weight="700">QUIOSQUE DO’RAFA</text>
+    <text x="42" y="139" font-size="47" font-weight="800">Obrigado pelo</text>
+    <text x="42" y="194" font-size="47" font-weight="800">seu pedido!</text>
+    <text x="42" y="247" font-size="22">Acompanhe o andamento abaixo.</text>
+  </g>
+</svg>
