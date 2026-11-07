@@ -1,4 +1,5 @@
 import { executar } from "./supabase-pdv.mjs";
+import { estadosEntrega } from "./estado-entrega.mjs";
 
 const fila = document.getElementById("fila-cozinha");
 const aviso = document.getElementById("aviso-cozinha");
@@ -67,7 +68,7 @@ export async function carregarCozinha() {
         pedido.estado === "entregue" ? "Entregue · recebimento pendente" : "Recebimento pendente";
       const etapa = document.createElement("p");
       etapa.textContent = pedido.cancelamento_pendente ? "Preparo pausado · Cancelamento em análise" :
-        pedido.ajuste_pendente ? "Aguardando resolução de ajuste" : etapas[pedido.estado];
+        pedido.ajuste_pendente ? "Aguardando resolução de ajuste" : estadosEntrega[pedido.estado_remo] ?? etapas[pedido.estado];
       etapa.className = "etapa-kds";
       artigo.append(titulo, etapa, resumo);
       if (!kds) artigo.append(financeiro);
@@ -84,15 +85,14 @@ export async function carregarCozinha() {
         const { logradouro, numero, bairro, cidade, complemento } = pedido.endereco_entrega;
         endereco.textContent = [logradouro, numero, bairro, cidade, complemento].filter(Boolean).join(", ");
         artigo.append(endereco);
-        if (pedido.estado === "pronto") {
+        if (pedido.estado === "pronto" && !pedido.estado_remo) {
           const despacho = document.createElement("button");
           despacho.textContent = "Solicitar despacho à REMO";
           despacho.onclick = async () => {
             despacho.disabled = true;
             try {
-              const id = await executar("solicitar_despacho_remo", { p_pedido: pedido.id });
-              despacho.textContent = "Despacho solicitado";
-              aviso.textContent = "Solicitação REMO " + id;
+              await executar("solicitar_despacho_remo", { p_pedido: pedido.id });
+              await carregarCozinha();
             } catch (erro) {
               aviso.textContent = erro.message;
               despacho.disabled = false;
@@ -111,7 +111,7 @@ export async function carregarCozinha() {
       }
       for (const [destino, texto] of acoes[pedido.estado]) {
         if ((destino === "recusado" && (pedido.adicional || pedido.mesa || pedido.recebido)) ||
-            (destino === "entregue" && !pedido.recebido && !pedido.mesa)) continue;
+            (destino === "entregue" && (pedido.pagamento_entrega || (!pedido.recebido && !pedido.mesa)))) continue;
         const botao = document.createElement("button");
         botao.textContent = texto;
         botao.onclick = async () => {

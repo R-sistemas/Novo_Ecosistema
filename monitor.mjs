@@ -1,3 +1,5 @@
+import { estadosEntrega } from "./estado-entrega.mjs";
+
 const el = id => document.getElementById(id);
 const login = el("login-monitor");
 const painel = el("painel-monitor");
@@ -12,10 +14,6 @@ const formatarDia = new Intl.DateTimeFormat("sv-SE", { dateStyle: "short", timeZ
 const reais = centavos => moeda.format(centavos / 100);
 const escrever = (id, valor) => { el(id).textContent = valor; };
 const estados = { novo: "Novo", preparo: "Em preparo", pronto: "Pronto", entregue: "Entregue", recusado: "Encerrado" };
-const entregas = {
-  sem_despacho: "Aguardando despacho", solicitada: "Despacho solicitado", aceita: "Aceita pela REMO",
-  em_rota: "Em rota", entregue: "Entregue", cancelada: "Entrega cancelada"
-};
 const pagamentos = {
   recebido: "Pago", encerrado: "Encerrado", teste: "Pagamento de teste",
   aguardando_online: "Aguardando confirmação online", na_entrega: "Pagamento na entrega", no_caixa: "A receber no caixa"
@@ -74,7 +72,7 @@ function renderizarLista() {
       return linha(titulo, `${origem} · ${hora.format(new Date(registro.recebido_em))}`, registro.valor);
     }
     const destino = registro.mesa ? `Mesa ${registro.mesa}` : registro.entrega ? "Entrega" : "Retirada";
-    const etapa = aba === "entregas" ? entregas[registro.entrega] : estados[registro.estado];
+    const etapa = aba === "entregas" ? estadosEntrega[registro.entrega] : estados[registro.estado];
     return linha(`Pedido #${registro.comanda} · ${destino}`,
       `${etapa} · ${pagamentos[registro.pagamento]} · ${hora.format(new Date(registro.criado_em))}`, registro.total_centavos);
   }));

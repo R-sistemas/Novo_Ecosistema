@@ -46,7 +46,7 @@ Para complementar uma comanda pendente, o PDV deve registrar os itens adicionais
 
 O monitor do gestor oferece somente consultas e tem PWA própria em `/monitor.html`. A conta de gestor vê os estabelecimentos aos quais está vinculada e acompanha por dia os pedidos, o bruto recebido no caixa e online e os estados de entrega da REMO. O monitor mantém a sessão em cookies restritos ao seu endpoint e atualiza enquanto a tela está visível. Configuração da loja, caixa e cozinha têm interfaces separadas.
 
-A REMO devolverá os estados necessários à loja, incluindo saída para entrega e conclusão. A R Sistemas exibirá esses estados no monitor do gestor a partir do vínculo com o despacho. O acesso à central logística permanece separado.
+A REMO é a fonte do estado da entrega. Cardápio, PDV, KDS e monitor consultam o vínculo com o despacho. A central registra a saída e a conclusão. A cozinha prepara o pedido e encerra sua fila de trabalho quando a entrega foi concluída. Quando o pagamento é na entrega, concluir a corrida mantém o recebimento pendente até seu registro.
 
 ### Impressão na cozinha
 
@@ -57,6 +57,8 @@ No App do Rafa, os manifestos do cardápio e do KDS ficam no módulo Cardapio. A
 ## Infraestrutura e identidade
 
 A REMO é uma única central regional com operação própria. Estabelecimentos integrados e empresas que operam sem o PDV podem solicitar entregas. O cardápio registra o endereço no pedido. No despacho, a integração envia à API da REMO os dados necessários da entrega e uma referência para evitar duplicidade. A REMO mantém sob sua responsabilidade rotas, entregadores, rastreamento e saldo de corridas.
+
+O fluxo integrado foi validado na aplicação publicada com loja fictícia e Pix Mercado Pago Sandbox. O teste cobriu cardápio, preparo em conta exclusiva do KDS, despacho pelo PDV sem duplicação, aceite, saída, conclusão e retorno automático ao cardápio e ao monitor. A operação por empresa externa ainda precisa de cadastro e abertura de corrida próprios. Atribuição a entregador, cotação, rastreamento e saldo por corrida ainda precisam ser implementados e homologados.
 
 GitHub para o código, Vercel para os aplicativos e Supabase para dados e autenticação. A REMO compartilha infraestrutura inicialmente e mantém operação independente. O cardápio público destaca a marca de cada loja, mostra até três Queridinhos e organiza os produtos em faixas horizontais por categoria. O OSRM fica fora do custo inicial até a necessidade de roteamento viário ser validada.
 

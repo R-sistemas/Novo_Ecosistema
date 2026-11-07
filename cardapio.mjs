@@ -1,6 +1,7 @@
 import { executar } from "./supabase-pdv.mjs";
 import { aplicarTema } from "./tema-cardapio.mjs";
 import { montarVitrine } from "./vitrine-cardapio.mjs";
+import { estadosEntrega } from "./estado-entrega.mjs";
 
 const el = id => document.getElementById(id);
 const parametros = new URLSearchParams(location.search);
@@ -40,11 +41,13 @@ async function acompanhar() {
   const pedido = await executar("acompanhar_pedido", { p_slug, p_id });
   if (!pedido) throw new Error("Pedido indisponível.");
   aguardandoPix = (pedido.pix_sandbox || pedido.pix_producao) && !pedido.pix_confirmado;
-  acompanhamentoAtivo = aguardandoPix || !["entregue", "recusado"].includes(pedido.estado) ||
+  const entregaEncerrada = ["entregue", "cancelada"].includes(pedido.estado_remo);
+  acompanhamentoAtivo = aguardandoPix || (!entregaEncerrada && !["entregue", "recusado"].includes(pedido.estado)) ||
     Boolean(pedido.mesa && !pedido.pago && pedido.estado !== "recusado");
   el("mensagem").textContent = (aguardandoPix ? (creditoTeste ? "Aguardando confirmação do crédito de teste"
     : creditoQuiosque ? "Aguardando confirmação do cartão"
-    : pixTeste ? "Aguardando Pix Sandbox" : "Aguardando pagamento Pix") : pedido.cancelado ? "Comanda cancelada" : estados[pedido.estado]) +
+    : pixTeste ? "Aguardando Pix Sandbox" : "Aguardando pagamento Pix") : pedido.cancelado ? "Comanda cancelada" :
+      estadosEntrega[pedido.estado_remo] ?? estados[pedido.estado]) +
     (pedido.cancelado ? "" : " · " + moeda.format(pedido.total_centavos / 100));
   if (pedido.mesa) {
     el("mensagem").textContent += " · Mesa " + pedido.mesa + " · Comanda " + pedido.comanda +
