@@ -6,7 +6,9 @@ export default async function handler(req, res) {
   const { SUPABASE_URL: url, SUPABASE_SERVICE_ROLE_KEY: chave } = process.env;
   if (!url || !chave) return res.status(503).json({ erro: "Cadastro indisponível." });
   const sessao = req.headers.authorization;
-  if (typeof sessao !== "string" || !/^Bearer \S+$/.test(sessao)) return res.status(401).end();
+  if (typeof sessao !== "string" || !/^Bearer \S+$/.test(sessao)) {
+    return res.status(401).json({ erro: "Entre na Administração para cadastrar operadores." });
+  }
   const { empresa, email, senha, caixa, perfil = "vendas" } = req.body ?? {};
   if (typeof empresa !== "string" || !uuid.test(empresa) ||
       typeof email !== "string" || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
@@ -25,9 +27,10 @@ export default async function handler(req, res) {
 
   try {
     const autenticacao = await chamar("/auth/v1/user", { authorization: sessao });
-    if (!autenticacao.ok) return res.status(401).end();
+    if (!autenticacao.ok) return res.status(401).json({ erro: "Sua sessão expirou. Entre novamente na Administração." });
     const gestor = (await autenticacao.json()).id;
-    const consulta = await chamar("/rest/v1/membros?select=papel&empresa_id=eq." + empresa + "&usuario_id=eq." + gestor);
+    const consulta = await chamar("/rest/v1/membros?select=papel&empresa_id=eq." + empresa + "&usuario_id=eq." + gestor,
+      { authorization: sessao });
     if (!consulta.ok) throw new Error("Consulta de perfil indisponível.");
     if (!(await consulta.json()).some(m => m.papel === "gestor")) {
       return res.status(403).json({ erro: "Somente o gestor da loja pode cadastrar operadores." });

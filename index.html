@@ -118,6 +118,7 @@
 <nav class="admin-atalhos" aria-label="Áreas da administração">
   <section><h3>Equipe e caixas</h3><p>Cadastre acessos para Vendas ou Cozinha e atribua os caixas da loja.</p>
     <div><button type="button" data-admin-abrir="cadastrar-operador">Cadastrar operador</button>
+    <button type="button" class="secondary" data-admin-abrir="lista-operadores">Lista de operadores</button>
     <button type="button" class="secondary" data-admin-abrir="configurar-terminal">Gerenciar caixas</button>
     <button type="button" class="secondary" data-admin-abrir="permissao-kds">Permissões da cozinha</button></div>
   </section>
@@ -130,10 +131,17 @@
     <button type="button" class="secondary" data-admin-abrir="configuracao-entrega">Pagamento na entrega</button></div>
   </section>
 </nav>
+<section id="lista-operadores" class="panel">
+<h2>Lista de operadores</h2>
+<p id="aviso-lista-operadores" role="status"></p>
+<ul id="operadores-da-loja"></ul>
+<button type="button" class="secondary" id="atualizar-lista-operadores">Atualizar lista</button>
+</section>
 <form id="permissao-kds" class="panel">
 <h2>Permissões da cozinha</h2>
-<label for="email-permissao-kds">E-mail da conta vinculada à cozinha</label>
-<input id="email-permissao-kds" type="email" required>
+<label for="email-permissao-kds">Operador vinculado à cozinha</label>
+<select id="email-permissao-kds" required></select>
+<p id="aviso-operadores-kds" role="status"></p>
 <label for="modo-permissao-kds">Ajustes de comanda</label>
 <select id="modo-permissao-kds"><option value="conceder">Conceder acesso</option><option value="revogar">Revogar acesso</option></select>
 <button>Salvar permissão</button>

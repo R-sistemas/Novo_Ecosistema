@@ -1,6 +1,6 @@
 const modais = new Map();
 const ids = ["aparencia-cardapio", "configurar-mesa", "cadastrar-operador", "configurar-pdv",
-  "configurar-terminal", "cadastro-produto", "configuracao-entrega", "permissao-kds"];
+  "configurar-terminal", "cadastro-produto", "configuracao-entrega", "permissao-kds", "lista-operadores"];
 
 for (const id of ids) {
   const formulario = document.getElementById(id);
