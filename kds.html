@@ -53,7 +53,13 @@
     <label for="acao-ajuste-kds">Ação</label>
     <select id="acao-ajuste-kds"><option value="adicionar">Adicionar item</option><option value="retirar">Retirar item</option></select>
     <label for="produto-ajuste-kds">Produto</label><select id="produto-ajuste-kds" required></select>
-    <label for="quantidade-ajuste-kds">Quantidade</label><input id="quantidade-ajuste-kds" type="number" min="1" max="100" value="1" required>
+    <div id="quantidade-unidade-kds"><label for="quantidade-ajuste-kds">Quantidade</label><input id="quantidade-ajuste-kds" type="number" min="1" max="100" value="1" required></div>
+    <fieldset id="pesagem-kds" hidden disabled>
+      <legend>Como lançar?</legend>
+      <label for="modo-pesagem-kds">Modo</label><select id="modo-pesagem-kds"><option value="peso">Digitar o peso</option><option value="valor">Digitar o valor total</option></select>
+      <label for="entrada-pesagem-kds" data-rotulo-pesagem>Peso em gramas</label><input id="entrada-pesagem-kds" type="number" inputmode="decimal" required>
+      <output aria-live="polite"></output>
+    </fieldset>
     <label for="motivo-ajuste-kds">Motivo</label><input id="motivo-ajuste-kds" minlength="3" maxlength="240" required>
     <button>Registrar ajuste</button>
   </form>

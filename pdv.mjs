@@ -5,6 +5,7 @@ import { carregarAjustesCaixa } from "./ajustes-caixa.mjs";
 import { aplicarTema } from "./tema-cardapio.mjs";
 import { otimizarImagem } from "./imagens-cardapio.mjs";
 import { abrirAdmin, modalAdminAtivo } from "./administracao.mjs";
+import { configurarPesagem, detalhePesagem } from "./pesagem.mjs";
 
 let produtos = [];
 let usuario;
@@ -25,11 +26,15 @@ const estado = { sessao: null, fechamentos: [] };
 const carrinho = new Map();
 const meios = { Dinheiro: "dinheiro", Pix: "pix", "Cartão": "cartao" };
 const el = id => document.getElementById(id);
+const dialogoPesagem = el("dialogo-pesagem");
+const pesagem = configurarPesagem(el("campos-pesagem"));
+let itemPesagem;
+let tentativaPesagem;
 const opcoesPagamento = [...document.querySelectorAll("[data-meio-pdv]")];
 const reais = centavos => new Intl.NumberFormat("pt-BR", {
   style: "currency", currency: "BRL"
 }).format(centavos / 100);
-const precoAdicional = produto => comandaAberta?.itens.find(i => i.produto_id === produto.id)?.preco_centavos ?? produto.preco;
+const precoAdicional = produto => comandaAberta?.itens.find(i => i.produto_id === produto.id && !i.pesagem)?.preco_centavos ?? produto.preco;
 const subtotal = () => (comandaAberta?.total_centavos ?? 0) + produtos.reduce((soma, produto) =>
   soma + precoAdicional(produto) * (carrinho.get(produto.codigo) ?? 0), 0);
 const desconto = () => !comandaAberta && empresasGerenciadas.has(el("empresa").value)
@@ -53,7 +58,7 @@ async function atualizar() {
   el("configuracao-entrega").hidden = true;
   const [catalogo, caixas, configuracao, caixasDisponiveis] = await Promise.all([
     listar("produtos?ativo=eq.true&empresa_id=eq." + empresa + "&order=nome" +
-      (administracao ? "" : "&select=id,codigo,nome,preco_centavos,categoria")),
+      (administracao ? "" : "&select=id,codigo,nome,preco_centavos,categoria,vendido_por_peso")),
     administracao ? [] : listar("caixas?empresa_id=eq." + empresa + "&operador_id=eq." + usuario + "&order=aberto_em.desc&limit=1"),
     listar("empresas?select=nome,nome_pdv,pagamento_na_entrega" +
       (administracao ? ",cardapio_cor,cardapio_fundo,cardapio_logo,cardapio_agradecimento" : "") + "&id=eq." + empresa),
@@ -138,7 +143,8 @@ function renderizarCatalogoAdmin() {
     const nome = document.createElement("strong");
     nome.textContent = produto.nome;
     const detalhe = document.createElement("small");
-    detalhe.textContent = [produto.codigo, produto.categoria, reais(produto.preco_centavos)].filter(Boolean).join(" · ");
+    detalhe.textContent = [produto.codigo, produto.categoria,
+      reais(produto.preco_centavos) + (produto.vendido_por_peso ? "/kg" : "")].filter(Boolean).join(" · ");
     dados.append(nome, detalhe);
     const acoes = document.createElement("div");
     acoes.className = "admin-produto-acoes";
@@ -238,12 +244,12 @@ function renderizarProdutos() {
     grade.className = "products";
     grade.append(...itens.map(produto => {
       const item = botao(produto.nome, () => {
-        adicionarProduto(produto);
         el("dialogo-produtos").close();
-        el("search").focus();
+        adicionarProduto(produto);
+        if (!dialogoPesagem.open) el("search").focus();
       }, true);
       const detalhe = document.createElement("small");
-      detalhe.textContent = produto.codigo + " · " + reais(produto.preco);
+      detalhe.textContent = produto.codigo + " · " + reais(produto.preco) + (produto.vendido_por_peso ? "/kg" : "");
       item.append(detalhe);
       return item;
     }));
@@ -254,6 +260,10 @@ function renderizarProdutos() {
 }
 function adicionarProduto(produto) {
   if (vendaPendente || adicionalPendente || comandaAberta?.ajuste_pendente) return;
+  if (produto.vendido_por_peso) {
+    abrirPesagem(produto);
+    return;
+  }
   const quantidade = el("quantidade-frente").valueAsNumber;
   const soma = (carrinho.get(produto.codigo) ?? 0) + quantidade;
   if (!Number.isInteger(quantidade) || quantidade < 1 || soma > (comandaAberta ? 100 : 1000)) {
@@ -265,6 +275,51 @@ function adicionarProduto(produto) {
   el("search").value = "";
   renderizar();
 }
+
+function abrirPesagem(produto) {
+  if (!estado.sessao || !comandaAberta || comandaAberta.ajuste_pendente) {
+    el("notice").textContent = "Abra o caixa e uma comanda de mesa para lançar este produto.";
+    return;
+  }
+  itemPesagem = { produto, pedido: comandaAberta.id };
+  const retirar = Boolean(produto.pesagem);
+  el("titulo-pesagem").textContent = retirar ? "Retirar lançamento" : "Adicionar produto por peso";
+  el("produto-pesagem").textContent = produto.nome + " · " + (retirar ? reais(produto.preco) : reais(produto.preco) + "/kg");
+  el("retirada-pesagem").hidden = !retirar;
+  el("motivo-pesagem").disabled = !retirar;
+  el("motivo-pesagem").value = "";
+  el("aviso-pesagem").textContent = "";
+  pesagem.abrir(retirar ? null : produto.preco);
+  dialogoPesagem.showModal();
+}
+
+el("fechar-pesagem").onclick = () => dialogoPesagem.close();
+el("form-pesagem").onsubmit = async evento => {
+  evento.preventDefault();
+  if (dialogoPesagem.inert) return;
+  const { produto, pedido } = itemPesagem;
+  const retirada = produto.pesagem?.id;
+  const dados = {
+    p_empresa: el("empresa").value, p_pedido: pedido, p_caixa: estado.sessao.id,
+    p_produto: retirada ? null : produto.id, p_retirar: retirada ?? null,
+    p_motivo: retirada ? el("motivo-pesagem").value.trim() : "Lançamento no caixa",
+    ...(retirada ? { p_gramas: null, p_valor: null } : pesagem.dados())
+  };
+  const chave = JSON.stringify(dados);
+  if (tentativaPesagem?.chave !== chave) tentativaPesagem = { chave, id: crypto.randomUUID() };
+  dialogoPesagem.inert = true;
+  try {
+    await executar("ajustar_item_pesado", { ...dados, p_id: tentativaPesagem.id });
+    tentativaPesagem = undefined;
+    await carregarComandas();
+    dialogoPesagem.close();
+    el("notice").textContent = retirada ? "Lançamento retirado da comanda." : "Produto lançado na comanda.";
+  } catch (erro) {
+    el("aviso-pesagem").textContent = erro.message;
+  } finally {
+    dialogoPesagem.inert = false;
+  }
+};
 
 function renderizar() {
   const sessao = estado.sessao;
@@ -294,12 +349,15 @@ function renderizar() {
   el("cart").replaceChildren(...itens.map(produto => {
     const { quantidade } = produto;
     const linha = document.createElement("tr");
-    for (const texto of [produto.codigo, produto.nome, quantidade, reais(produto.preco), reais(produto.preco * quantidade)]) {
+    const medida = produto.pesagem ? detalhePesagem(produto.pesagem) : quantidade;
+    const unitario = produto.pesagem ? (produto.pesagem.preco_quilo_centavos ? reais(produto.pesagem.preco_quilo_centavos) + "/kg" : "—") : reais(produto.preco);
+    for (const texto of [produto.codigo, produto.nome, medida, unitario, reais(produto.preco * quantidade)]) {
       linha.insertCell().textContent = texto;
     }
     const acoes = linha.insertCell();
     if (produto.original) {
-      acoes.textContent = "—";
+      if (produto.pesagem && estado.sessao && !ajustePendente) acoes.append(botao("Retirar", () => abrirPesagem(produto), true));
+      else acoes.textContent = "—";
       return linha;
     }
     const remover = botao("−", () => {
@@ -547,7 +605,8 @@ function editarProduto(produto) {
   produtoEditado = produto;
   el("cadastro-produto").reset();
   el("cadastro-produto").querySelector("h2").textContent = produto ? "Editar produto" : "Cadastrar produto";
-  if (!produto) return;
+  el("produto-modo-venda").value = produto?.vendido_por_peso ? "peso" : "unidade";
+  if (!produto) { configurarModoProduto(); return; }
   el("produto-visivel").checked = produto.visivel_cardapio;
   el("produto-preparo").checked = produto.preparo_cozinha;
   for (const campo of ["codigo", "nome", "categoria", "descricao", "composicao"]) {
@@ -555,7 +614,18 @@ function editarProduto(produto) {
   }
   el("produto-preco").value = produto.preco_centavos / 100;
   el("produto-queridinho").checked = produto.queridinho;
+  configurarModoProduto();
 }
+function configurarModoProduto() {
+  const pesado = el("produto-modo-venda").value === "peso";
+  el("orientacao-produto-peso").hidden = !pesado;
+  el("rotulo-produto-preco").textContent = pesado ? "Preço por quilo (R$)" : "Preço unitário (R$)";
+  for (const id of ["produto-visivel", "produto-preparo", "produto-queridinho"]) {
+    el(id).disabled = pesado;
+    if (pesado) el(id).checked = false;
+  }
+}
+el("produto-modo-venda").onchange = configurarModoProduto;
 el("cancelar-produto").onclick = () => editarProduto();
 el("cadastro-produto").addEventListener("submit", evento => {
   evento.preventDefault();
@@ -568,7 +638,8 @@ el("cadastro-produto").addEventListener("submit", evento => {
     }
     const empresa = el("empresa").value;
     const foto = el("produto-foto").files[0];
-    const dados = { codigo, nome, preco_centavos, visivel_cardapio: el("produto-visivel").checked, preparo_cozinha: el("produto-preparo").checked, queridinho: el("produto-queridinho").checked };
+    const dados = { codigo, nome, preco_centavos, vendido_por_peso: el("produto-modo-venda").value === "peso",
+      visivel_cardapio: el("produto-visivel").checked, preparo_cozinha: el("produto-preparo").checked, queridinho: el("produto-queridinho").checked };
     for (const campo of ["categoria", "descricao", "composicao"]) dados[campo] = el("produto-" + campo).value.trim() || null;
     if (foto) dados.foto_cardapio = await otimizarImagem(foto);
     const editando = Boolean(produtoEditado);
@@ -704,7 +775,7 @@ el("abrir-pagamento-pdv").onclick = abrirPagamento;
 for (const opcao of opcoesPagamento) opcao.onclick = () => selecionarPagamento(opcao);
 document.addEventListener("keydown", evento => {
   if (area !== "vendas" || el("operacao").hidden || el("dialogo-comandas").open || el("dialogo-produtos").open ||
-      el("resolver-ajuste-caixa").open ||
+      el("resolver-ajuste-caixa").open || dialogoPesagem.open ||
       ocupado || evento.ctrlKey || evento.altKey || evento.metaKey) return;
   if (evento.key === "F3") {
     evento.preventDefault();

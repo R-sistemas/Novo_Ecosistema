@@ -1,5 +1,6 @@
 import { executar } from "./supabase-pdv.mjs";
 import { carregarCozinha } from "./cozinha.mjs";
+import { configurarPesagem, detalhePesagem } from "./pesagem.mjs";
 
 const el = id => document.getElementById(id);
 const loja = () => el("empresa").value;
@@ -11,9 +12,14 @@ const acao = el("acao-ajuste-kds");
 const produto = el("produto-ajuste-kds");
 const quantidade = el("quantidade-ajuste-kds");
 const aviso = el("aviso-ajuste-kds");
+const pesagem = configurarPesagem(el("pesagem-kds"));
 let comanda;
 let catalogo = [];
 let tentativa;
+
+const chaveItem = item => item.pesagem?.id ?? item.produto_id;
+const permitePesagem = () => comanda.mesa && !comanda.encaminhar;
+const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 export async function atualizarPermissaoKds() {
   const empresa = loja();
@@ -29,17 +35,24 @@ export async function atualizarPermissaoKds() {
 
 function preencherProdutos() {
   const retirada = acao.value === "retirar";
-  const lista = retirada ? comanda.itens : catalogo;
+  const lista = retirada ? comanda.itens.filter(item => !item.pesagem || permitePesagem())
+    : catalogo.filter(item => !item.vendido_por_peso || permitePesagem());
   produto.replaceChildren(...lista.map(item => new Option(
-    retirada ? `${item.nome} (${item.quantidade} na comanda)` : `${item.codigo} · ${item.nome}`,
-    retirada ? item.produto_id : item.id
+    retirada ? `${item.nome} (${item.pesagem ? detalhePesagem(item.pesagem) + " · " + moeda.format(item.preco_centavos / 100) : item.quantidade + " na comanda"})`
+      : `${item.codigo} · ${item.nome}${item.vendido_por_peso ? " · por peso" : ""}`,
+    retirada ? chaveItem(item) : item.id
   )));
   produto.onchange();
   formulario.querySelector("button").disabled = !lista.length;
 }
 
 produto.onchange = () => {
-  const atual = acao.value === "retirar" ? comanda.itens.find(item => item.produto_id === produto.value) : null;
+  const retirada = acao.value === "retirar";
+  const atual = retirada ? comanda.itens.find(item => chaveItem(item) === produto.value) : catalogo.find(item => item.id === produto.value);
+  const pesado = atual?.pesagem || atual?.vendido_por_peso;
+  el("quantidade-unidade-kds").hidden = Boolean(pesado);
+  quantidade.disabled = Boolean(pesado);
+  pesagem.abrir(!retirada && pesado ? atual.preco_quilo_centavos : null);
   quantidade.max = String(Math.min(atual?.quantidade ?? 100, 100));
   quantidade.value = "1";
 };
@@ -110,19 +123,31 @@ busca.onsubmit = evento => {
 formulario.onsubmit = evento => {
   evento.preventDefault();
   void operar(async () => {
+    const retirada = acao.value === "retirar";
+    const item = retirada ? comanda.itens.find(i => chaveItem(i) === produto.value) : catalogo.find(i => i.id === produto.value);
+    if (!item) throw new Error("Selecione um produto.");
     const dados = {
       p_empresa: loja(), p_pedido: comanda.id, p_operacao: acao.value, p_produto: produto.value,
       p_quantidade: quantidade.valueAsNumber, p_motivo: el("motivo-ajuste-kds").value.trim()
     };
-    const chave = JSON.stringify(dados);
+    const pesado = item.vendido_por_peso || item.pesagem;
+    const dadosPesagem = pesado ? {
+      p_empresa: dados.p_empresa, p_pedido: dados.p_pedido, p_motivo: dados.p_motivo, p_caixa: null,
+      p_produto: retirada ? null : item.id, p_retirar: retirada ? item.pesagem.id : null,
+      ...(retirada ? { p_gramas: null, p_valor: null } : pesagem.dados())
+    } : null;
+    const chave = JSON.stringify(dadosPesagem ?? dados);
     if (tentativa?.chave !== chave) tentativa = { chave, id: crypto.randomUUID() };
-    const estado = await executar("registrar_ajuste_kds", { ...dados, p_id: tentativa.id });
+    let estado = "aplicado";
+    if (pesado) await executar("ajustar_item_pesado", { ...dadosPesagem, p_id: tentativa.id });
+    else estado = await executar("registrar_ajuste_kds", { ...dados, p_id: tentativa.id });
     tentativa = undefined;
     formulario.reset();
     formulario.hidden = true;
     aviso.textContent = estado === "pendente" ? "Ajuste encaminhado. Aguarde a resolução." : "Ajuste registrado na comanda.";
-    if (estado === "pendente" || dados.p_operacao === "adicionar" || comanda.itens.some(item =>
-      item.produto_id !== dados.p_produto || item.quantidade > dados.p_quantidade)) await buscar();
+    const cancelouComanda = retirada && estado === "aplicado" && comanda.itens.length === 1 &&
+      (pesado || item.quantidade === dados.p_quantidade);
+    if (!cancelouComanda) await buscar();
     void carregarCozinha();
   });
 };
