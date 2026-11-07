@@ -5,12 +5,17 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="supabase-key" content="sb_publishable_s0oowaHaCZkMUZgNTo6upw_zljF76Na"><title>Caixa | R Sistemas</title>
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="pdv.webmanifest">
+<link rel="apple-touch-icon" href="icone-pwa-192.png">
+<meta name="theme-color" content="#175d2d">
+<script type="module" src="instalar-pwa.mjs"></script>
 <script type="module" src="pdv.mjs"></script>
 </head>
 <body>
 <header><img src="logo.png" alt="R Sistemas"><div><strong id="nome-pdv-exibido">R Sistemas</strong><small>PDV · R Sistemas</small></div><span id="status"></span></header>
 <main>
 <section class="intro"><p class="eyebrow">OPERAÇÃO DE BALCÃO</p><h1>Ponto de venda</h1></section>
+<button id="instalar-pwa" class="secondary" type="button" hidden>Instalar R Sistemas PDV</button>
 <form id="login" class="panel"><label for="email">E-mail</label><input id="email" type="email" autocomplete="username" required><label for="password">Senha</label><input id="password" type="password" autocomplete="current-password" required><label for="entrada">Área de acesso</label><select id="entrada"><option value="vendas">Vendas</option><option value="administracao">Administração</option></select><button>Entrar</button></form>
 <div id="operacao" hidden><label for="empresa">Estabelecimento</label><select id="empresa"></select>
 <button id="trocar-area" type="button">Trocar área</button>

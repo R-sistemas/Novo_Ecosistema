@@ -7,6 +7,9 @@
 <title>Cardápio | R Sistemas</title>
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="cardapio.css">
+<link rel="apple-touch-icon" href="icone-pwa-192.png">
+<meta name="theme-color" content="#175d2d">
+<script type="module" src="instalar-pwa.mjs"></script>
 <script type="module" src="cardapio.mjs"></script>
 </head>
 <body>
@@ -16,6 +19,7 @@
   <span class="selo" id="contexto-cardapio" hidden></span>
 </div></header>
 <main class="limite">
+<button class="secundario" id="instalar-pwa" type="button" hidden>Instalar cardápio</button>
 <section id="vitrine" hidden>
   <label class="busca"><input id="busca-cardapio" type="search" aria-label="Buscar produto" placeholder="Busque seu produto favorito"></label>
   <section id="secao-destaques" hidden><h2>Queridinhos</h2><div id="destaques" class="faixa" tabindex="0" aria-label="Queridinhos" role="region"></div></section>
