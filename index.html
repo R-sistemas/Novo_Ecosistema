@@ -30,6 +30,7 @@
 <label>Cliente <output id="cliente-frente">Consumidor</output></label>
 <label>Comanda <output id="comanda-frente">—</output></label>
 <button id="abrir-comandas" type="button" class="secondary">F7 · Abrir comanda</button>
+<button id="salvar-adicionais" type="button" hidden>Enviar adicionais da comanda</button>
 <button id="voltar-balcao" type="button" class="secondary" hidden>Voltar ao balcão</button>
 <label for="search">Código ou produto</label><input id="search" type="search" placeholder="Ex.: café ou 101">
 <label for="quantidade-frente">Quantidade</label><input id="quantidade-frente" type="number" min="1" max="1000" value="1">
@@ -165,6 +166,8 @@
 <label for="produto-composicao">Composição</label><input id="produto-composicao" maxlength="500">
 <label for="produto-foto">Foto do produto</label><input id="produto-foto" type="file" accept="image/png,image/jpeg,image/webp">
 <label><input id="produto-queridinho" type="checkbox" style="width:auto"> Exibir nos Queridinhos</label>
+<label><input id="produto-visivel" type="checkbox" checked style="width:auto"> Disponível no cardápio online</label>
+<label><input id="produto-preparo" type="checkbox" checked style="width:auto"> Adicionais passam pela cozinha</label>
 <button>Salvar produto</button>
 <button id="cancelar-produto" class="secondary" type="button">Limpar edição</button>
 </form>

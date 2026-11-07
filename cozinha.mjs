@@ -35,7 +35,7 @@ export async function carregarCozinha() {
       const artigo = document.createElement("article");
       const titulo = document.createElement("h3");
       const modalidade = pedido.pagamento_entrega ? "Entrega" : pedido.mesa ? "Mesa " + pedido.mesa : "Retirada";
-      titulo.textContent = pedido.cliente + " · " + modalidade;
+      titulo.textContent = (pedido.adicional ? "Adicionais · " : "") + pedido.cliente + " · " + modalidade;
       if (pedido.mesa) titulo.textContent += " · Comanda " + pedido.comanda;
       const resumo = document.createElement("p");
       resumo.textContent = pedido.itens.map(item => item.quantidade + " × " + item.nome).join(", ");
@@ -77,13 +77,13 @@ export async function carregarCozinha() {
         artigo.append(receber);
       }
       for (const [destino, texto] of acoes[pedido.estado]) {
-        if ((destino === "entregue" && !pedido.recebido && !pedido.mesa) || (destino === "recusado" && pedido.recebido)) continue;
+        if ((pedido.adicional && destino === "recusado") || (destino === "entregue" && !pedido.recebido && !pedido.mesa) || (destino === "recusado" && pedido.recebido)) continue;
         const botao = document.createElement("button");
         botao.textContent = texto;
         botao.onclick = async () => {
           artigo.inert = true;
           try {
-            await executar("avancar_pedido", { p_id: pedido.id, p_estado: destino });
+            await executar(pedido.adicional ? "avancar_adicional_comanda" : "avancar_pedido", { p_id: pedido.id, p_estado: destino });
             if (empresa.value === idEmpresa) await carregarCozinha();
           } catch (erro) {
             if (empresa.value === idEmpresa) aviso.textContent = erro.message;

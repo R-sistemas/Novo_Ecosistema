@@ -1,0 +1,51 @@
+-- Run with a privileged test connection. All fixture data is rolled back.
+begin;
+DO $teste$
+declare u uuid; e uuid:=gen_random_uuid(); pr uuid:=gen_random_uuid(); pr2 uuid:=gen_random_uuid();
+ t uuid:=gen_random_uuid(); c uuid; p uuid:=gen_random_uuid(); a uuid:=gen_random_uuid(); b uuid:=gen_random_uuid(); itens jsonb; r jsonb; v bigint; falhou boolean;
+begin
+ select id into u from auth.users where email='rafaelcaixeta.adm@gmail.com';
+ if u is null then raise exception 'Usuário de validação indisponível'; end if;
+ perform set_config('request.jwt.claim.sub',u::text,true);
+ insert into public.empresas(id,nome,cardapio_slug) values(e,'Validação rollback','validacao-adicionais');
+ insert into public.membros values(e,u,'gestor');
+ insert into public.produtos(id,empresa_id,codigo,nome,preco_centavos) values(pr,e,'1','Lanche',500);
+ insert into public.produtos(id,empresa_id,codigo,nome,preco_centavos,visivel_cardapio,preparo_cozinha) values(pr2,e,'2','Bebida balcão',200,false,false);
+ insert into public.terminais_pdv(id,empresa_id,nome,operador_id) values(t,e,'Teste',u);
+ c:=public.abrir_caixa(e,0,t);
+ insert into public.pedidos_online(id,empresa_id,cliente,mesa,itens,total_centavos,estado)
+ values(p,e,'Cliente teste',1,jsonb_build_array(jsonb_build_object('produto_id',pr,'nome','Lanche','quantidade',1,'preco_centavos',500)),500,'entregue');
+ if jsonb_array_length(public.ver_cardapio('validacao-adicionais')->'produtos')<>1 then raise exception 'Vazamento do catálogo'; end if;
+ falhou:=false;
+ begin perform public.enviar_pedido('validacao-adicionais',gen_random_uuid(),'Teste',null,jsonb_build_array(jsonb_build_object('produto_id',pr2,'quantidade',1)));
+ exception when others then falhou:=true; end;
+ if not falhou then raise exception 'Produto de balcão aceito publicamente'; end if;
+ update public.produtos set preco_centavos=900 where id=pr;
+ itens:=jsonb_build_array(jsonb_build_object('produto_id',pr,'quantidade',1),jsonb_build_object('produto_id',pr2,'quantidade',1));
+ r:=public.adicionar_itens_comanda(c,p,a,itens);
+ if (r->>'total_centavos')::bigint<>1200 then raise exception 'Preço histórico alterado'; end if;
+ r:=public.adicionar_itens_comanda(c,p,a,itens);
+ if (select count(*) from public.adicionais_comanda where pedido_id=p)<>1 then raise exception 'Adicional duplicado'; end if;
+ if jsonb_array_length(public.fila_cozinha(e))<>1 or jsonb_array_length(public.fila_cozinha(e)->0->'itens')<>1 then raise exception 'Fila repete itens ou bebida pronta'; end if;
+ falhou:=false;
+ begin perform public.receber_pedido_no_caixa(c,p,'dinheiro'); exception when others then falhou:=true; end;
+ if not falhou then raise exception 'Recebimento antecipado'; end if;
+ perform public.avancar_adicional_comanda(a,'preparo'); perform public.avancar_adicional_comanda(a,'pronto'); perform public.avancar_adicional_comanda(a,'entregue');
+ itens:=jsonb_build_array(jsonb_build_object('produto_id',pr2,'quantidade',1));
+ r:=public.adicionar_itens_comanda(c,p,b,itens);
+ if jsonb_array_length(public.fila_cozinha(e))<>0 then raise exception 'Bebida pronta enviada à cozinha'; end if;
+ v:=public.receber_pedido_no_caixa(c,p,'dinheiro');
+ if v<>1400 then raise exception 'Recebimento incorreto'; end if;
+ v:=public.receber_pedido_no_caixa(c,p,'dinheiro');
+ if (select count(*) from public.movimentos_caixa where caixa_id=c and tipo='venda')<>1 then raise exception 'Recebimento duplicado'; end if;
+ falhou:=false;
+ begin perform public.adicionar_itens_comanda(c,p,gen_random_uuid(),itens); exception when others then falhou:=true; end;
+ if not falhou then raise exception 'Comanda paga foi alterada'; end if;
+ perform set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);
+ falhou:=false;
+ begin perform public.adicionar_itens_comanda(c,p,gen_random_uuid(),itens); exception when others then falhou:=true; end;
+ if not falhou then raise exception 'Acesso indevido'; end if;
+end;
+$teste$;
+select 'OK adicionais, repetição, preços, cozinha, recebimento e isolamento' as validacao;
+rollback;

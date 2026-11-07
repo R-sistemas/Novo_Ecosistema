@@ -19,6 +19,7 @@ let aparencia;
 let consultaComandas = 0;
 let ultimaListaComandas;
 let comandaAberta;
+let adicionalPendente;
 const estado = { sessao: null, fechamentos: [] };
 const carrinho = new Map();
 const meios = { Dinheiro: "dinheiro", Pix: "pix", "Cartão": "cartao" };
@@ -27,8 +28,9 @@ const opcoesPagamento = [...document.querySelectorAll("[data-meio-pdv]")];
 const reais = centavos => new Intl.NumberFormat("pt-BR", {
   style: "currency", currency: "BRL"
 }).format(centavos / 100);
-const subtotal = () => comandaAberta?.total_centavos ?? produtos.reduce((soma, produto) =>
-  soma + produto.preco * (carrinho.get(produto.codigo) ?? 0), 0);
+const precoAdicional = produto => comandaAberta?.itens.find(i => i.produto_id === produto.id)?.preco_centavos ?? produto.preco;
+const subtotal = () => (comandaAberta?.total_centavos ?? 0) + produtos.reduce((soma, produto) =>
+  soma + precoAdicional(produto) * (carrinho.get(produto.codigo) ?? 0), 0);
 const desconto = () => !comandaAberta && empresasGerenciadas.has(el("empresa").value)
   ? Math.round((el("valor-desconto").valueAsNumber || 0) * 100) : 0;
 const total = () => subtotal() - desconto();
@@ -197,11 +199,11 @@ function renderizarProdutos() {
   if (!grupos.size) el("products").textContent = "Nenhum produto encontrado.";
 }
 function adicionarProduto(produto) {
-  if (vendaPendente || comandaAberta) return;
+  if (vendaPendente || adicionalPendente) return;
   const quantidade = el("quantidade-frente").valueAsNumber;
   const soma = (carrinho.get(produto.codigo) ?? 0) + quantidade;
-  if (!Number.isInteger(quantidade) || quantidade < 1 || soma > 1000) {
-    el("notice").textContent = "Informe uma quantidade entre 1 e 1.000.";
+  if (!Number.isInteger(quantidade) || quantidade < 1 || soma > (comandaAberta ? 100 : 1000)) {
+    el("notice").textContent = "Informe uma quantidade válida. Em adicionais, o limite é 100 por produto.";
     return;
   }
   carrinho.set(produto.codigo, soma);
@@ -223,16 +225,16 @@ function renderizar() {
   el("comanda-frente").textContent = comandaAberta?.comanda ?? "—";
   el("titulo-venda-frente").textContent = comandaAberta ? "Itens da comanda" : "Itens da venda";
   el("voltar-balcao").hidden = !comandaAberta;
-  el("search").disabled = Boolean(comandaAberta);
-  el("quantidade-frente").disabled = Boolean(comandaAberta);
-  el("abrir-produtos").disabled = Boolean(comandaAberta || vendaPendente);
+  el("search").disabled = Boolean(adicionalPendente);
+  el("quantidade-frente").disabled = Boolean(adicionalPendente);
+  el("abrir-produtos").disabled = Boolean(adicionalPendente || vendaPendente);
   el("desconto-frente").hidden = Boolean(comandaAberta) || !empresasGerenciadas.has(el("empresa").value);
   el("valor-desconto").disabled = Boolean(vendaPendente);
   el("cart-vazio").hidden = temItens();
-  const itens = comandaAberta ? comandaAberta.itens.map(item => ({
+  const itens = [...(comandaAberta ? comandaAberta.itens.map(item => ({
     ...item, codigo: produtos.find(p => p.id === item.produto_id)?.codigo ?? "—",
-    preco: item.preco_centavos
-  })) : produtos.filter(p => carrinho.has(p.codigo)).map(p => ({ ...p, quantidade: carrinho.get(p.codigo) }));
+    preco: item.preco_centavos, original: true
+  })) : []), ...produtos.filter(p => carrinho.has(p.codigo)).map(p => ({ ...p, preco: precoAdicional(p), nome: comandaAberta ? "Adicional · " + p.nome : p.nome, quantidade: carrinho.get(p.codigo) }))];
   el("cart").replaceChildren(...itens.map(produto => {
     const { quantidade } = produto;
     const linha = document.createElement("tr");
@@ -240,12 +242,12 @@ function renderizar() {
       linha.insertCell().textContent = texto;
     }
     const acoes = linha.insertCell();
-    if (comandaAberta) {
+    if (produto.original) {
       acoes.textContent = "—";
       return linha;
     }
     const remover = botao("−", () => {
-      if (vendaPendente) return;
+      if (vendaPendente || adicionalPendente) return;
       if (quantidade === 1) carrinho.delete(produto.codigo);
       else carrinho.set(produto.codigo, quantidade - 1);
       renderizar();
@@ -254,6 +256,9 @@ function renderizar() {
     acoes.append(remover);
     return linha;
   }));
+  el("salvar-adicionais").hidden = !comandaAberta || !carrinho.size;
+  el("salvar-adicionais").disabled = !estado.sessao;
+  el("salvar-adicionais").textContent = adicionalPendente ? "Tentar envio dos adicionais novamente" : "Enviar adicionais da comanda";
   atualizarTotalFrente();
   for (const opcao of opcoesPagamento) opcao.disabled = Boolean(vendaPendente);
   const ultimo = estado.fechamentos.at(-1);
@@ -275,7 +280,7 @@ function atualizarTotalFrente() {
   const recebido = el("valor-recebido-frente").valueAsNumber;
   const recebidoCentavos = Math.round(recebido * 100);
   el("troco-frente").textContent = reais(Number.isFinite(recebidoCentavos) ? Math.max(0, recebidoCentavos - total()) : 0);
-  el("finish").disabled = !estado.sessao || !temItens() || !meioSelecionado || total() <= 0 || desconto() < 0 ||
+  el("finish").disabled = !estado.sessao || Boolean(comandaAberta && (carrinho.size || comandaAberta.adicionais_pendentes)) || !temItens() || !meioSelecionado || total() <= 0 || desconto() < 0 ||
     (meioSelecionado === "Dinheiro" && Number.isFinite(recebidoCentavos) && recebidoCentavos < total());
 }
 el("valor-desconto").oninput = atualizarTotalFrente;
@@ -474,6 +479,8 @@ function editarProduto(produto) {
   el("cadastro-produto").reset();
   el("cadastro-produto").querySelector("h2").textContent = produto ? "Editar produto" : "Cadastrar produto";
   if (!produto) return;
+  el("produto-visivel").checked = produto.visivel_cardapio;
+  el("produto-preparo").checked = produto.preparo_cozinha;
   for (const campo of ["codigo", "nome", "categoria", "descricao", "composicao"]) {
     el("produto-" + campo).value = produto[campo] ?? "";
   }
@@ -492,7 +499,7 @@ el("cadastro-produto").addEventListener("submit", evento => {
     }
     const empresa = el("empresa").value;
     const foto = el("produto-foto").files[0];
-    const dados = { codigo, nome, preco_centavos, queridinho: el("produto-queridinho").checked };
+    const dados = { codigo, nome, preco_centavos, visivel_cardapio: el("produto-visivel").checked, preparo_cozinha: el("produto-preparo").checked, queridinho: el("produto-queridinho").checked };
     for (const campo of ["categoria", "descricao", "composicao"]) dados[campo] = el("produto-" + campo).value.trim() || null;
     if (foto) dados.foto_cardapio = await otimizarImagem(foto);
     const editando = Boolean(produtoEditado);
@@ -536,6 +543,11 @@ async function carregarComandas() {
       p_empresa: empresa, p_busca: el("buscar-comanda").value
     });
     if (atual !== consultaComandas || empresa !== el("empresa").value) return;
+    if (comandaAberta) {
+      const atualizada = comandas.find(c => c.id === comandaAberta.id);
+      if (atualizada) { comandaAberta = atualizada; renderizar(); }
+      else { el("notice").textContent = "Comanda recebida ou indisponível. Volte ao balcão."; comandaAberta.adicionais_pendentes = true; atualizarTotalFrente(); }
+    }
     const resultado = JSON.stringify([empresa, comandas]);
     if (resultado === ultimaListaComandas) return;
     ultimaListaComandas = resultado;
@@ -544,7 +556,7 @@ async function carregarComandas() {
       linha.className = "row";
       linha.append("Mesa " + comanda.mesa + " · Comanda " + comanda.comanda + " · " +
         comanda.cliente + " · " + reais(comanda.total_centavos), botao("Carregar comanda", () => {
-          if (carrinho.size || vendaPendente) {
+          if (carrinho.size || vendaPendente || adicionalPendente) {
             el("aviso-comandas").textContent = "Conclua ou esvazie a venda de balcão primeiro.";
             return;
           }
@@ -571,6 +583,9 @@ el("abrir-comandas").onclick = () => {
 };
 el("fechar-comandas").onclick = () => el("dialogo-comandas").close();
 el("voltar-balcao").onclick = () => {
+  if (adicionalPendente) return;
+  if (carrinho.size && !window.confirm("Descartar os adicionais ainda não enviados?")) return;
+  carrinho.clear();
   comandaAberta = undefined;
   limparPagamento();
   renderizar();
@@ -632,7 +647,7 @@ document.addEventListener("keydown", evento => {
   } else if (evento.key === "F7") {
     evento.preventDefault();
     el("abrir-comandas").click();
-  } else if (evento.key === "F9" && !comandaAberta) {
+  } else if (evento.key === "F9") {
     evento.preventDefault();
     el("abrir-produtos").click();
   }
@@ -683,3 +698,18 @@ el("search").addEventListener("keydown", evento => {
 });
 limparPagamento();
 renderizar();
+
+el("salvar-adicionais").onclick = () => operar(async () => {
+  if (!estado.sessao || !comandaAberta || !carrinho.size) throw new Error("Abra o caixa e selecione os adicionais.");
+  adicionalPendente ??= { p_caixa: estado.sessao.id, p_pedido: comandaAberta.id, p_id: crypto.randomUUID(),
+    p_itens: produtos.filter(p => carrinho.has(p.codigo)).map(p => ({produto_id:p.id,quantidade:carrinho.get(p.codigo)})) };
+  const resultado = await executar("adicionar_itens_comanda", adicionalPendente);
+  comandaAberta = {...comandaAberta,...resultado,adicionais_pendentes:true};
+  adicionalPendente = undefined;
+  carrinho.clear();
+  limparPagamento();
+  renderizar();
+  await carregarComandas();
+  void carregarCozinha();
+  return "Adicionais registrados. A cozinha recebe somente os novos itens que exigem preparo.";
+});

@@ -67,3 +67,9 @@ A arte de agradecimento após o pedido pertence a cada estabelecimento. O gestor
 O upload de fotos de produtos deve oferecer prévia do recorte quadrado, limitar o tamanho de entrada e validar o arquivo. A imagem publicada será uma versão WebP de até 640 × 640 px, com metadados removidos e meta de até 60 KB por foto. A otimização acontece antes de publicar o arquivo. Queridinhos e categorias usam o mesmo cartão e a mesma área quadrada, inclusive quando o produto não tem foto.
 
 A primeira entrega local usa a logo fornecida e aproxima a tipografia com uma fonte de sistema. Os dados são fictícios e persistem apenas no navegador. Antes da produção, substituir essa persistência por operações autenticadas e transacionais no Supabase. Nenhuma etapa da tabela está concluída até a validação em produção.
+
+## Adicionais de comanda — implementação de 7 de novembro de 2026
+
+O PDV permite acrescentar produtos a comandas de mesa já entregues e ainda sem recebimento ou cobrança online. O catálogo permite ocultar produtos do cardápio público e definir se os adicionais precisam de cozinha. Itens de balcão sem preparo entram no mesmo total e podem ser recebidos imediatamente. Os que exigem preparo geram um lote próprio no KDS, com somente as novas quantidades. O recebimento fica bloqueado até a entrega dos lotes. Preços originais são preservados, o servidor calcula os totais e a repetição de uma solicitação não duplica itens nem recebimentos.
+
+Validação transacional com rollback em tests/adicionais-comanda.sql cobre visibilidade pública, preço histórico, repetição, lote de cozinha, item sem preparo, bloqueio de recebimento antecipado, comanda paga e acesso sem vínculo. A inclusão durante o preparo original, adicionais após pagamento com cobrança vinculada e cancelamento com motivo permanecem etapas seguintes. Pix presencial automático também permanece pendente.

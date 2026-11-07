@@ -2,3 +2,4 @@
 supabase/
 asaas-sandbox.mjs
 *.md
+tests/
