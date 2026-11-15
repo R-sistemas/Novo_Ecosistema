@@ -32,6 +32,13 @@
   <p id="total"></p>
   <label for="cliente">Seu nome</label>
   <input id="cliente" maxlength="100" required>
+  <fieldset id="tipo-entrega" hidden>
+    <legend>Como deseja receber?</legend>
+    <div class="opcoes-escolha" role="group" aria-label="Forma de recebimento">
+      <button class="opcao-escolha selecionada" type="button" data-recebimento="retirada" aria-pressed="true">Retirar no local</button>
+      <button class="opcao-escolha" type="button" data-recebimento="entrega" aria-pressed="false">Receber por entrega</button>
+    </div>
+  </fieldset>
   <fieldset id="entrega-teste" hidden disabled>
     <legend id="legenda-entrega">Endereço da entrega de teste</legend>
     <label>Rua ou avenida<input name="logradouro" maxlength="150" required></label>
@@ -39,18 +46,24 @@
     <label>Bairro<input name="bairro" maxlength="100" required></label>
     <label>Cidade<input name="cidade" maxlength="100" required></label>
     <label>Complemento<input name="complemento" maxlength="150"></label>
-    <label>Forma de pagamento
-      <select id="pagamento-entrega">
-        <option value="online">Pix Mercado Pago de teste</option>
-      </select>
-    </label>
+    <label>Link do pino no Google Maps (se necessário)<input name="maps_url" type="url" maxlength="500" placeholder="Cole o link compartilhado do local"></label>
+    <small>Se não localizar sua rua, abra o endereço no Google Maps, marque o ponto de entrega e cole aqui o link compartilhado.</small>
+    <p id="frete-cotacao" aria-live="polite">Informe o endereço para calcular a taxa de entrega.</p>
+    <div id="pagamento-entrega" class="opcoes-escolha" role="group" aria-label="Forma de pagamento na entrega">
+      <button class="opcao-escolha selecionada" type="button" data-pagamento="online" aria-pressed="true">Pix Mercado Pago</button>
+    </div>
   </fieldset>
-  <label id="opcao-pix" hidden><input id="pix-sandbox" type="checkbox"> <span id="rotulo-pix">Pagar com Pix</span></label>
   <fieldset id="pagamento-mesa" hidden disabled>
     <legend>Como deseja pagar?</legend>
-    <label><input type="radio" name="pagamento-mesa" value="caixa" checked> Pagar no caixa</label>
-    <label id="opcao-pix-mesa"><input type="radio" name="pagamento-mesa" value="pix"> Pagar agora via Pix</label>
+    <div class="opcoes-escolha" role="group" aria-label="Forma de pagamento">
+      <button class="opcao-escolha selecionada" type="button" data-pagamento="caixa" aria-pressed="true">Pagar no caixa</button>
+      <button class="opcao-escolha" id="opcao-pix-mesa" type="button" data-pagamento="pix" aria-pressed="false">Pagar agora via Pix</button>
+    </div>
   </fieldset>
+  <div id="pagamento-padrao" class="opcoes-escolha" role="group" aria-label="Forma de pagamento">
+    <button class="opcao-escolha selecionada" type="button" data-pagamento="caixa" aria-pressed="true">Pagar no caixa</button>
+    <button class="opcao-escolha" id="opcao-pix" type="button" data-pagamento="pix" aria-pressed="false">Pagar com Pix</button>
+  </div>
   <div id="dados-pix" hidden>
     <label for="documento-pix">CPF ou CNPJ para emissão da cobrança no Asaas</label>
     <input id="documento-pix" inputmode="numeric" maxlength="18" autocomplete="off">

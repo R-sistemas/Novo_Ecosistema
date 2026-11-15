@@ -47,6 +47,11 @@
         <button id="atualizar-monitor" class="secondary" type="button">Atualizar</button>
       </div>
       <div id="dados-monitor" hidden>
+        <section id="alertas-saldo-monitor" class="panel" aria-labelledby="titulo-alertas-saldo-monitor" hidden>
+          <h2 id="titulo-alertas-saldo-monitor">Saldo insuficiente na REMO</h2>
+          <p>Recarregue a carteira da REMO e solicite novamente o despacho pelo PDV.</p>
+          <ul id="lista-alertas-saldo-monitor" aria-live="polite"></ul>
+        </section>
         <dl class="monitor-metricas">
           <div><dt>Pedidos do dia</dt><dd id="total-monitor"></dd><dd id="preparo-monitor" class="monitor-detalhe"></dd></div>
           <div><dt>Recebido bruto</dt><dd id="recebido-monitor"></dd><dd id="origens-monitor" class="monitor-detalhe"></dd></div>

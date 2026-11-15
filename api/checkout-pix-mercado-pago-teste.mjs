@@ -1,10 +1,11 @@
 import { emailPixMercadoPago, mercadoPago } from "../lib/mercado-pago.mjs";
 import { bancoMercadoPagoTeste as banco } from "../lib/banco-mercado-pago-teste.mjs";
+import { cotarFreteRemo, enderecoValido } from "../lib/frete-remo.mjs";
 
 export async function checkout(req, res, { sandbox, token }) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") return res.status(405).end();
-  const { p_slug, p_id, p_cliente = null, p_mesa = null, p_itens, endereco, pagamento } = req.body ?? {};
+  const { p_slug, p_id, p_cliente = null, p_mesa = null, p_itens, endereco, pagamento, frete_centavos: freteInformado } = req.body ?? {};
   if (p_slug !== (sandbox ? "loja-teste" : "quiosque-dorafa") || typeof p_id !== "string" ||
       !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(p_id) ||
       !Array.isArray(p_itens) || p_itens.length > 30) {
@@ -13,18 +14,28 @@ export async function checkout(req, res, { sandbox, token }) {
   if (pagamento !== undefined && (!endereco || p_mesa || !["online", "na_entrega"].includes(pagamento))) {
     return res.status(400).json({ erro: "Confira os dados da entrega." });
   }
+  if (pagamento !== undefined && (!enderecoValido(endereco) || !Number.isSafeInteger(freteInformado) || freteInformado < 0)) {
+    return res.status(400).json({ erro: "Confira o endereço e a cotação da entrega." });
+  }
   const naEntrega = pagamento === "na_entrega";
   if (!naEntrega && !token) return res.status(503).json({ erro: "Pix indisponível." });
   try {
+    let freteCentavos = 0;
+    if (pagamento !== undefined) {
+      freteCentavos = await cotarFreteRemo(p_slug, endereco);
+      if (freteCentavos !== freteInformado) {
+        return res.status(409).json({ erro: "O valor da entrega mudou. Confira a nova cotação antes de confirmar.", frete_centavos: freteCentavos });
+      }
+    }
     if (naEntrega) {
-      const id = await banco("enviar_pedido_pagamento_na_entrega", {
-        p_slug, p_id, p_cliente, p_itens, p_endereco: endereco
+      const id = await banco("enviar_pedido_pagamento_na_entrega_com_frete", {
+        p_slug, p_id, p_cliente, p_itens, p_endereco: endereco, p_frete_centavos: freteCentavos
       });
       return res.status(200).json({ pedido: id });
     }
     const ambiente = sandbox ? "teste" : "quiosque";
     const pedido = pagamento === "online"
-      ? await banco("reservar_pix_entrega_" + ambiente, { p_id, p_cliente, p_itens, p_endereco: endereco })
+      ? await banco("reservar_pix_entrega_frete_" + ambiente, { p_id, p_cliente, p_itens, p_endereco: endereco, p_frete_centavos: freteCentavos })
       : await banco("reservar_pix_mercado_pago_" + ambiente, { p_id, p_cliente, p_mesa, p_itens });
     const cliente = mercadoPago(token);
     if (sandbox && pedido.cobranca) return res.status(200).json({ aguardaConfirmacao: true });
@@ -57,6 +68,22 @@ export async function checkout(req, res, { sandbox, token }) {
   }
 }
 
+async function cotarFrete(req, res) {
+  res.setHeader("Cache-Control", "no-store");
+  if (req.method !== "POST") return res.status(405).end();
+  const { p_slug, endereco } = req.body ?? {};
+  if (!enderecoValido(endereco)) return res.status(400).json({ erro: "Confira o endereço da entrega." });
+  try {
+    const frete_centavos = await cotarFreteRemo(p_slug, endereco);
+    return res.status(200).json({ frete_centavos });
+  } catch (erro) {
+    return res.status(erro.status || 502).json({ erro: erro.message || "Cotação indisponível." });
+  }
+}
+
 export default function handler(req, res) {
+  if (new URL(req.url || "/", "http://localhost").searchParams.get("cotacao_frete") === "1") {
+    return cotarFrete(req, res);
+  }
   return checkout(req, res, { sandbox: true, token: process.env.MERCADO_PAGO_TEST_ACCESS_TOKEN });
 }

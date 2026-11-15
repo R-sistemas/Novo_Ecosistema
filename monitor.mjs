@@ -81,6 +81,19 @@ function renderizarLista() {
     total > registros.length ? `Mostrando os ${registros.length} registros mais recentes de ${total}.` : "");
 }
 
+function renderizarAlertasSaldo(alertas) {
+  const lista = el("lista-alertas-saldo-monitor");
+  const textos = alertas.map(alerta => `Pedido #${alerta.comanda} · Despacho bloqueado às ${hora.format(new Date(alerta.atualizado_em))}`);
+  if (textos.join("\n") !== Array.from(lista.children, item => item.textContent).join("\n")) {
+    lista.replaceChildren(...textos.map(texto => {
+      const item = document.createElement("li");
+      item.textContent = texto;
+      return item;
+    }));
+  }
+  el("alertas-saldo-monitor").hidden = !alertas.length;
+}
+
 async function atualizar() {
   if (painel.hidden || consultando || encerrando || !dia.validity.valid) return;
   const empresa = loja.value;
@@ -99,6 +112,7 @@ async function atualizar() {
     escrever("rota-monitor", dados.em_rota);
     escrever("entregues-monitor", `${dados.entregues} com entrega concluída`);
     renderizarLista();
+    renderizarAlertasSaldo(dados.alertas_saldo_remo ?? []);
     escrever("sincronizado-monitor", `Atualizado às ${hora.format(new Date())} · horário de Brasília`);
     dadosMonitor.hidden = false;
     aviso.textContent = "";

@@ -1,4 +1,4 @@
-import { executar } from "./supabase-pdv.mjs";
+import { executar, executarApi } from "./supabase-pdv.mjs";
 import { estadosEntrega } from "./estado-entrega.mjs";
 
 const fila = document.getElementById("fila-cozinha");
@@ -88,17 +88,20 @@ export async function carregarCozinha() {
         if (pedido.estado === "pronto" && !pedido.estado_remo) {
           const despacho = document.createElement("button");
           despacho.textContent = "Solicitar despacho à REMO";
+          const avisoDespacho = document.createElement("p");
+          avisoDespacho.setAttribute("role", "status");
           despacho.onclick = async () => {
             despacho.disabled = true;
             try {
-              await executar("solicitar_despacho_remo", { p_pedido: pedido.id });
+              await executarApi("despachar-remo", { pedido: pedido.id });
+              avisoDespacho.textContent = "Despacho solicitado.";
               await carregarCozinha();
             } catch (erro) {
-              aviso.textContent = erro.message;
+              avisoDespacho.textContent = erro.message;
               despacho.disabled = false;
             }
           };
-          artigo.append(despacho);
+          artigo.append(despacho, avisoDespacho);
         }
       }
       if (!kds && !pedido.adicional && !pedido.recebido && !pedido.mesa) {

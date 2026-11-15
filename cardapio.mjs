@@ -18,8 +18,9 @@ const pixTeste = p_slug === "loja-teste";
 const creditoTeste = pixTeste && parametros.get("cartao") === "credito";
 const entregaTeste = pixTeste && !p_mesa && !creditoTeste && parametros.get("entrega") === "teste";
 const entregaQuiosque = p_slug === "quiosque-dorafa" && !p_mesa && parametros.get("entrega") === "sim";
-const entrega = entregaTeste || entregaQuiosque;
+let entrega = entregaTeste || entregaQuiosque;
 const creditoQuiosque = !entrega && p_slug === "quiosque-dorafa" && parametros.get("cartao") === "credito";
+const escolhaPublicaEntrega = p_slug === "quiosque-dorafa" && !p_mesa && !creditoTeste && !creditoQuiosque;
 const pixMercadoPagoTeste = entregaTeste || (pixTeste && parametros.get("pix") === "mercado-pago");
 const pixMercadoPagoQuiosque = p_slug === "quiosque-dorafa" &&
   (entregaQuiosque || parametros.get("pix") === "mercado-pago" || (!p_id && !parametros.has("pix")));
@@ -107,42 +108,151 @@ executarComFeedback(async () => {
   }
   if (!menu.produtos.length) throw new Error("Nenhum produto disponível.");
   const carrinho = montarVitrine(menu.produtos);
+  let formaPagamento = "caixa";
+  let freteEntregaCentavos = null;
+  let enderecoCotado = null;
+  let temporizadorCotacao = null;
+  let sequenciaCotacao = 0;
+  const enderecoEntrega = () => Object.fromEntries(
+    [...el("entrega-teste").querySelectorAll("input")].map(campo => [campo.name, campo.value.trim()])
+  );
+  const chaveEndereco = endereco => JSON.stringify(endereco);
+  const atualizarTextoFrete = () => {
+    const aviso = el("frete-cotacao");
+    if (!aviso || freteEntregaCentavos === null) return;
+    aviso.textContent = `Entrega ${moeda.format(freteEntregaCentavos / 100)} · Total com entrega ${moeda.format((carrinho.total() + freteEntregaCentavos) / 100)}`;
+  };
+  async function cotarFrete(endereco) {
+    const chave = chaveEndereco(endereco);
+    const sequencia = ++sequenciaCotacao;
+    const aviso = el("frete-cotacao");
+    aviso.textContent = "Calculando a entrega…";
+    freteEntregaCentavos = null;
+    enderecoCotado = null;
+    const resposta = await fetch("/api/cotar-frete", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ p_slug, endereco })
+    });
+    const resultado = await resposta.json().catch(() => ({}));
+    if (sequencia !== sequenciaCotacao || chave !== chaveEndereco(enderecoEntrega())) return null;
+    if (!resposta.ok || !Number.isSafeInteger(resultado.frete_centavos) || resultado.frete_centavos < 0) {
+      aviso.textContent = resultado.erro || "Não foi possível calcular a entrega para este endereço.";
+      throw new Error(resultado.erro || "Não foi possível calcular o frete.");
+    }
+    freteEntregaCentavos = resultado.frete_centavos;
+    enderecoCotado = chave;
+    atualizarTextoFrete();
+    return freteEntregaCentavos;
+  }
+  function agendarCotacaoFrete() {
+    clearTimeout(temporizadorCotacao);
+    sequenciaCotacao++;
+    freteEntregaCentavos = null;
+    enderecoCotado = null;
+    const endereco = enderecoEntrega();
+    if (!["logradouro", "numero", "bairro", "cidade"].every(campo => endereco[campo])) {
+      freteEntregaCentavos = null;
+      enderecoCotado = null;
+      el("frete-cotacao").textContent = "Informe rua, número, bairro e cidade para calcular a entrega.";
+      return;
+    }
+    temporizadorCotacao = setTimeout(() => {
+      void cotarFrete(endereco).catch(() => {});
+    }, 700);
+  }
   if (p_slug === "quiosque-dorafa") {
     pixDisponivel = await executar("pix_online_disponivel", { p_slug }).catch(() => false);
   }
-  el("opcao-pix").hidden = Boolean(p_mesa) || entrega || creditoTeste || creditoQuiosque || !pixDisponivel;
-  if (entrega) {
-    el("entrega-teste").hidden = false;
-    el("entrega-teste").disabled = false;
-    if (entregaQuiosque) {
-      el("legenda-entrega").textContent = "Endereço da entrega";
-      el("pagamento-entrega").options[0].textContent = "Pix Mercado Pago";
-    }
-    if (await executar("pagamento_na_entrega_disponivel", { p_slug }).catch(() => false)) {
-      el("pagamento-entrega").add(new Option("Pagar na entrega", "na_entrega"));
-    }
-  }
-  el("rotulo-pix").textContent = pixMercadoPagoTeste ? "Simular Pix Mercado Pago"
-    : pixMercadoPagoQuiosque ? "Pagar com Pix Mercado Pago"
-    : pixTeste ? "Pagar com Pix Sandbox" : "Pagar com Pix";
-  const pagamentoMesa = p_mesa && !creditoTeste && !creditoQuiosque;
-  const pixEscolhido = () => pagamentoMesa
-    ? document.querySelector('input[name="pagamento-mesa"]:checked').value === "pix"
-    : el("pix-sandbox").checked;
-  el("pix-sandbox").onchange = () => {
-    const solicitarDocumento = !pixTeste && !pixMercadoPagoQuiosque && pixEscolhido();
+  el("tipo-entrega").hidden = !escolhaPublicaEntrega || entrega;
+  el("pagamento-padrao").hidden = Boolean(p_mesa) || entrega || creditoTeste || creditoQuiosque;
+  el("opcao-pix").hidden = !pixDisponivel || creditoTeste || creditoQuiosque;
+  el("opcao-pix").textContent = pixTeste ? "Pagar com Pix Sandbox"
+    : pixMercadoPagoQuiosque ? "Pagar com Pix Mercado Pago" : "Pagar com Pix";
+  const atualizarPagamento = () => {
+    const solicitarDocumento = !pixTeste && !pixMercadoPagoQuiosque && formaPagamento === "pix";
     el("dados-pix").hidden = !solicitarDocumento;
     el("documento-pix").required = solicitarDocumento;
   };
+  function selecionarPagamento(valor, grupo) {
+    formaPagamento = valor;
+    grupo.querySelectorAll("[data-pagamento]").forEach(botao => {
+      const selecionado = botao.dataset.pagamento === valor;
+      botao.classList.toggle("selecionada", selecionado);
+      botao.setAttribute("aria-pressed", String(selecionado));
+    });
+    atualizarPagamento();
+  }
+  document.querySelectorAll("#pagamento-padrao [data-pagamento], #pagamento-mesa [data-pagamento]").forEach(botao => {
+    botao.addEventListener("click", () => selecionarPagamento(botao.dataset.pagamento, botao.closest(".opcoes-escolha")));
+  });
+  document.querySelectorAll("#pagamento-entrega [data-pagamento]").forEach(botao => {
+    botao.addEventListener("click", () => selecionarPagamento(botao.dataset.pagamento, el("pagamento-entrega")));
+  });
+  document.querySelectorAll("#tipo-entrega [data-recebimento]").forEach(botao => {
+    botao.addEventListener("click", () => {
+      const entregar = botao.dataset.recebimento === "entrega";
+      document.querySelectorAll("#tipo-entrega [data-recebimento]").forEach(opcao => {
+        const selecionada = opcao === botao;
+        opcao.classList.toggle("selecionada", selecionada);
+        opcao.setAttribute("aria-pressed", String(selecionada));
+      });
+      entrega = entregar;
+      el("entrega-teste").hidden = !entregar;
+      el("entrega-teste").disabled = !entregar;
+      el("contexto-cardapio").textContent = entregar ? "Entrega" : "Retirada no local";
+      el("contexto-cardapio").hidden = false;
+      el("pagamento-padrao").hidden = entregar;
+      if (entregar) {
+        el("pagamento-entrega").querySelectorAll("[data-pagamento]").forEach(opcao => {
+          const selecionada = opcao.dataset.pagamento === "online";
+          opcao.classList.toggle("selecionada", selecionada);
+          opcao.setAttribute("aria-pressed", String(selecionada));
+        });
+        formaPagamento = "online";
+        agendarCotacaoFrete();
+      } else {
+        clearTimeout(temporizadorCotacao);
+        sequenciaCotacao++;
+        freteEntregaCentavos = null;
+        enderecoCotado = null;
+        selecionarPagamento("caixa", el("pagamento-padrao"));
+      }
+      atualizarPagamento();
+    });
+  });
+  if (entrega || escolhaPublicaEntrega) {
+    el("entrega-teste").hidden = false;
+    el("entrega-teste").disabled = false;
+    if (p_slug === "quiosque-dorafa") {
+      el("legenda-entrega").textContent = "Endereço da entrega";
+      el("pagamento-entrega").querySelector('[data-pagamento="online"]').textContent = entregaTeste
+        ? "Pix Mercado Pago de teste" : "Pix Mercado Pago";
+    }
+    if (await executar("pagamento_na_entrega_disponivel", { p_slug }).catch(() => false)) {
+      el("pagamento-entrega").insertAdjacentHTML("beforeend", '<button class="opcao-escolha" type="button" data-pagamento="na_entrega" aria-pressed="false">Pagar na entrega</button>');
+      const botao = el("pagamento-entrega").lastElementChild;
+      botao.addEventListener("click", () => selecionarPagamento(botao.dataset.pagamento, el("pagamento-entrega")));
+    }
+    el("entrega-teste").addEventListener("input", agendarCotacaoFrete);
+    el("entrega-teste").addEventListener("change", agendarCotacaoFrete);
+    new MutationObserver(atualizarTextoFrete).observe(el("total"), { childList: true, characterData: true, subtree: true });
+    if (!entrega) {
+      el("entrega-teste").hidden = true;
+      el("entrega-teste").disabled = true;
+    }
+  }
+  const pagamentoMesa = p_mesa && !creditoTeste && !creditoQuiosque;
+  const pixEscolhido = () => formaPagamento === "pix";
   if (pagamentoMesa) {
     el("pagamento-mesa").hidden = false;
     el("pagamento-mesa").disabled = false;
     el("opcao-pix-mesa").hidden = !pixDisponivel;
-    el("pagamento-mesa").onchange = el("pix-sandbox").onchange;
+    el("pagamento-padrao").hidden = true;
   }
   if (entrega) {
-    el("pagamento-entrega").onchange = el("pix-sandbox").onchange;
-    el("pagamento-entrega").onchange();
+    el("pagamento-padrao").hidden = true;
+    formaPagamento = "online";
+    atualizarPagamento();
   }
   el("pedido").hidden = false;
   el("vitrine").hidden = false;
@@ -153,8 +263,8 @@ executarComFeedback(async () => {
     el("barra-cardapio").hidden = true;
     window.scrollTo(0, 0);
   }
-  el("pedido").addEventListener("change", evento => {
-    if (!evento.target.matches("fieldset input[type=radio], #pagamento-entrega, #pix-sandbox")) return;
+  el("pedido").addEventListener("click", evento => {
+    if (!evento.target.closest("[data-pagamento], [data-recebimento]")) return;
     el("passo-pedido").textContent = "Próximo passo · Confirme seu pedido";
     el("enviar-pedido").classList.add("guiado");
   });
@@ -185,19 +295,29 @@ executarComFeedback(async () => {
         fecharCompra();
         return;
       }
-      const pagamento = entrega ? el("pagamento-entrega").value : undefined;
-      const endereco = entrega ? Object.fromEntries(
-        [...el("entrega-teste").querySelectorAll("input")].map(campo => [campo.name, campo.value.trim()])
-      ) : undefined;
+      const pagamento = entrega ? formaPagamento : undefined;
+      const endereco = entrega ? enderecoEntrega() : undefined;
+      let frete_centavos;
+      if (entrega) {
+        const chave = chaveEndereco(endereco);
+        if (enderecoCotado !== chave || freteEntregaCentavos === null) {
+          const valorAtualizado = await cotarFrete(endereco);
+          if (valorAtualizado === null) throw new Error("O endereço mudou durante o cálculo. Aguarde a cotação atualizada.");
+          throw new Error("Frete calculado. Confira o valor acima e confirme o pedido novamente.");
+        }
+        frete_centavos = freteEntregaCentavos;
+      }
       const pix = entrega ? pagamento === "online" : pixDisponivel && pixEscolhido();
       const cpfCnpj = pix && !pixTeste ? el("documento-pix").value : undefined;
-      const assinatura = JSON.stringify({ p_itens, p_cliente, pix, cpfCnpj, endereco, pagamento });
+      const assinatura = JSON.stringify({ p_itens, p_cliente, pix, cpfCnpj, endereco, pagamento, frete_centavos });
       if (tentativa?.assinatura !== assinatura) tentativa = { assinatura, id: crypto.randomUUID() };
       el("pedido").inert = true;
       try {
         const dados = { p_slug, p_mesa, p_itens, p_cliente, p_id: tentativa.id };
+        if (entrega) parametros.set("entrega", entregaTeste ? "teste" : "sim");
+        else if (!entregaTeste && !entregaQuiosque) parametros.delete("entrega");
         if (pix) {
-          await mostrarPix({ ...dados, cpfCnpj, endereco, pagamento });
+          await mostrarPix({ ...dados, cpfCnpj, endereco, pagamento, frete_centavos });
           if (pixMercadoPagoQuiosque) parametros.set("pix", "mercado-pago");
           el("documento-pix").value = "";
           p_id = tentativa.id;
@@ -205,9 +325,14 @@ executarComFeedback(async () => {
           const rota = entregaTeste ? "/api/checkout-pix-mercado-pago-teste" : "/api/checkout-pix-mercado-pago-quiosque";
           const resposta = await fetch(rota, {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...dados, endereco, pagamento })
+            body: JSON.stringify({ ...dados, endereco, pagamento, frete_centavos })
           });
           const resultado = await resposta.json();
+          if (resposta.status === 409 && Number.isSafeInteger(resultado.frete_centavos)) {
+            freteEntregaCentavos = resultado.frete_centavos;
+            enderecoCotado = chaveEndereco(endereco);
+            atualizarTextoFrete();
+          }
           if (!resposta.ok) throw new Error(resultado.erro);
           p_id = resultado.pedido;
         } else {
