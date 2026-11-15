@@ -6,6 +6,7 @@ const aviso = document.getElementById("aviso-cozinha");
 const empresa = document.getElementById("empresa");
 const kds = document.body.dataset.area === "kds";
 const etapas = { novo: "Novo", preparo: "Em preparo", pronto: "Pronto", entregue: "Entregue" };
+const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const acoes = {
   novo: [["preparo", "Iniciar preparo"], ["recusado", "Recusar"]],
   preparo: [["pronto", "Marcar pronto"]],
@@ -82,9 +83,22 @@ export async function carregarCozinha() {
       if (pedido.ajuste_pendente) return artigo;
       if (!kds && pedido.endereco_entrega) {
         const endereco = document.createElement("p");
-        const { logradouro, numero, bairro, cidade, complemento } = pedido.endereco_entrega;
-        endereco.textContent = [logradouro, numero, bairro, cidade, complemento].filter(Boolean).join(", ");
+        const { logradouro, numero, bairro, cidade, complemento, maps_url, telefone, metodo_pagamento, troco_para_centavos } = pedido.endereco_entrega;
+        endereco.textContent = [logradouro, numero, bairro, cidade, complemento].filter(Boolean).join(", ") || "Entrega por pino no mapa";
         artigo.append(endereco);
+        if (maps_url?.startsWith("https://www.google.com/maps?q=")) {
+          const mapa = document.createElement("a");
+          mapa.href = maps_url;
+          mapa.target = "_blank";
+          mapa.rel = "noopener noreferrer";
+          mapa.textContent = "Abrir pino da entrega";
+          artigo.append(mapa);
+        }
+        const contato = document.createElement("p");
+        contato.textContent = [telefone && `Contato: ${telefone}`,
+          metodo_pagamento && `Pagamento: ${{ pix: "Pix", credito: "Crédito online", dinheiro: "Dinheiro", maquininha: "Maquininha" }[metodo_pagamento] || metodo_pagamento}`,
+          troco_para_centavos != null && `Troco para ${moeda.format(troco_para_centavos / 100)}`].filter(Boolean).join(" · ");
+        if (contato.textContent) artigo.append(contato);
         if (pedido.estado === "pronto" && !pedido.estado_remo) {
           const despacho = document.createElement("button");
           despacho.textContent = "Solicitar despacho à REMO";

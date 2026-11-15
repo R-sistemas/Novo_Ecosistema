@@ -35,6 +35,10 @@ export async function abrirCreditoTeste(dados, aoEnviar, producao = false) {
                 } })
               });
               const resultado = await resposta.json();
+              if (resposta.status === 409 && Number.isSafeInteger(resultado.frete_centavos) && dados.aoFreteAlterado) {
+                dados.aoFreteAlterado(resultado.frete_centavos);
+                return;
+              }
               if (resposta.status === 402) dados.pedido.p_id = crypto.randomUUID();
               if (!resposta.ok) throw new Error(resultado.erro);
               painel.hidden = true;

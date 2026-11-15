@@ -1,6 +1,6 @@
 import { emailPixMercadoPago, mercadoPago } from "../lib/mercado-pago.mjs";
 import { bancoMercadoPagoTeste as banco } from "../lib/banco-mercado-pago-teste.mjs";
-import { cotarFreteRemo, enderecoValido } from "../lib/frete-remo.mjs";
+import { cotarFreteRemo, enderecoValido, enderecoLegadoValido } from "../lib/frete-remo.mjs";
 
 export async function checkout(req, res, { sandbox, token }) {
   res.setHeader("Cache-Control", "no-store");
@@ -14,8 +14,14 @@ export async function checkout(req, res, { sandbox, token }) {
   if (pagamento !== undefined && (!endereco || p_mesa || !["online", "na_entrega"].includes(pagamento))) {
     return res.status(400).json({ erro: "Confira os dados da entrega." });
   }
-  if (pagamento !== undefined && (!enderecoValido(endereco) || !Number.isSafeInteger(freteInformado) || freteInformado < 0)) {
+  const enderecoAceito = enderecoValido(endereco) || (sandbox && enderecoLegadoValido(endereco));
+  if (pagamento !== undefined && (!enderecoAceito || !Number.isSafeInteger(freteInformado) || freteInformado < 0)) {
     return res.status(400).json({ erro: "Confira o endereço e a cotação da entrega." });
+  }
+  if (pagamento !== undefined && !sandbox && (!/^\d{10,11}$/.test(endereco.telefone || "") ||
+      (pagamento === "online" && endereco.metodo_pagamento !== "pix") ||
+      (pagamento === "na_entrega" && !["dinheiro", "maquininha"].includes(endereco.metodo_pagamento)))) {
+    return res.status(400).json({ erro: "Confira o contato e a forma de pagamento." });
   }
   const naEntrega = pagamento === "na_entrega";
   if (!naEntrega && !token) return res.status(503).json({ erro: "Pix indisponível." });
@@ -72,7 +78,9 @@ async function cotarFrete(req, res) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") return res.status(405).end();
   const { p_slug, endereco } = req.body ?? {};
-  if (!enderecoValido(endereco)) return res.status(400).json({ erro: "Confira o endereço da entrega." });
+  if (!(enderecoValido(endereco) || (p_slug === "loja-teste" && enderecoLegadoValido(endereco)))) {
+    return res.status(400).json({ erro: "Confira o endereço da entrega." });
+  }
   try {
     const frete_centavos = await cotarFreteRemo(p_slug, endereco);
     return res.status(200).json({ frete_centavos });

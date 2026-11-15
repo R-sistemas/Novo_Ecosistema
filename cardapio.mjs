@@ -2,6 +2,7 @@ import { executar } from "./supabase-pdv.mjs";
 import { aplicarTema } from "./tema-cardapio.mjs";
 import { montarVitrine } from "./vitrine-cardapio.mjs";
 import { estadosEntrega } from "./estado-entrega.mjs";
+import { iniciarCheckoutEntrega } from "./checkout-entrega.mjs";
 
 const el = id => document.getElementById(id);
 const parametros = new URLSearchParams(location.search);
@@ -19,7 +20,7 @@ const creditoTeste = pixTeste && parametros.get("cartao") === "credito";
 const entregaTeste = pixTeste && !p_mesa && !creditoTeste && parametros.get("entrega") === "teste";
 const entregaQuiosque = p_slug === "quiosque-dorafa" && !p_mesa && parametros.get("entrega") === "sim";
 let entrega = entregaTeste || entregaQuiosque;
-const creditoQuiosque = !entrega && p_slug === "quiosque-dorafa" && parametros.get("cartao") === "credito";
+let creditoQuiosque = !entrega && p_slug === "quiosque-dorafa" && parametros.get("cartao") === "credito";
 const escolhaPublicaEntrega = p_slug === "quiosque-dorafa" && !p_mesa && !creditoTeste && !creditoQuiosque;
 const pixMercadoPagoTeste = entregaTeste || (pixTeste && parametros.get("pix") === "mercado-pago");
 const pixMercadoPagoQuiosque = p_slug === "quiosque-dorafa" &&
@@ -72,7 +73,9 @@ async function mostrarPix(dados) {
   const pix = await resposta.json();
   if (resposta.ok && pix.aguardaConfirmacao) return;
   if (!resposta.ok || !pix.imagem || !pix.copiaECola) {
-    throw new Error(pix.erro ?? "QR Code indisponível.");
+    const erro = new Error(pix.erro ?? "QR Code indisponível.");
+    if (resposta.status === 409 && Number.isSafeInteger(pix.frete_centavos)) erro.frete_centavos = pix.frete_centavos;
+    throw erro;
   }
   el("qr-pix").src = "data:image/png;base64," + pix.imagem;
   el("titulo-pix").textContent = pixTeste ? "Pix Sandbox" : "Pix";
@@ -108,6 +111,37 @@ executarComFeedback(async () => {
   }
   if (!menu.produtos.length) throw new Error("Nenhum produto disponível.");
   const carrinho = montarVitrine(menu.produtos);
+  if (p_slug === "quiosque-dorafa" && !p_mesa) {
+    el("carrinho-cardapio").classList.add("checkout-entrega");
+    el("contexto-cardapio").textContent = "Entrega";
+    el("contexto-cardapio").hidden = false;
+    await iniciarCheckoutEntrega({
+      slug: p_slug, menu, carrinho,
+      aoPix: dados => mostrarPix(dados),
+      async aoConfirmar(id, metodo) {
+        p_id = id;
+        parametros.set("pedido", id);
+        parametros.set("entrega", "sim");
+        if (metodo === "credito") {
+          creditoQuiosque = true;
+          parametros.set("cartao", "credito");
+          parametros.delete("pix");
+        } else if (metodo === "pix") {
+          parametros.set("pix", "mercado-pago");
+          parametros.delete("cartao");
+        }
+        history.replaceState(null, "", "?" + parametros);
+        el("pedido").hidden = true;
+        el("carrinho-cardapio").close();
+        el("vitrine").hidden = true;
+        el("barra-cardapio").hidden = true;
+        el("acompanhar").hidden = false;
+        window.scrollTo(0, 0);
+        await acompanhar();
+      }
+    });
+    return;
+  }
   let formaPagamento = "caixa";
   let freteEntregaCentavos = null;
   let enderecoCotado = null;

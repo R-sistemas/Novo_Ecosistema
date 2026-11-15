@@ -1,12 +1,13 @@
 import { mercadoPago } from "../lib/mercado-pago.mjs";
 import { bancoMercadoPagoTeste as banco } from "../lib/banco-mercado-pago-teste.mjs";
+import { cotarFreteRemo, enderecoValido } from "../lib/frete-remo.mjs";
 
 export async function checkoutCredito(req, res, { sandbox, accessToken }) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") return res.status(405).end();
   if (!accessToken) return res.status(503).json({ erro: "Crédito online indisponível." });
   const ambiente = sandbox ? "teste" : "quiosque";
-  const { p_slug, p_id, p_cliente, p_mesa = null, p_itens, cartao } = req.body ?? {};
+  const { p_slug, p_id, p_cliente, p_mesa = null, p_itens, cartao, endereco, pagamento, frete_centavos: freteInformado } = req.body ?? {};
   if (p_slug !== (sandbox ? "loja-teste" : "quiosque-dorafa") || typeof p_id !== "string" ||
       !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(p_id) ||
       !Array.isArray(p_itens) || !p_itens.length || p_itens.length > 30 ||
@@ -16,8 +17,27 @@ export async function checkoutCredito(req, res, { sandbox, accessToken }) {
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cartao.email)) {
     return res.status(400).json({ erro: "Dados do pagamento inválidos." });
   }
+  if (pagamento !== undefined && (sandbox || pagamento !== "online" || p_mesa ||
+      !enderecoValido(endereco) || !Number.isSafeInteger(freteInformado) || freteInformado < 0)) {
+    return res.status(400).json({ erro: "Confira a localização e o frete da entrega." });
+  }
+  if (pagamento === "online" && (!/^\d{10,11}$/.test(endereco.telefone || "") ||
+      endereco.metodo_pagamento !== "credito")) {
+    return res.status(400).json({ erro: "Confira o contato e a forma de pagamento." });
+  }
   try {
-    const pedido = await banco("reservar_credito_mercado_pago_" + ambiente, { p_id, p_cliente, p_mesa, p_itens });
+    let freteCentavos = 0;
+    if (pagamento === "online") {
+      freteCentavos = await cotarFreteRemo(p_slug, endereco);
+      if (freteCentavos !== freteInformado) return res.status(409).json({
+        erro: "O frete foi atualizado. Confira o novo total antes de pagar.", frete_centavos: freteCentavos
+      });
+    }
+    const pedido = pagamento === "online"
+      ? await banco("reservar_credito_entrega_frete_quiosque", {
+        p_id, p_cliente, p_itens, p_endereco: endereco, p_frete_centavos: freteCentavos
+      })
+      : await banco("reservar_credito_mercado_pago_" + ambiente, { p_id, p_cliente, p_mesa, p_itens });
     const cliente = mercadoPago(accessToken);
     const ordem = pedido.cobranca ? await cliente.consultarOrdem(pedido.cobranca)
       : await cliente.criarCartao({
