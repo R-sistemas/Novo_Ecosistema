@@ -7,6 +7,11 @@ const escapar = texto => String(texto ?? "").replace(/[&<>"']/g, caractere => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
 })[caractere]);
 const etapas = ["Carrinho", "Localização", "Pagamento", "Contato", "Revisão"];
+function telefoneNacional(valor) {
+  let digitos = String(valor ?? "").replace(/\D/g, "");
+  if (digitos.startsWith("55") && (digitos.length === 12 || digitos.length === 13)) digitos = digitos.slice(2);
+  return /^\d{10,11}$/.test(digitos) ? digitos : null;
+}
 
 export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar, aoPix }) {
   const form = el("pedido");
@@ -49,7 +54,7 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
   const subtotal = () => carrinho.total();
   const endereco = () => ({
     maps_url: estado.pino.maps_url, latitude: estado.pino.latitude, longitude: estado.pino.longitude,
-    ...estado.endereco, telefone: estado.telefone.replace(/\D/g, ""),
+    ...estado.endereco, telefone: telefoneNacional(estado.telefone),
     metodo_pagamento: ({ cash: "dinheiro", terminal: "maquininha", credit: "credito", pix: "pix" })[estado.metodo],
     troco_para_centavos: estado.metodo === "cash" && estado.troco ? Math.round(Number(estado.troco.replace(",", ".")) * 100) : null
   });
@@ -93,9 +98,16 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
     botao.textContent = ["Continuar para entrega", estado.frete === null ? "Calcular taxa de entrega" : "Continuar para pagamento",
       "Continuar para contato", "Revisar meu pedido", "Confirmar pedido"][estado.etapa];
     if (estado.etapa === 0) conteudo.innerHTML = `<small class="checkout-etiqueta">Carrinho · 01</small><h2>Seu pedido</h2><p>Confira os produtos e as quantidades. Você não precisa se cadastrar para pedir.</p><div class="checkout-resumo"><div><span>Subtotal</span><b>${moeda(subtotal())}</b></div></div>`;
-    if (estado.etapa === 1) conteudo.innerHTML = `<small class="checkout-etiqueta">Localização · 02</small><h2>Onde vamos entregar?</h2><p>Marque seu local exato no mapa. A REMO devolve o frete antes do pagamento.</p><div class="checkout-localizacao"><strong>Localização no mapa <small>OBRIGATÓRIO</small></strong><button type="button" id="abrir-mapa" class="checkout-abrir-mapa">${estado.pino ? "Alterar localização" : "Marcar minha localização no mapa"} →</button><p>${estado.pino ? `Pino confirmado · ${estado.pino.latitude.toFixed(6)}, ${estado.pino.longitude.toFixed(6)}` : "Aguardando marcação no mapa"}</p>${estado.pino ? `<a target="_blank" rel="noopener noreferrer" href="${escapar(estado.pino.maps_url)}">Ver pino no Google Maps ↗</a>` : ""}</div><details id="endereco-opcional"><summary>Informações para o entregador <small>opcional</small></summary><p>Rua, número, bairro e referência são complementos. Não substituem o pino.</p>${campo("logradouro", "Rua ou avenida", estado.endereco.logradouro || "", 'maxlength="150"')}${campo("numero", "Número", estado.endereco.numero || "", 'maxlength="20"')}${campo("bairro", "Bairro", estado.endereco.bairro || "", 'maxlength="100"')}${campo("cidade", "Cidade", estado.endereco.cidade || "", 'maxlength="100"')}${campo("complemento", "Complemento / referência", estado.endereco.complemento || "", 'maxlength="150"')}</details>${resumo()}`;
-    if (estado.etapa === 2) conteudo.innerHTML = `<small class="checkout-etiqueta">Pagamento · 03</small><h2>Como deseja pagar?</h2><p>Primeiro escolha a modalidade. Em seguida, selecione uma opção.</p>${metodosOnline.pix || metodosOnline.credito ? `<button type="button" class="checkout-modalidade ${estado.modalidade === "online" ? "selecionada" : ""}" data-modalidade="online"><strong>Pagar online</strong><small>Pix ou cartão online</small> →</button>` : ""}${pagamentoNaEntrega ? `<button type="button" class="checkout-modalidade ${estado.modalidade === "na_entrega" ? "selecionada" : ""}" data-modalidade="na_entrega"><strong>Pagar na entrega</strong><small>Dinheiro ou cartão na maquininha</small> →</button>` : ""}${estado.metodo ? `<div class="checkout-selecao">${{ pix: "Pix", credit: "Cartão de crédito", cash: "Dinheiro", terminal: "Cartão na maquininha" }[estado.metodo]} <button type="button" data-modalidade="${estado.modalidade}">Alterar</button></div>` : ""}${estado.metodo === "cash" ? campo("troco", "Troco para quanto? (opcional)", estado.troco, 'inputmode="decimal"') : ""}<p>Retirada no estabelecimento não está disponível neste fluxo de entrega.</p>${resumo()}`;
-    if (estado.etapa === 3) conteudo.innerHTML = `<small class="checkout-etiqueta">Identificação · 04</small><h2>Como podemos falar com você?</h2><p>Precisamos somente dos dados para identificar a entrega e entrar em contato se necessário.</p>${campo("nome", "Seu nome", estado.nome, 'maxlength="100" autocomplete="name"')}${campo("telefone", "Celular com DDD", estado.telefone, 'type="tel" inputmode="tel" maxlength="17" autocomplete="tel"')}<p>Sem criar conta. Esses dados se vinculam ao pedido.</p>`;
+    if (estado.etapa === 1) {
+      conteudo.innerHTML = `<small class="checkout-etiqueta">Localização · 02</small><h2>Onde vamos entregar?</h2><p>Marque e confirme o ponto exato no mapa. A REMO calcula o frete antes do pagamento.</p><div id="checkout-mapa-aqui"></div><div class="checkout-localizacao"><p>${estado.pino ? `Pino confirmado · ${estado.pino.latitude.toFixed(6)}, ${estado.pino.longitude.toFixed(6)}` : "Escolha um ponto no mapa e confirme."}</p>${estado.pino ? `<a target="_blank" rel="noopener noreferrer" href="${escapar(estado.pino.maps_url)}">Ver pino no Google Maps ↗</a>` : ""}</div><details id="endereco-opcional"><summary>Informações para o entregador <small>opcional</small></summary><p>Rua, número, bairro e referência são complementos. Não substituem o pino.</p>${campo("logradouro", "Rua ou avenida", estado.endereco.logradouro || "", 'maxlength="150"')}${campo("numero", "Número", estado.endereco.numero || "", 'maxlength="20"')}${campo("bairro", "Bairro", estado.endereco.bairro || "", 'maxlength="100"')}${campo("cidade", "Cidade", estado.endereco.cidade || "", 'maxlength="100"')}${campo("complemento", "Complemento / referência", estado.endereco.complemento || "", 'maxlength="150"')}</details>${resumo()}`;
+      picker.montar(conteudo.querySelector("#checkout-mapa-aqui"));
+    }
+    if (estado.etapa === 2) {
+      const opcao = (id, titulo, detalhe, habilitado = true) =>
+        `<button type="button" class="checkout-opcao ${estado.metodo === id ? "selecionada" : ""}" data-metodo="${id}" aria-pressed="${estado.metodo === id}" ${habilitado ? "" : "disabled"}><strong>${titulo}</strong><small>${detalhe}</small></button>`;
+      conteudo.innerHTML = `<small class="checkout-etiqueta">Pagamento · 03</small><h2>Como deseja pagar?</h2><p>Selecione uma forma de pagamento. A escolha ficará visível antes da confirmação.</p><div class="checkout-grupo-pagamento"><h3>Pagar online</h3>${opcao("pix", "Pix", "Pague pelo QR Code", metodosOnline.pix)}${opcao("credit", "Cartão de crédito", "Pagamento online pelo Mercado Pago", metodosOnline.credito)}${opcao("debit", "Cartão de débito", "Ainda não disponível", false)}</div><div class="checkout-grupo-pagamento"><h3>Pagar na entrega</h3>${opcao("cash", "Dinheiro", "Pague ao receber o pedido", pagamentoNaEntrega)}${opcao("terminal", "Cartão na maquininha", "Crédito ou débito na entrega", pagamentoNaEntrega)}</div>${estado.metodo === "cash" ? campo("troco", "Troco para quanto? (opcional)", estado.troco, 'inputmode="decimal"') : ""}<p>Retirada no estabelecimento não está disponível neste fluxo de entrega.</p>${resumo()}`;
+    }
+    if (estado.etapa === 3) conteudo.innerHTML = `<small class="checkout-etiqueta">Identificação · 04</small><h2>Como podemos falar com você?</h2><p>Precisamos somente dos dados para identificar a entrega e entrar em contato se necessário.</p>${campo("nome", "Seu nome", estado.nome, 'maxlength="100" autocomplete="name"')}${campo("telefone", "Celular com DDD (aceita +55)", estado.telefone, 'type="tel" inputmode="tel" maxlength="25" autocomplete="tel" placeholder="+55 62 99999-9999"')}<p>O telefone fica registrado no pedido para contato sobre a entrega. Não é necessário criar conta.</p>`;
     if (estado.etapa === 4) {
       const instrucao = [estado.endereco.logradouro, estado.endereco.numero, estado.endereco.bairro,
         estado.endereco.cidade, estado.endereco.complemento].filter(Boolean).map(escapar).join(", ");
@@ -106,11 +118,6 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
       conteudo.innerHTML = `<small class="checkout-etiqueta">Conferência · 05</small><h2>Confira antes de confirmar</h2><p>A localização e o frete serão verificados de novo no servidor.</p><div class="checkout-revisao"><strong>Localização da entrega</strong><button type="button" data-etapa="1">Editar</button><p>Pino: ${estado.pino.latitude.toFixed(6)}, ${estado.pino.longitude.toFixed(6)}</p><a target="_blank" rel="noopener noreferrer" href="${escapar(estado.pino.maps_url)}">Abrir localização no Google Maps ↗</a>${instrucao ? `<p>${instrucao}</p>` : ""}</div><div class="checkout-revisao"><strong>Pagamento</strong><button type="button" data-etapa="2">Editar</button><p>${estado.modalidade === "online" ? "Pagar online" : "Pagar na entrega"} · ${{ pix: "Pix", credit: "Cartão de crédito", cash: "Dinheiro", terminal: "Cartão na maquininha" }[estado.metodo]}</p>${estado.metodo === "cash" && estado.troco ? `<p>Troco para ${moeda(Math.round(Number(estado.troco.replace(",", ".")) * 100))}</p>` : ""}</div><div class="checkout-revisao"><strong>Contato</strong><button type="button" data-etapa="3">Editar</button><p>${escapar(estado.nome)} · ${escapar(estado.telefone)}</p></div><div class="checkout-revisao"><strong>Itens</strong><button type="button" data-etapa="0">Editar</button>${linhas}</div>${resumo()}`;
     }
   }
-  const modal = document.createElement("dialog");
-  modal.className = "checkout-metodos";
-  modal.innerHTML = `<div><button type="button" data-fechar="true" aria-label="Fechar">×</button><h2>Forma de pagamento</h2><p>Selecione como deseja pagar.</p><div id="checkout-opcoes"></div></div>`;
-  document.body.append(modal);
-  modal.addEventListener("close", () => { if (!estado.metodo) { estado.modalidade = null; render(); } });
   const alertaFrete = document.createElement("dialog");
   alertaFrete.className = "checkout-metodos";
   alertaFrete.innerHTML = `<div><h2>O frete foi atualizado</h2><p>A REMO retornou uma nova taxa na revisão. Nenhuma cobrança foi criada.</p><div id="checkout-diferenca-frete"></div><button type="button" id="checkout-aceitar-frete" class="primario largura">Atualizar valor e revisar novamente</button></div>`;
@@ -127,26 +134,13 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
     };
     alertaFrete.showModal();
   }
-  const abrirMetodos = modalidade => {
-    estado.modalidade = modalidade;
-    estado.metodo = null;
-    const opcoes = modalidade === "online" ? [
-      ...(metodosOnline.pix ? [["pix", "Pix", "Confirmação automática após aprovação"]] : []),
-      ...(metodosOnline.credito ? [["credit", "Cartão de crédito", "Transação pelo provedor"]] : []),
-      ["debit", "Cartão de débito", "Previsto"]
-    ] : [["cash", "Dinheiro", "Informar troco se necessário"], ["terminal", "Cartão na maquininha", "Crédito ou débito no recebimento"]];
-    modal.querySelector("#checkout-opcoes").innerHTML = opcoes.map(([valor, nome, detalhe]) => `<button type="button" data-metodo="${valor}" ${valor === "debit" ? "disabled" : ""}><strong>${nome}</strong><small>${detalhe}</small></button>`).join("");
-    modal.showModal();
-  };
-  modal.addEventListener("click", evento => {
-    if (evento.target.closest("[data-fechar]")) modal.close();
-    const metodo = evento.target.closest("[data-metodo]")?.dataset.metodo;
-    if (metodo) { estado.metodo = metodo; modal.close(); render(); }
-  });
   conteudo.addEventListener("click", evento => {
-    if (evento.target.closest("#abrir-mapa")) picker.abrir();
-    const modalidade = evento.target.closest("[data-modalidade]")?.dataset.modalidade;
-    if (modalidade) abrirMetodos(modalidade);
+    const metodo = evento.target.closest("[data-metodo]")?.dataset.metodo;
+    if (metodo) {
+      estado.metodo = metodo;
+      estado.modalidade = ["cash", "terminal"].includes(metodo) ? "na_entrega" : "online";
+      render();
+    }
     const etapa = evento.target.closest("[data-etapa]")?.dataset.etapa;
     if (etapa) { estado.etapa = Number(etapa); render(); }
   });
@@ -173,7 +167,7 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
     }
     if (estado.etapa === 3) {
       if (estado.nome.trim().length < 2) return aviso("Informe seu nome para identificação do pedido.");
-      if (!/^\d{10,11}$/.test(estado.telefone.replace(/\D/g, ""))) return aviso("Informe um telefone válido com DDD (10 ou 11 dígitos).");
+      if (!telefoneNacional(estado.telefone)) return aviso("Informe um celular válido com DDD, com ou sem +55.");
       estado.etapa++; render(); return;
     }
     estado.ocupado = true;
