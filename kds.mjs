@@ -1,6 +1,7 @@
 import { entrar, executar } from "./supabase-pdv.mjs";
 import { carregarCozinha } from "./cozinha.mjs";
 import { atualizarPermissaoKds } from "./editar-comanda-kds.mjs";
+import { testarPonteCozinha } from "./impressao-cozinha.mjs";
 
 const el = id => document.getElementById(id);
 el("login-kds").onsubmit = async evento => {
@@ -26,4 +27,7 @@ el("login-kds").onsubmit = async evento => {
 el("empresa").onchange = () => {
   void carregarCozinha();
   void atualizarPermissaoKds();
+};
+el("testar-ponte-kds").onclick = () => {
+  el("aviso-impressao-kds").textContent = testarPonteCozinha().mensagem;
 };
