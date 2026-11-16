@@ -53,18 +53,13 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
   const picker = criarLocationPicker({
     centro: menu.mapa_centro,
     inicial: estado.pino,
-    aoAlterar() {
-      estado.pino = null;
-      estado.frete = null;
-      estado.cotacaoPino = null;
-      const resumoLocal = conteudo.querySelector(".checkout-localizacao p");
-      if (resumoLocal) resumoLocal.textContent = "Novo ponto selecionado. Confirme no mapa para calcular a entrega.";
-    },
-    aoConfirmar(pino) {
-      const mudou = estado.pino?.maps_url !== pino.maps_url;
+    aoSelecionar(pino) {
       estado.pino = pino;
-      if (mudou) { estado.frete = null; estado.cotacaoPino = null; }
-      render();
+      invalidarCotacao();
+      const resumoLocal = conteudo.querySelector(".checkout-localizacao p");
+      if (resumoLocal) resumoLocal.textContent = "Destino selecionado. A taxa será calculada automaticamente.";
+      atualizarResumo();
+      agendarCotacao();
     }
   });
   const subtotal = () => carrinho.total();
@@ -85,34 +80,70 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
   const enderecoParaCotar = () => ({ maps_url: estado.pino.maps_url,
     latitude: estado.pino.latitude, longitude: estado.pino.longitude, ...estado.endereco });
   function aviso(texto) { erro.textContent = texto; erro.scrollIntoView({ block: "nearest" }); }
+  let cotacaoTimer = null, cotacaoAbort = null, cotacaoVersao = 0;
+  function invalidarCotacao() {
+    cotacaoVersao++;
+    clearTimeout(cotacaoTimer);
+    cotacaoTimer = null;
+    cotacaoAbort?.abort();
+    cotacaoAbort = null;
+    estado.frete = null;
+    estado.cotacaoPino = null;
+    estado.ocupado = false;
+    erro.textContent = "";
+    botao.disabled = !carrinho.itens().length;
+  }
+  function agendarCotacao() {
+    if (!estado.pino || !carrinho.itens().length) return;
+    cotacaoTimer = setTimeout(() => { cotacaoTimer = null; void cotar(); }, 450);
+  }
   async function cotar() {
-    if (!estado.pino) { aviso("Marque e confirme primeiro a localização no mapa. O pino é obrigatório para calcular o frete."); return false; }
+    if (!estado.pino) { aviso("Marque o local da entrega no mapa para calcular o frete."); return false; }
+    clearTimeout(cotacaoTimer);
+    cotacaoTimer = null;
+    cotacaoAbort?.abort();
+    cotacaoAbort = new AbortController();
+    const sinal = cotacaoAbort.signal;
+    const versao = ++cotacaoVersao;
     const chave = estado.pino.maps_url;
     estado.ocupado = true;
     erro.textContent = "";
     botao.disabled = true;
-    el("limpar-carrinho").disabled = true;
+    botao.textContent = "Calculando entrega…";
     try {
       const resposta = await fetch("/api/cotar-frete", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ p_slug: slug, endereco: enderecoParaCotar() }) });
+        body: JSON.stringify({ p_slug: slug, endereco: enderecoParaCotar() }), signal: sinal });
       const resultado = await resposta.json().catch(() => ({}));
-      if (estado.pino.maps_url !== chave) return false;
+      if (versao !== cotacaoVersao || estado.pino?.maps_url !== chave) return false;
       if (!resposta.ok || !Number.isSafeInteger(resultado.frete_centavos)) {
         estado.frete = null;
         estado.cotacaoPino = null;
+        atualizarResumo();
         aviso(resultado.erro || "Não foi possível calcular a entrega para este local.");
         return false;
       }
       estado.frete = resultado.frete_centavos;
       estado.cotacaoPino = chave;
-      render();
+      atualizarResumo();
       return true;
     } catch {
+      if (versao !== cotacaoVersao || sinal.aborted) return false;
       aviso("Não foi possível calcular o frete agora. Tente novamente.");
       return false;
-    } finally { estado.ocupado = false; botao.disabled = !carrinho.itens().length; el("limpar-carrinho").disabled = false; }
+    } finally {
+      if (versao === cotacaoVersao) {
+        estado.ocupado = false;
+        cotacaoAbort = null;
+        botao.disabled = !carrinho.itens().length;
+        botao.textContent = "Continuar para pagamento";
+      }
+    }
   }
   const resumo = () => `<div class="checkout-resumo"><div><span>Subtotal</span><b>${moeda(subtotal())}</b></div><div><span>Entrega</span><b>${estado.frete === null ? "A calcular" : moeda(estado.frete)}</b></div><div class="checkout-total"><span>Total</span><b>${estado.frete === null ? "A calcular" : moeda(subtotal() + estado.frete)}</b></div></div>`;
+  function atualizarResumo() {
+    const atual = conteudo.querySelector(".checkout-resumo");
+    if (atual) atual.outerHTML = resumo();
+  }
   const campo = (nome, titulo, valor, extra = "") => `<label class="checkout-campo">${titulo}<input name="${nome}" value="${escapar(valor)}" ${extra}></label>`;
   function render() {
     progresso.innerHTML = etapas.map((nome, indice) => `<span class="${indice === estado.etapa ? "atual" : indice < estado.etapa ? "concluida" : ""}">${indice + 1} · ${nome}</span>`).join("");
@@ -120,9 +151,9 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
     totalAntigo.hidden = true;
     voltar.hidden = estado.etapa === 0;
     passo.textContent = `Etapa ${estado.etapa + 1} de 3`;
-    botao.textContent = ["Calcular entrega e continuar", "Revisar meu pedido", "Confirmar pedido"][estado.etapa];
+    botao.textContent = ["Continuar para pagamento", "Revisar meu pedido", "Confirmar pedido"][estado.etapa];
     if (estado.etapa === 0) {
-      conteudo.innerHTML = `<small class="checkout-etiqueta">Entrega e contato · 01</small><h2>Onde vamos entregar?</h2><p>Confira o ponto exato no mapa. A taxa de entrega será calculada antes do pagamento.</p><div id="checkout-mapa-aqui"></div><div class="checkout-localizacao"><p>${estado.pino ? `Pino confirmado · ${estado.pino.latitude.toFixed(6)}, ${estado.pino.longitude.toFixed(6)}` : "Escolha um ponto no mapa e confirme."}</p></div><details id="endereco-opcional"><summary>Informações para o entregador <small>opcional</small></summary><p>Rua, número, bairro e referência complementam o pino.</p>${campo("logradouro", "Rua ou avenida", estado.endereco.logradouro || "", 'maxlength="150"')}${campo("numero", "Número", estado.endereco.numero || "", 'maxlength="20"')}${campo("bairro", "Bairro", estado.endereco.bairro || "", 'maxlength="100"')}${campo("cidade", "Cidade", estado.endereco.cidade || "", 'maxlength="100"')}${campo("complemento", "Complemento / referência", estado.endereco.complemento || "", 'maxlength="150"')}</details><h3>Contato</h3>${campo("nome", "Seu nome", estado.nome, 'maxlength="100" autocomplete="name"')}${campo("telefone", "Celular com DDD (aceita +55)", estado.telefone, 'type="tel" inputmode="tel" maxlength="25" autocomplete="tel" placeholder="+55 62 99999-9999"')}<label class="checkout-lembrar"><input type="checkbox" name="lembrar" ${estado.lembrar ? "checked" : ""}> Salvar contato e localização neste aparelho para próximos pedidos</label><p class="checkout-privacidade">Você pode pedir sem criar conta. Os dados salvos neste aparelho podem ser apagados desmarcando esta opção ao confirmar outro pedido.</p>${resumo()}`;
+      conteudo.innerHTML = `<small class="checkout-etiqueta">Entrega e contato · 01</small><h2>Onde vamos entregar?</h2><p>Marque o destino no mapa. A taxa de entrega aparece automaticamente.</p><div id="checkout-mapa-aqui"></div><div class="checkout-localizacao"><p>${estado.pino ? "Destino selecionado." : "Toque no mapa para selecionar o destino."}</p></div><details id="endereco-opcional"><summary>Informações para o entregador <small>opcional</small></summary><p>Rua, número, bairro e referência complementam o pino.</p>${campo("logradouro", "Rua ou avenida", estado.endereco.logradouro || "", 'maxlength="150"')}${campo("numero", "Número", estado.endereco.numero || "", 'maxlength="20"')}${campo("bairro", "Bairro", estado.endereco.bairro || "", 'maxlength="100"')}${campo("cidade", "Cidade", estado.endereco.cidade || "", 'maxlength="100"')}${campo("complemento", "Complemento / referência", estado.endereco.complemento || "", 'maxlength="150"')}</details><h3>Contato</h3>${campo("nome", "Seu nome", estado.nome, 'maxlength="100" autocomplete="name"')}${campo("telefone", "Celular com DDD (aceita +55)", estado.telefone, 'type="tel" inputmode="tel" maxlength="25" autocomplete="tel" placeholder="+55 62 99999-9999"')}<label class="checkout-lembrar"><input type="checkbox" name="lembrar" ${estado.lembrar ? "checked" : ""}> Salvar contato e localização neste aparelho para próximos pedidos</label><p class="checkout-privacidade">Você pode pedir sem criar conta. Os dados salvos neste aparelho podem ser apagados desmarcando esta opção ao confirmar outro pedido.</p>${resumo()}`;
       picker.montar(conteudo.querySelector("#checkout-mapa-aqui"));
     }
     if (estado.etapa === 1) {
@@ -243,8 +274,12 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
   el("pedido").hidden = false;
   el("vitrine").hidden = false;
   el("barra-cardapio").hidden = false;
-  document.addEventListener("cardapio:carrinho-aberto", () => render());
+  document.addEventListener("cardapio:carrinho-aberto", () => {
+    render();
+    if (estado.pino && estado.frete === null) agendarCotacao();
+  });
   document.addEventListener("cardapio:carrinho-limpo", () => {
+    invalidarCotacao();
     picker.limpar();
     estado.etapa = 0;
     estado.pino = dadosSalvos?.pino || null;
