@@ -8,6 +8,7 @@ import { abrirAdmin, modalAdminAtivo } from "./administracao.mjs";
 import { configurarPesagem, detalhePesagem } from "./pesagem.mjs";
 import { configurarCancelamentos } from "./cancelar-comanda.mjs";
 import { configurarPixPdv } from "./pix-pdv.mjs";
+import { configurarRecebimentosOnline } from "./recebimentos-online.mjs";
 
 let produtos = [];
 let usuario;
@@ -29,6 +30,7 @@ const estado = { sessao: null, fechamentos: [] };
 const carrinho = new Map();
 const meios = { Dinheiro: "dinheiro", Pix: "pix", "Cartão": "cartao" };
 const el = id => document.getElementById(id);
+const carregarRecebimentosOnline = configurarRecebimentosOnline(() => el("empresa").value);
 const dialogoPesagem = el("dialogo-pesagem");
 const pesagem = configurarPesagem(el("campos-pesagem"));
 let itemPesagem;
@@ -148,6 +150,7 @@ async function atualizar() {
     esperado: saldo(sessao), contado: Number(caixa.contado_centavos), movimentos
   }] : [];
   renderizar();
+  if (!administracao) void carregarRecebimentosOnline();
   if (estado.sessao) await pixFrente.recuperar().catch(erro => { el("notice").textContent = erro.message; });
 }
 

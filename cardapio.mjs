@@ -42,6 +42,8 @@ async function executarComFeedback(acao) {
 async function acompanhar() {
   const pedido = await executar("acompanhar_pedido", { p_slug, p_id });
   if (!pedido) throw new Error("Pedido indisponível.");
+  el("numero-pedido").hidden = !pedido.comanda;
+  if (pedido.comanda) el("numero-pedido").textContent = `${pedido.mesa ? "Comanda" : "Pedido nº"} ${pedido.comanda}`;
   aguardandoPix = (pedido.pix_sandbox || pedido.pix_producao) && !pedido.pix_confirmado;
   const entregaEncerrada = ["entregue", "cancelada"].includes(pedido.estado_remo);
   acompanhamentoAtivo = aguardandoPix || (!entregaEncerrada && !["entregue", "recusado"].includes(pedido.estado)) ||
