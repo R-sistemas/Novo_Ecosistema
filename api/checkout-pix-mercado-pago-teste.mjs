@@ -69,7 +69,7 @@ export async function checkout(req, res, { sandbox, token }) {
     }
     return res.status(200).json({ imagem: metodo.qr_code_base64, copiaECola: metodo.qr_code });
   } catch (erro) {
-    console.error("Checkout Mercado Pago", erro.message);
+    console.error("Checkout Mercado Pago", erro.message, erro.codigo || "", erro.diagnostico || "");
     return res.status(502).json({ erro: "Não foi possível preparar o Pix." });
   }
 }
