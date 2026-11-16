@@ -1,8 +1,10 @@
 import { executar, executarApi } from "./supabase-pdv.mjs";
 import { estadosEntrega } from "./estado-entrega.mjs";
+import { criarAlertaPedidos } from "./alerta-pedidos.mjs";
 
 const fila = document.getElementById("fila-cozinha");
 const aviso = document.getElementById("aviso-cozinha");
+const alerta = criarAlertaPedidos(aviso);
 const empresa = document.getElementById("empresa");
 const kds = document.body.dataset.area === "kds";
 const etapas = { novo: "Novo", preparo: "Em preparo", pronto: "Pronto", entregue: "Entregue" };
@@ -51,6 +53,7 @@ export async function carregarCozinha() {
       kds ? executar("cancelamentos_recentes_kds", { p_empresa: idEmpresa }) : []
     ]);
     if (empresa.value !== idEmpresa) return;
+    alerta.atualizar(idEmpresa, pedidos);
     exibirCancelamentos(cancelamentos);
     aviso.textContent = pedidos.length ? "" : "Nenhum pedido em andamento.";
     const atual = JSON.stringify(pedidos);
