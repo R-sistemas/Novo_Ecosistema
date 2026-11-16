@@ -6,7 +6,7 @@ const el = id => document.getElementById(id);
 const escapar = texto => String(texto ?? "").replace(/[&<>"']/g, caractere => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
 })[caractere]);
-const etapas = ["Carrinho", "Localização", "Pagamento", "Contato", "Revisão"];
+const etapas = ["Entrega e contato", "Pagamento", "Conferência"];
 function telefoneNacional(valor) {
   let digitos = String(valor ?? "").replace(/\D/g, "");
   if (digitos.startsWith("55") && (digitos.length === 12 || digitos.length === 13)) digitos = digitos.slice(2);
@@ -14,6 +14,13 @@ function telefoneNacional(valor) {
 }
 
 export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar, aoPix }) {
+  const chaveDados = `checkout-entrega:${slug}:dados`;
+  let dadosSalvos = null;
+  try {
+    const anterior = JSON.parse(localStorage.getItem(chaveDados) || "null");
+    if (anterior && typeof anterior.nome === "string" && typeof anterior.telefone === "string" &&
+        Number.isFinite(anterior.pino?.latitude) && Number.isFinite(anterior.pino?.longitude)) dadosSalvos = anterior;
+  } catch { /* O checkout também funciona sem armazenamento local. */ }
   const form = el("pedido");
   const itens = el("itens-carrinho");
   const totalAntigo = el("total");
@@ -33,17 +40,26 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
   const passo = document.createElement("p");
   passo.id = "passo-pedido";
   passo.className = "passo";
-  form.append(progresso, conteudo, itens, totalAntigo, voltar, passo, botao, erro);
+  form.append(progresso, itens, conteudo, totalAntigo, voltar, passo, botao, erro);
   botao.type = "button";
   form.onsubmit = evento => evento.preventDefault();
-  const estado = { etapa: 0, pino: null, frete: null, cotacaoPino: null, modalidade: null,
-    metodo: null, nome: "", telefone: "", troco: "", endereco: {}, ocupado: false, tentativa: null };
+  const estado = { etapa: 0, pino: dadosSalvos?.pino || null, frete: null, cotacaoPino: null, modalidade: null,
+    metodo: null, nome: dadosSalvos?.nome || "", telefone: dadosSalvos?.telefone || "", troco: "",
+    endereco: dadosSalvos?.endereco || {}, lembrar: Boolean(dadosSalvos), ocupado: false, tentativa: null };
   const [pagamentoNaEntrega, metodosOnline] = await Promise.all([
     executar("pagamento_na_entrega_disponivel", { p_slug: slug }).catch(() => false),
     executar("metodos_checkout_publico", { p_slug: slug }).catch(() => ({ pix: false, credito: false, debito: false }))
   ]);
   const picker = criarLocationPicker({
     centro: menu.mapa_centro,
+    inicial: estado.pino,
+    aoAlterar() {
+      estado.pino = null;
+      estado.frete = null;
+      estado.cotacaoPino = null;
+      const resumoLocal = conteudo.querySelector(".checkout-localizacao p");
+      if (resumoLocal) resumoLocal.textContent = "Novo ponto selecionado. Confirme no mapa para calcular a entrega.";
+    },
     aoConfirmar(pino) {
       const mudou = estado.pino?.maps_url !== pino.maps_url;
       estado.pino = pino;
@@ -52,6 +68,14 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
     }
   });
   const subtotal = () => carrinho.total();
+  function salvarDados() {
+    try {
+      if (estado.lembrar) localStorage.setItem(chaveDados, JSON.stringify({
+        nome: estado.nome.trim(), telefone: estado.telefone.trim(), pino: estado.pino, endereco: estado.endereco
+      }));
+      else localStorage.removeItem(chaveDados);
+    } catch { /* Armazenamento indisponível não impede o pedido. */ }
+  }
   const endereco = () => ({
     maps_url: estado.pino.maps_url, latitude: estado.pino.latitude, longitude: estado.pino.longitude,
     ...estado.endereco, telefone: telefoneNacional(estado.telefone),
@@ -94,28 +118,25 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
     itens.hidden = estado.etapa !== 0;
     totalAntigo.hidden = true;
     voltar.hidden = estado.etapa === 0;
-    passo.textContent = `Etapa ${estado.etapa + 1} de 5`;
-    botao.textContent = ["Continuar para entrega", estado.frete === null ? "Calcular taxa de entrega" : "Continuar para pagamento",
-      "Continuar para contato", "Revisar meu pedido", "Confirmar pedido"][estado.etapa];
-    if (estado.etapa === 0) conteudo.innerHTML = `<small class="checkout-etiqueta">Carrinho · 01</small><h2>Seu pedido</h2><p>Confira os produtos e as quantidades. Você não precisa se cadastrar para pedir.</p><div class="checkout-resumo"><div><span>Subtotal</span><b>${moeda(subtotal())}</b></div></div>`;
-    if (estado.etapa === 1) {
-      conteudo.innerHTML = `<small class="checkout-etiqueta">Localização · 02</small><h2>Onde vamos entregar?</h2><p>Marque e confirme o ponto exato no mapa. A REMO calcula o frete antes do pagamento.</p><div id="checkout-mapa-aqui"></div><div class="checkout-localizacao"><p>${estado.pino ? `Pino confirmado · ${estado.pino.latitude.toFixed(6)}, ${estado.pino.longitude.toFixed(6)}` : "Escolha um ponto no mapa e confirme."}</p>${estado.pino ? `<a target="_blank" rel="noopener noreferrer" href="${escapar(estado.pino.maps_url)}">Ver pino no Google Maps ↗</a>` : ""}</div><details id="endereco-opcional"><summary>Informações para o entregador <small>opcional</small></summary><p>Rua, número, bairro e referência são complementos. Não substituem o pino.</p>${campo("logradouro", "Rua ou avenida", estado.endereco.logradouro || "", 'maxlength="150"')}${campo("numero", "Número", estado.endereco.numero || "", 'maxlength="20"')}${campo("bairro", "Bairro", estado.endereco.bairro || "", 'maxlength="100"')}${campo("cidade", "Cidade", estado.endereco.cidade || "", 'maxlength="100"')}${campo("complemento", "Complemento / referência", estado.endereco.complemento || "", 'maxlength="150"')}</details>${resumo()}`;
+    passo.textContent = `Etapa ${estado.etapa + 1} de 3`;
+    botao.textContent = ["Calcular entrega e continuar", "Revisar meu pedido", "Confirmar pedido"][estado.etapa];
+    if (estado.etapa === 0) {
+      conteudo.innerHTML = `<small class="checkout-etiqueta">Entrega e contato · 01</small><h2>Onde vamos entregar?</h2><p>Confira o ponto exato no mapa. A taxa de entrega será calculada antes do pagamento.</p><div id="checkout-mapa-aqui"></div><div class="checkout-localizacao"><p>${estado.pino ? `Pino confirmado · ${estado.pino.latitude.toFixed(6)}, ${estado.pino.longitude.toFixed(6)}` : "Escolha um ponto no mapa e confirme."}</p></div><details id="endereco-opcional"><summary>Informações para o entregador <small>opcional</small></summary><p>Rua, número, bairro e referência complementam o pino.</p>${campo("logradouro", "Rua ou avenida", estado.endereco.logradouro || "", 'maxlength="150"')}${campo("numero", "Número", estado.endereco.numero || "", 'maxlength="20"')}${campo("bairro", "Bairro", estado.endereco.bairro || "", 'maxlength="100"')}${campo("cidade", "Cidade", estado.endereco.cidade || "", 'maxlength="100"')}${campo("complemento", "Complemento / referência", estado.endereco.complemento || "", 'maxlength="150"')}</details><h3>Contato</h3>${campo("nome", "Seu nome", estado.nome, 'maxlength="100" autocomplete="name"')}${campo("telefone", "Celular com DDD (aceita +55)", estado.telefone, 'type="tel" inputmode="tel" maxlength="25" autocomplete="tel" placeholder="+55 62 99999-9999"')}<label class="checkout-lembrar"><input type="checkbox" name="lembrar" ${estado.lembrar ? "checked" : ""}> Salvar contato e localização neste aparelho para próximos pedidos</label><p class="checkout-privacidade">Você pode pedir sem criar conta. Os dados salvos neste aparelho podem ser apagados desmarcando esta opção ao confirmar outro pedido.</p>${resumo()}`;
       picker.montar(conteudo.querySelector("#checkout-mapa-aqui"));
     }
-    if (estado.etapa === 2) {
+    if (estado.etapa === 1) {
       const opcao = (id, titulo, detalhe, habilitado = true) =>
         `<button type="button" class="checkout-opcao ${estado.metodo === id ? "selecionada" : ""}" data-metodo="${id}" aria-pressed="${estado.metodo === id}" ${habilitado ? "" : "disabled"}><strong>${titulo}</strong><small>${detalhe}</small></button>`;
-      conteudo.innerHTML = `<small class="checkout-etiqueta">Pagamento · 03</small><h2>Como deseja pagar?</h2><p>Selecione uma forma de pagamento. A escolha ficará visível antes da confirmação.</p><div class="checkout-grupo-pagamento"><h3>Pagar online</h3>${opcao("pix", "Pix", "Pague pelo QR Code", metodosOnline.pix)}${opcao("credit", "Cartão de crédito", "Pagamento online pelo Mercado Pago", metodosOnline.credito)}${opcao("debit", "Cartão de débito", "Ainda não disponível", false)}</div><div class="checkout-grupo-pagamento"><h3>Pagar na entrega</h3>${opcao("cash", "Dinheiro", "Pague ao receber o pedido", pagamentoNaEntrega)}${opcao("terminal", "Cartão na maquininha", "Crédito ou débito na entrega", pagamentoNaEntrega)}</div>${estado.metodo === "cash" ? campo("troco", "Troco para quanto? (opcional)", estado.troco, 'inputmode="decimal"') : ""}<p>Retirada no estabelecimento não está disponível neste fluxo de entrega.</p>${resumo()}`;
+      conteudo.innerHTML = `<small class="checkout-etiqueta">Pagamento · 02</small><h2>Como deseja pagar?</h2><p>Selecione uma forma de pagamento. A escolha ficará visível antes da confirmação.</p><div class="checkout-grupo-pagamento"><h3>Pagar online</h3>${opcao("pix", "Pix", "Pague pelo QR Code", metodosOnline.pix)}${opcao("credit", "Cartão de crédito", "Pagamento online pelo Mercado Pago", metodosOnline.credito)}${opcao("debit", "Cartão de débito", "Ainda não disponível", false)}</div><div class="checkout-grupo-pagamento"><h3>Pagar na entrega</h3>${opcao("cash", "Dinheiro", "Pague ao receber o pedido", pagamentoNaEntrega)}${opcao("terminal", "Cartão na maquininha", "Crédito ou débito na entrega", pagamentoNaEntrega)}</div>${estado.metodo === "cash" ? campo("troco", "Troco para quanto? (opcional)", estado.troco, 'inputmode="decimal"') : ""}<p>Retirada no estabelecimento não está disponível neste fluxo de entrega.</p>${resumo()}`;
     }
-    if (estado.etapa === 3) conteudo.innerHTML = `<small class="checkout-etiqueta">Identificação · 04</small><h2>Como podemos falar com você?</h2><p>Precisamos somente dos dados para identificar a entrega e entrar em contato se necessário.</p>${campo("nome", "Seu nome", estado.nome, 'maxlength="100" autocomplete="name"')}${campo("telefone", "Celular com DDD (aceita +55)", estado.telefone, 'type="tel" inputmode="tel" maxlength="25" autocomplete="tel" placeholder="+55 62 99999-9999"')}<p>O telefone fica registrado no pedido para contato sobre a entrega. Não é necessário criar conta.</p>`;
-    if (estado.etapa === 4) {
+    if (estado.etapa === 2) {
       const instrucao = [estado.endereco.logradouro, estado.endereco.numero, estado.endereco.bairro,
         estado.endereco.cidade, estado.endereco.complemento].filter(Boolean).map(escapar).join(", ");
       const linhas = carrinho.itens().map(item => {
         const produto = menu.produtos.find(p => p.id === item.produto_id);
         return `<p>${item.quantidade}× ${escapar(produto?.nome)} · ${moeda((produto?.preco_centavos || 0) * item.quantidade)}</p>`;
       }).join("");
-      conteudo.innerHTML = `<small class="checkout-etiqueta">Conferência · 05</small><h2>Confira antes de confirmar</h2><p>A localização e o frete serão verificados de novo no servidor.</p><div class="checkout-revisao"><strong>Localização da entrega</strong><button type="button" data-etapa="1">Editar</button><p>Pino: ${estado.pino.latitude.toFixed(6)}, ${estado.pino.longitude.toFixed(6)}</p><a target="_blank" rel="noopener noreferrer" href="${escapar(estado.pino.maps_url)}">Abrir localização no Google Maps ↗</a>${instrucao ? `<p>${instrucao}</p>` : ""}</div><div class="checkout-revisao"><strong>Pagamento</strong><button type="button" data-etapa="2">Editar</button><p>${estado.modalidade === "online" ? "Pagar online" : "Pagar na entrega"} · ${{ pix: "Pix", credit: "Cartão de crédito", cash: "Dinheiro", terminal: "Cartão na maquininha" }[estado.metodo]}</p>${estado.metodo === "cash" && estado.troco ? `<p>Troco para ${moeda(Math.round(Number(estado.troco.replace(",", ".")) * 100))}</p>` : ""}</div><div class="checkout-revisao"><strong>Contato</strong><button type="button" data-etapa="3">Editar</button><p>${escapar(estado.nome)} · ${escapar(estado.telefone)}</p></div><div class="checkout-revisao"><strong>Itens</strong><button type="button" data-etapa="0">Editar</button>${linhas}</div>${resumo()}`;
+      conteudo.innerHTML = `<small class="checkout-etiqueta">Conferência · 03</small><h2>Confira antes de confirmar</h2><p>A localização e o frete serão verificados de novo no servidor.</p><div class="checkout-revisao"><strong>Localização e contato</strong><button type="button" data-etapa="0">Editar</button><p>Pino: ${estado.pino.latitude.toFixed(6)}, ${estado.pino.longitude.toFixed(6)}</p>${instrucao ? `<p>${instrucao}</p>` : ""}<p>${escapar(estado.nome)} · ${escapar(estado.telefone)}</p></div><div class="checkout-revisao"><strong>Pagamento</strong><button type="button" data-etapa="1">Editar</button><p>${estado.modalidade === "online" ? "Pagar online" : "Pagar na entrega"} · ${{ pix: "Pix", credit: "Cartão de crédito", cash: "Dinheiro", terminal: "Cartão na maquininha" }[estado.metodo]}</p>${estado.metodo === "cash" && estado.troco ? `<p>Troco para ${moeda(Math.round(Number(estado.troco.replace(",", ".")) * 100))}</p>` : ""}</div><div class="checkout-revisao"><strong>Itens</strong><button type="button" data-etapa="0">Editar</button>${linhas}</div>${resumo()}`;
     }
   }
   const alertaFrete = document.createElement("dialog");
@@ -151,23 +172,25 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
     if (name === "telefone") estado.telefone = value;
     if (name === "troco") estado.troco = value;
   });
+  conteudo.addEventListener("change", evento => {
+    if (evento.target.name === "lembrar") estado.lembrar = evento.target.checked;
+  });
   voltar.onclick = () => { erro.textContent = ""; estado.etapa = Math.max(0, estado.etapa - 1); render(); };
   botao.onclick = async () => {
     if (estado.ocupado) return;
     erro.textContent = "";
-    if (estado.etapa === 0) { if (!carrinho.itens().length) return aviso("Adicione ao menos um produto."); estado.etapa++; render(); return; }
-    if (estado.etapa === 1) {
-      if (!estado.pino || estado.cotacaoPino !== estado.pino.maps_url || estado.frete === null) return void await cotar();
-      estado.etapa++; render(); return;
-    }
-    if (estado.etapa === 2) {
-      if (!estado.metodo) return aviso("Escolha a modalidade e o meio de pagamento para continuar.");
-      if (estado.metodo === "cash" && estado.troco && (!Number.isFinite(Number(estado.troco.replace(",", "."))) || Math.round(Number(estado.troco.replace(",", ".")) * 100) < subtotal() + estado.frete)) return aviso("O valor para troco deve ser igual ou superior ao total do pedido.");
-      estado.etapa++; render(); return;
-    }
-    if (estado.etapa === 3) {
+    if (estado.etapa === 0) {
+      if (!carrinho.itens().length) return aviso("Adicione ao menos um produto.");
       if (estado.nome.trim().length < 2) return aviso("Informe seu nome para identificação do pedido.");
       if (!telefoneNacional(estado.telefone)) return aviso("Informe um celular válido com DDD, com ou sem +55.");
+      if (!estado.pino || estado.cotacaoPino !== estado.pino.maps_url || estado.frete === null) {
+        if (!await cotar()) return;
+      }
+      estado.etapa = 1; render(); return;
+    }
+    if (estado.etapa === 1) {
+      if (!estado.metodo) return aviso("Escolha a modalidade e o meio de pagamento para continuar.");
+      if (estado.metodo === "cash" && estado.troco && (!Number.isFinite(Number(estado.troco.replace(",", "."))) || Math.round(Number(estado.troco.replace(",", ".")) * 100) < subtotal() + estado.frete)) return aviso("O valor para troco deve ser igual ou superior ao total do pedido.");
       estado.etapa++; render(); return;
     }
     estado.ocupado = true;
@@ -186,12 +209,13 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
       const assinatura = JSON.stringify(dados);
       if (estado.tentativa?.assinatura !== assinatura) estado.tentativa = { id: crypto.randomUUID(), assinatura };
       dados.p_id = estado.tentativa.id;
-      if (estado.metodo === "pix") { await aoPix(dados); await aoConfirmar(dados.p_id, "pix"); }
+      if (estado.metodo === "pix") { await aoPix(dados); salvarDados(); await aoConfirmar(dados.p_id, "pix"); }
       else if (estado.modalidade === "na_entrega") {
         const resposta = await fetch("/api/checkout-pix-mercado-pago-quiosque", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(dados) });
         const resultado = await resposta.json().catch(() => ({}));
         if (resposta.status === 409 && Number.isSafeInteger(resultado.frete_centavos)) return mostrarFreteAtualizado(resultado.frete_centavos);
         if (!resposta.ok) throw new Error(resultado.erro || "Não foi possível registrar o pedido.");
+        salvarDados();
         await aoConfirmar(resultado.pedido, "na_entrega");
       } else if (estado.metodo === "credit") {
         const { abrirCreditoTeste } = await import("./credito-teste.mjs");
@@ -201,11 +225,11 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
         await abrirCreditoTeste({ totalCentavos: subtotal() + estado.frete,
           pedido: { ...dados }, aoFreteAlterado(novoFrete) {
             el("painel-credito-teste").hidden = true;
-            estado.etapa = 4;
+            estado.etapa = 2;
             render();
             el("carrinho-cardapio").showModal();
             mostrarFreteAtualizado(novoFrete);
-          } }, id => aoConfirmar(id, "credito"), true);
+          } }, id => { salvarDados(); return aoConfirmar(id, "credito"); }, true);
       } else throw new Error("Escolha um método de pagamento disponível.");
     } catch (falha) {
       if (Number.isSafeInteger(falha.frete_centavos)) mostrarFreteAtualizado(falha.frete_centavos);
