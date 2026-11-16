@@ -30,3 +30,7 @@ Fontes oficiais: [Android — dedicated devices](https://developer.android.com/w
 - Impressão de um pedido confirmado, falha/desconexão de USB, retorno da impressora e reimpressão sem duplicar a venda.
 - Parceria/homologação PagBank para a Moderninha Smart 2 e o fluxo aprovado para comunicar o resultado ao servidor.
 - Pedido real por Pix e pedido real por cartão, observados no terminal, KDS, PDV e extrato do provedor.
+
+## Atualização após a auditoria inicial — 16/11/2026
+
+O KDS web agora chama `AndroidPrint` ao iniciar o preparo, e um novo APK de teste separado do legado foi compilado. O teste USB físico ainda está pendente. Para o cartão no autoatendimento, o plano passou a priorizar Mercado Pago Point via Orders API: o Android não precisa conectar localmente à maquininha. O backend cria a cobrança, recebe e valida o webhook e informa ao terminal o estado persistido do pedido. A Smart 2 do PagBank permanece como alternativa suspensa; o PlugPag Bluetooth documentado não a lista como compatível. Os itens anteriores registram o estado encontrado na data da auditoria, não o estado de produção atual.
