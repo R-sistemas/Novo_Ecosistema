@@ -9,6 +9,8 @@ Decisão informada por Rafael em 16/11/2026: o ciclo do ecossistema inclui um po
 - O pedido feito no terminal usa o mesmo catálogo, identificador de pedido, cozinha, PDV e regras financeiras do ecossistema. A origem `autoatendimento` identifica o canal sem criar uma segunda base de pedidos.
 - Pix exibe QR e só libera pedido/comprovante após confirmação autenticada do provedor. O caminho de cartão envia o valor e a referência do pedido à Moderninha Smart 2 e aguarda o resultado verificável da transação. A impressão do comprovante de pedido ocorre uma vez após a confirmação, com reimpressão auditada.
 - A ponte Android para a Bematech MP-4200 TH descrita no plano geral deve ser localizada e validada no equipamento real antes de reaproveitamento. A PWA no navegador não acessa a impressora USB por essa ponte sozinha.
+- O aplicativo deve funcionar em celular ou tablet Android com USB host; a escolha da marca/modelo do terminal não bloqueia o desenvolvimento. O Galaxy A15 já imprimiu com o APK legado, segundo teste relatado por Rafael. A compatibilidade de cada aparelho final ainda será validada fisicamente.
+- Na cozinha atual, **Iniciar preparo** aceita o pedido no servidor e em seguida envia a via de produção à Bematech pelo aplicativo Android. No autoatendimento, a via do comprador inclui número do pedido, itens, valores e identificação do pagamento, mas só é emitida depois da confirmação autenticada e persistida da transação. Uma tentativa, QR exibido ou resposta local da maquininha sem conciliação não autoriza impressão nem liberação à cozinha.
 
 ## Escolha técnica que depende de homologação
 
@@ -21,8 +23,9 @@ Fontes oficiais consultadas: [Android lock task](https://developer.android.com/w
 ## Critérios de conclusão em produção
 
 - [x] Localizar e auditar o projeto Android legado `DoRafaKDSPrint`; resultados em `AUDITORIA_ANDROID_AUTOATENDIMENTO_2026-11-16.md`.
+- [x] Integrar o aceite da cozinha à ponte Android USB em código e compilar um APK de teste separado do legado. Versão web publicada em 16/11/2026; teste físico da nova versão ainda pendente.
 - [ ] Testar a ponte USB com a Bematech física, confirmação e reimpressão.
-- [ ] Definir o aparelho do terminal e provisioná-lo como dispositivo Android dedicado; testar bloqueio, reinício e saída administrativa.
+- [ ] Provisionar o aparelho escolhido como dispositivo Android dedicado; testar bloqueio, reinício e saída administrativa. Celular ou tablet são opções válidas.
 - [ ] Publicar interface de autoatendimento reutilizando catálogo, checkout e pedido, com provisionamento do terminal por QR e isolamento entre compradores.
 - [ ] Integrar Pix com confirmação real e idempotente, imprimir apenas após confirmação e conferir o registro no KDS/PDV.
 - [ ] Confirmar com PagBank o procedimento de parceria, homologação e comunicação com a Moderninha Smart 2; implementar a ponte aprovada e conciliar identificador, valor, estado e comprovante da transação.
