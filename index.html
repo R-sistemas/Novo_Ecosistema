@@ -74,6 +74,23 @@
 <details class="panel" open><summary>Histórico do caixa</summary><ol id="history"></ol></details>
 </div>
 <details class="panel" open><summary>Pagamentos online da loja</summary><label for="data-online">Data dos pagamentos</label><input id="data-online" type="date"><p id="resumo-online" role="status"></p><ol id="recebimentos-online"></ol><button id="atualizar-online" type="button" class="secondary">Atualizar pagamentos</button></details>
+<details class="panel" open><summary>Acertos de entregas pendentes <strong id="numero-acertos"></strong></summary>
+<p>Confira com o entregador o dinheiro ou o comprovante e a devolução da maquininha. A entrega pode ser concluída antes de abrir o caixa.</p>
+<p id="aviso-acertos" role="status"></p><div id="acertos-pendentes" aria-live="polite"></div>
+<button id="atualizar-acertos" type="button" class="secondary">Atualizar acertos</button></details>
+<dialog id="dialogo-acerto" class="frente-comandas" aria-labelledby="titulo-acerto">
+<h2 id="titulo-acerto">Conferir recebimento da entrega</h2>
+<p id="resumo-acerto"></p>
+<form id="form-acerto">
+<label id="grupo-comprovante-acerto" for="comprovante-acerto" hidden>Digite a referência do comprovante da maquininha
+<input id="comprovante-acerto" maxlength="100" autocomplete="off"></label>
+<label><input id="conferencia-acerto" type="checkbox" required> Conferi o valor recebido do entregador</label>
+<label id="grupo-maquininha-acerto" hidden><input id="maquininha-devolvida" type="checkbox"> A maquininha voltou ao estabelecimento</label>
+<button>Registrar recebimento no caixa</button>
+</form>
+<p id="erro-acerto" role="alert"></p>
+<button id="fechar-acerto" type="button" class="secondary">Voltar</button>
+</dialog>
 <dialog id="dialogo-comandas" class="frente-comandas">
 <h2>Abrir pedido · Comandas a receber</h2>
 <label for="buscar-comanda">Número da comanda ou da mesa</label>

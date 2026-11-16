@@ -129,7 +129,7 @@ export async function carregarCozinha() {
         };
         artigo.append(despacho, avisoDespacho);
       }
-      if (!kds && !pedido.adicional && !pedido.recebido && !pedido.mesa) {
+      if (!kds && !pedido.adicional && !pedido.recebido && !pedido.mesa && !pedido.pagamento_entrega) {
         const receber = document.createElement("button");
         receber.textContent = "Registrar recebimento no caixa";
         receber.onclick = () => fila.dispatchEvent(new CustomEvent("receber-pedido", {
