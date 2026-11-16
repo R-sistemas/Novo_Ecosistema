@@ -17,6 +17,7 @@ let empresaExibida;
 let ultimaFila;
 let ultimosCancelamentos;
 let carregando = false;
+const falhasDespacho = new Map();
 const painelCancelamentos = document.getElementById("cancelamentos-kds");
 const listaCancelamentos = document.getElementById("lista-cancelamentos-kds");
 
@@ -70,6 +71,9 @@ export async function carregarCozinha() {
       const etapa = document.createElement("p");
       etapa.textContent = pedido.cancelamento_pendente ? "Preparo pausado · Cancelamento em análise" :
         pedido.ajuste_pendente ? "Aguardando resolução de ajuste" : estadosEntrega[pedido.estado_remo] ?? etapas[pedido.estado];
+      if (pedido.estado === "pronto" && pedido.pagamento_entrega && !pedido.estado_remo) {
+        etapa.textContent = falhasDespacho.get(pedido.id) || "Pronto · Aguardando despacho à REMO";
+      }
       etapa.className = "etapa-kds";
       artigo.append(titulo, etapa, resumo);
       if (!kds) artigo.append(financeiro);
@@ -99,24 +103,31 @@ export async function carregarCozinha() {
           metodo_pagamento && `Pagamento: ${{ pix: "Pix", credito: "Crédito online", dinheiro: "Dinheiro", maquininha: "Maquininha" }[metodo_pagamento] || metodo_pagamento}`,
           troco_para_centavos != null && `Troco para ${moeda.format(troco_para_centavos / 100)}`].filter(Boolean).join(" · ");
         if (contato.textContent) artigo.append(contato);
-        if (pedido.estado === "pronto" && !pedido.estado_remo) {
-          const despacho = document.createElement("button");
-          despacho.textContent = "Solicitar despacho à REMO";
-          const avisoDespacho = document.createElement("p");
-          avisoDespacho.setAttribute("role", "status");
-          despacho.onclick = async () => {
-            despacho.disabled = true;
-            try {
-              await executarApi("despachar-remo", { pedido: pedido.id });
-              avisoDespacho.textContent = "Despacho solicitado.";
-              await carregarCozinha();
-            } catch (erro) {
-              avisoDespacho.textContent = erro.message;
-              despacho.disabled = false;
-            }
-          };
-          artigo.append(despacho, avisoDespacho);
+      }
+      const avisoDespacho = document.createElement("p");
+      avisoDespacho.setAttribute("role", "status");
+      async function solicitarDespacho() {
+        try {
+          await executarApi("despachar-remo", { pedido: pedido.id });
+          falhasDespacho.delete(pedido.id);
+          avisoDespacho.textContent = "Despacho solicitado à REMO.";
+          if (empresa.value === idEmpresa) await carregarCozinha();
+        } catch (erro) {
+          const mensagem = "Despacho pendente: " + erro.message;
+          falhasDespacho.set(pedido.id, mensagem);
+          avisoDespacho.textContent = mensagem;
         }
+      }
+      if (pedido.estado === "pronto" && pedido.pagamento_entrega && !pedido.estado_remo) {
+        const despacho = document.createElement("button");
+        despacho.type = "button";
+        despacho.textContent = "Tentar despacho à REMO";
+        despacho.onclick = async () => {
+          despacho.disabled = true;
+          await solicitarDespacho();
+          despacho.disabled = false;
+        };
+        artigo.append(despacho, avisoDespacho);
       }
       if (!kds && !pedido.adicional && !pedido.recebido && !pedido.mesa) {
         const receber = document.createElement("button");
@@ -135,6 +146,9 @@ export async function carregarCozinha() {
           artigo.inert = true;
           try {
             await executar(pedido.adicional ? "avancar_adicional_comanda" : "avancar_pedido", { p_id: pedido.id, p_estado: destino });
+            if (destino === "pronto" && pedido.pagamento_entrega && !pedido.adicional) {
+              await solicitarDespacho();
+            }
             if (empresa.value === idEmpresa) await carregarCozinha();
           } catch (erro) {
             if (empresa.value === idEmpresa) aviso.textContent = erro.message;

@@ -56,6 +56,15 @@ async function acompanhar() {
       (pedido.pago ? " · Pago" : aguardandoPix || pedido.estado === "recusado" ? "" : " · Pagar no caixa");
   }
   if (!aguardandoPix) el("pagamento-pix").hidden = true;
+  const pixConfirmado = Boolean((pedido.pix_sandbox || pedido.pix_producao) && pedido.pix_confirmado);
+  const painelConfirmacao = el("pix-confirmado");
+  painelConfirmacao.hidden = !pixConfirmado;
+  if (pixConfirmado && !painelConfirmacao.dataset.exibido) {
+    painelConfirmacao.dataset.exibido = "true";
+    painelConfirmacao.classList.remove("pix-confirmado-entrar");
+    void painelConfirmacao.offsetWidth;
+    painelConfirmacao.classList.add("pix-confirmado-entrar");
+  }
   const arte = el("arte-agradecimento");
   arte.hidden = !arte.getAttribute("src") || aguardandoPix || pedido.estado === "recusado";
   return aguardandoPix;
