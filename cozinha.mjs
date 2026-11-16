@@ -1,9 +1,11 @@
 import { executar, executarApi } from "./supabase-pdv.mjs";
 import { estadosEntrega } from "./estado-entrega.mjs";
 import { criarAlertaPedidos } from "./alerta-pedidos.mjs";
+import { imprimirCozinha } from "./impressao-cozinha.mjs";
 
 const fila = document.getElementById("fila-cozinha");
 const aviso = document.getElementById("aviso-cozinha");
+const avisoImpressao = document.getElementById("aviso-impressao-kds") || aviso;
 const alerta = criarAlertaPedidos(aviso);
 const empresa = document.getElementById("empresa");
 const kds = document.body.dataset.area === "kds";
@@ -140,6 +142,16 @@ export async function carregarCozinha() {
         }));
         artigo.append(receber);
       }
+      if (kds && ["preparo", "pronto"].includes(pedido.estado) && !pedido.cancelamento_pendente) {
+        const reimprimir = document.createElement("button");
+        reimprimir.type = "button";
+        reimprimir.textContent = "Reimprimir pedido";
+        reimprimir.onclick = () => {
+          if (!window.confirm("Confirme que o pedido precisa de outra via impressa.")) return;
+          avisoImpressao.textContent = imprimirCozinha(pedido, true).mensagem;
+        };
+        artigo.append(reimprimir);
+      }
       for (const [destino, texto] of acoes[pedido.estado]) {
         if ((destino === "recusado" && (pedido.adicional || pedido.mesa || pedido.recebido)) ||
             (destino === "entregue" && (pedido.pagamento_entrega || (!pedido.recebido && !pedido.mesa)))) continue;
@@ -149,6 +161,9 @@ export async function carregarCozinha() {
           artigo.inert = true;
           try {
             await executar(pedido.adicional ? "avancar_adicional_comanda" : "avancar_pedido", { p_id: pedido.id, p_estado: destino });
+            if (kds && destino === "preparo") {
+              avisoImpressao.textContent = imprimirCozinha(pedido).mensagem;
+            }
             if (destino === "pronto" && pedido.pagamento_entrega && !pedido.adicional) {
               await solicitarDespacho();
             }
