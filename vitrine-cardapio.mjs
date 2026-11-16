@@ -43,6 +43,7 @@ export function montarVitrine(produtos) {
     el("total-barra").textContent = reais(total());
     el("total").textContent = "Total · " + reais(total());
     el("enviar-pedido").disabled = !quantidade;
+    el("limpar-carrinho").hidden = !quantidade;
     el("itens-carrinho").replaceChildren(...produtos.filter(p => qtd(p)).map(p => {
       const linha = no("div", "", "linha linha-pedido");
       const controles = no("div", "", "quantidade");
@@ -127,6 +128,13 @@ export function montarVitrine(produtos) {
     el("ver-pedido").classList.remove("guiado");
     el("passo-pedido").classList.add("guiado");
     el("carrinho-cardapio").showModal();
+    document.dispatchEvent(new Event("cardapio:carrinho-aberto"));
+  };
+  el("limpar-carrinho").onclick = () => {
+    quantidades.clear();
+    atualizarCarrinho();
+    el("carrinho-cardapio").close();
+    document.dispatchEvent(new Event("cardapio:carrinho-limpo"));
   };
   el("fechar-carrinho").onclick = () => el("carrinho-cardapio").close();
   el("fechar-detalhe").onclick = () => el("detalhe").close();

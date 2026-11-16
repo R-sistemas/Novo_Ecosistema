@@ -3,12 +3,13 @@ const link = p => `https://www.google.com/maps?q=${p.latitude.toFixed(6)},${p.lo
 export function criarLocationPicker({ centro, aoConfirmar, aoAlterar, inicial = null }) {
   const painel = document.createElement("section");
   painel.className = "checkout-mapa-inline";
-  painel.innerHTML = `<div class="checkout-mapa-cabecalho"><strong>Localização no mapa <small>OBRIGATÓRIO</small></strong><p>Arraste o pino para o local da entrega. Use dois dedos para ampliar.</p></div>
+  painel.innerHTML = `<div class="checkout-mapa-cabecalho"><strong>Localização no mapa <small>OBRIGATÓRIO</small></strong><p>Arraste o pino para o local da entrega. Use dois dedos ou a roda do mouse para ampliar.</p></div>
     <div class="checkout-mapa-acoes"><button type="button" data-acao="gps">◎ Usar minha localização</button></div>
-    <div class="checkout-mapa-viewport" role="application" aria-label="Mapa da entrega. Toque para marcar ou arraste o pino."></div>
+    <div class="checkout-mapa-viewport" role="application" aria-label="Mapa da entrega. Toque para marcar ou arraste o pino."><div class="checkout-mapa-carregando" role="status">Carregando mapa…</div></div>
     <p class="checkout-mapa-feedback" role="status">${inicial ? "Confira o local salvo e confirme o pino." : "Toque no local da entrega ou use sua localização."}</p>
     <button type="button" class="checkout-mapa-confirmar" data-acao="confirmar" ${inicial ? "" : "disabled"}>Confirmar este ponto ✓</button>`;
   const viewport = painel.querySelector(".checkout-mapa-viewport");
+  const carregando = painel.querySelector(".checkout-mapa-carregando");
   const feedback = painel.querySelector(".checkout-mapa-feedback");
   const confirmar = painel.querySelector('[data-acao="confirmar"]');
   let candidato = inicial ? { latitude: inicial.latitude, longitude: inicial.longitude } : null;
@@ -67,7 +68,18 @@ export function criarLocationPicker({ centro, aoConfirmar, aoAlterar, inicial = 
       aoConfirmar({ ...candidato, maps_url: link(candidato) });
     }
   });
-  return { montar(container) {
+  return { limpar() {
+    pararGps();
+    if (mapa) { mapa.remove(); mapa = null; marcador = null; }
+    candidato = inicial ? { latitude: inicial.latitude, longitude: inicial.longitude } : null;
+    confirmado = Boolean(inicial);
+    vista = candidato || centro;
+    zoom = candidato ? 17 : 15;
+    confirmar.disabled = !candidato;
+    confirmar.textContent = "Confirmar este ponto ✓";
+    carregando.textContent = "Carregando mapa…";
+    feedback.textContent = candidato ? "Confira o local salvo e confirme o pino." : "Toque no local da entrega ou use sua localização.";
+  }, montar(container) {
     if (mapa) {
       vista = { latitude: mapa.getCenter().lat, longitude: mapa.getCenter().lng };
       zoom = mapa.getZoom();
@@ -81,10 +93,15 @@ export function criarLocationPicker({ centro, aoConfirmar, aoAlterar, inicial = 
       confirmar.disabled = true;
       return;
     }
-    mapa = L.map(viewport, { zoomControl: false, scrollWheelZoom: false }).setView([vista.latitude, vista.longitude], zoom);
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(mapa);
+    mapa = L.map(viewport, { zoomControl: false, scrollWheelZoom: true }).setView([vista.latitude, vista.longitude], zoom);
+    const camada = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19, updateWhenIdle: true, keepBuffer: 1,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    });
+    camada.on("loading", () => { carregando.hidden = false; });
+    camada.on("load", () => { carregando.hidden = true; });
+    camada.on("tileerror", () => { carregando.textContent = "Algumas partes do mapa não carregaram. Tente mover o mapa ou atualizar a página."; });
+    camada.addTo(mapa);
     mapa.on("click", evento => marcar(evento.latlng));
     if (candidato) marcar({ lat: candidato.latitude, lng: candidato.longitude }, false);
     requestAnimationFrame(() => mapa.invalidateSize());

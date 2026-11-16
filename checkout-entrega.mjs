@@ -91,6 +91,7 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
     estado.ocupado = true;
     erro.textContent = "";
     botao.disabled = true;
+    el("limpar-carrinho").disabled = true;
     try {
       const resposta = await fetch("/api/cotar-frete", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ p_slug: slug, endereco: enderecoParaCotar() }) });
@@ -109,7 +110,7 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
     } catch {
       aviso("Não foi possível calcular o frete agora. Tente novamente.");
       return false;
-    } finally { estado.ocupado = false; botao.disabled = !carrinho.itens().length; }
+    } finally { estado.ocupado = false; botao.disabled = !carrinho.itens().length; el("limpar-carrinho").disabled = false; }
   }
   const resumo = () => `<div class="checkout-resumo"><div><span>Subtotal</span><b>${moeda(subtotal())}</b></div><div><span>Entrega</span><b>${estado.frete === null ? "A calcular" : moeda(estado.frete)}</b></div><div class="checkout-total"><span>Total</span><b>${estado.frete === null ? "A calcular" : moeda(subtotal() + estado.frete)}</b></div></div>`;
   const campo = (nome, titulo, valor, extra = "") => `<label class="checkout-campo">${titulo}<input name="${nome}" value="${escapar(valor)}" ${extra}></label>`;
@@ -125,9 +126,10 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
       picker.montar(conteudo.querySelector("#checkout-mapa-aqui"));
     }
     if (estado.etapa === 1) {
-      const opcao = (id, titulo, detalhe, habilitado = true) =>
-        `<button type="button" class="checkout-opcao ${estado.metodo === id ? "selecionada" : ""}" data-metodo="${id}" aria-pressed="${estado.metodo === id}" ${habilitado ? "" : "disabled"}><strong>${titulo}</strong><small>${detalhe}</small></button>`;
-      conteudo.innerHTML = `<small class="checkout-etiqueta">Pagamento · 02</small><h2>Como deseja pagar?</h2><p>Selecione uma forma de pagamento. A escolha ficará visível antes da confirmação.</p><div class="checkout-grupo-pagamento"><h3>Pagar online</h3>${opcao("pix", "Pix", "Pague pelo QR Code", metodosOnline.pix)}${opcao("credit", "Cartão de crédito", "Pagamento online pelo Mercado Pago", metodosOnline.credito)}${opcao("debit", "Cartão de débito", "Ainda não disponível", false)}</div><div class="checkout-grupo-pagamento"><h3>Pagar na entrega</h3>${opcao("cash", "Dinheiro", "Pague ao receber o pedido", pagamentoNaEntrega)}${opcao("terminal", "Cartão na maquininha", "Crédito ou débito na entrega", pagamentoNaEntrega)}</div>${estado.metodo === "cash" ? campo("troco", "Troco para quanto? (opcional)", estado.troco, 'inputmode="decimal"') : ""}<p>Retirada no estabelecimento não está disponível neste fluxo de entrega.</p>${resumo()}`;
+      const bandeiras = `<span class="checkout-bandeiras" aria-label="Bandeiras de cartão: Visa, Mastercard, Elo e American Express"><span class="bandeira bandeira-visa" aria-hidden="true">VISA</span><span class="bandeira bandeira-master" aria-hidden="true"><i></i><i></i></span><span class="bandeira bandeira-elo" aria-hidden="true">elo</span><span class="bandeira bandeira-amex" aria-hidden="true">AMEX</span></span>`;
+      const opcao = (id, titulo, detalhe, habilitado = true, complemento = "") =>
+        `<button type="button" class="checkout-opcao ${estado.metodo === id ? "selecionada" : ""}" data-metodo="${id}" aria-pressed="${estado.metodo === id}" ${habilitado ? "" : "disabled"}><strong>${titulo}</strong><small>${detalhe}</small>${complemento}</button>`;
+      conteudo.innerHTML = `<small class="checkout-etiqueta">Pagamento · 02</small><h2>Como deseja pagar?</h2><p>Selecione uma forma de pagamento. A escolha ficará visível antes da confirmação.</p><div class="checkout-grupo-pagamento"><h3>Pagar online</h3>${opcao("pix", "Pix", "Pague pelo QR Code", metodosOnline.pix)}${opcao("credit", "Cartão de crédito", "Pague com seu cartão", metodosOnline.credito, bandeiras)}${opcao("debit", "Cartão de débito", "Ainda não disponível", false)}</div><div class="checkout-grupo-pagamento"><h3>Pagar na entrega</h3>${opcao("cash", "Dinheiro", "Pague ao receber o pedido", pagamentoNaEntrega)}${opcao("terminal", "Cartão na maquininha", "Crédito ou débito na entrega", pagamentoNaEntrega)}</div>${estado.metodo === "cash" ? campo("troco", "Troco para quanto? (opcional)", estado.troco, 'inputmode="decimal"') : ""}<p>Retirada no estabelecimento não está disponível neste fluxo de entrega.</p>${resumo()}`;
     }
     if (estado.etapa === 2) {
       const instrucao = [estado.endereco.logradouro, estado.endereco.numero, estado.endereco.bairro,
@@ -195,6 +197,7 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
     }
     estado.ocupado = true;
     botao.disabled = true;
+    el("limpar-carrinho").disabled = true;
     try {
       const chave = estado.pino.maps_url;
       const cotacaoAnterior = estado.frete;
@@ -235,11 +238,28 @@ export async function iniciarCheckoutEntrega({ slug, menu, carrinho, aoConfirmar
       if (Number.isSafeInteger(falha.frete_centavos)) mostrarFreteAtualizado(falha.frete_centavos);
       else aviso(falha.message);
     }
-    finally { estado.ocupado = false; botao.disabled = !carrinho.itens().length; }
+    finally { estado.ocupado = false; botao.disabled = !carrinho.itens().length; el("limpar-carrinho").disabled = false; }
   };
   el("pedido").hidden = false;
   el("vitrine").hidden = false;
   el("barra-cardapio").hidden = false;
-  new MutationObserver(() => { if (estado.etapa === 0) render(); }).observe(itens, { childList: true, subtree: true, characterData: true });
-  render();
+  document.addEventListener("cardapio:carrinho-aberto", () => render());
+  document.addEventListener("cardapio:carrinho-limpo", () => {
+    picker.limpar();
+    estado.etapa = 0;
+    estado.pino = dadosSalvos?.pino || null;
+    estado.frete = null;
+    estado.cotacaoPino = null;
+    estado.modalidade = null;
+    estado.metodo = null;
+    estado.nome = dadosSalvos?.nome || "";
+    estado.telefone = dadosSalvos?.telefone || "";
+    estado.troco = "";
+    estado.endereco = dadosSalvos?.endereco || {};
+    estado.lembrar = Boolean(dadosSalvos);
+    estado.tentativa = null;
+    erro.textContent = "";
+    conteudo.replaceChildren();
+  });
+  new MutationObserver(() => { if (estado.etapa === 0 && el("carrinho-cardapio").open) render(); }).observe(itens, { childList: true, subtree: true, characterData: true });
 }
