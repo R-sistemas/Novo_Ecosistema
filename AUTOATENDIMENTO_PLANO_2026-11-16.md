@@ -5,7 +5,7 @@ Decisão informada por Rafael em 16/11/2026: o ciclo do ecossistema inclui um po
 ## Experiência aprovada para desenvolver
 
 - Terminal Android dedicado exibe o cardápio da loja em tela cheia e impede o cliente de sair para outros aplicativos ou configurações. A saída para manutenção exige autenticação administrativa e fica registrada.
-- Um QR visível abre o cardápio público no telefone do cliente, onde ele pode instalar a PWA. Esse QR não confere privilégios de manutenção nem transfere a sessão do terminal.
+- O QR é **lido pelo próprio terminal Android** para instalar/configurar o aplicativo de autoatendimento e ativar o modo de dispositivo dedicado. Foi confirmado por Rafael em 16/11/2026. Ele não é um QR para o cliente instalar o cardápio no telefone.
 - O pedido feito no terminal usa o mesmo catálogo, identificador de pedido, cozinha, PDV e regras financeiras do ecossistema. A origem `autoatendimento` identifica o canal sem criar uma segunda base de pedidos.
 - Pix exibe QR e só libera pedido/comprovante após confirmação autenticada do provedor. O caminho de cartão envia o valor e a referência do pedido à Moderninha Smart 2 e aguarda o resultado verificável da transação. A impressão do comprovante de pedido ocorre uma vez após a confirmação, com reimpressão auditada.
 - A ponte Android para a Bematech MP-4200 TH descrita no plano geral deve ser localizada e validada no equipamento real antes de reaproveitamento. A PWA no navegador não acessa a impressora USB por essa ponte sozinha.
@@ -20,9 +20,10 @@ Fontes oficiais consultadas: [Android lock task](https://developer.android.com/w
 
 ## Critérios de conclusão em produção
 
-- [ ] Localizar o projeto Android legado `DoRafaKDSPrint`, identificar versão, ponte USB e limitações; testar Bematech física, confirmação e reimpressão.
+- [x] Localizar e auditar o projeto Android legado `DoRafaKDSPrint`; resultados em `AUDITORIA_ANDROID_AUTOATENDIMENTO_2026-11-16.md`.
+- [ ] Testar a ponte USB com a Bematech física, confirmação e reimpressão.
 - [ ] Definir o aparelho do terminal e provisioná-lo como dispositivo Android dedicado; testar bloqueio, reinício e saída administrativa.
-- [ ] Publicar interface de autoatendimento reutilizando catálogo, checkout e pedido, com QR público e isolamento entre compradores.
+- [ ] Publicar interface de autoatendimento reutilizando catálogo, checkout e pedido, com provisionamento do terminal por QR e isolamento entre compradores.
 - [ ] Integrar Pix com confirmação real e idempotente, imprimir apenas após confirmação e conferir o registro no KDS/PDV.
 - [ ] Confirmar com PagBank o procedimento de parceria, homologação e comunicação com a Moderninha Smart 2; implementar a ponte aprovada e conciliar identificador, valor, estado e comprovante da transação.
 - [ ] Testar transações aprovadas, recusadas, interrompidas e repetidas, sem criar pedidos pagos ou impressões duplicadas.
