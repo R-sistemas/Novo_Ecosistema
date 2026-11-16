@@ -51,6 +51,9 @@ public final class MainActivity extends Activity {
             }
         });
         webView.loadUrl(KDS_URL);
+        // Solicita autorização antes do primeiro aceite para que a via saia
+        // automaticamente quando a Bematech já está conectada ao Android.
+        impressora.requestPermission();
     }
 
     private final class PonteImpressao {
