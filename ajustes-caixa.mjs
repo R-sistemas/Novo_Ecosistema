@@ -1,4 +1,4 @@
-import { executar } from "./supabase-pdv.mjs";
+import { listarAjustesCaixa, resolverAjuste } from "./pdv/dados/comandas.mjs";
 import { carregarCozinha } from "./cozinha.mjs";
 
 const el = id => document.getElementById(id);
@@ -18,7 +18,7 @@ export async function carregarAjustesCaixa() {
   const empresa = el("empresa").value;
   const atual = ++consulta;
   try {
-    const ajustes = await executar("ajustes_pendentes_caixa", { p_empresa: empresa });
+    const ajustes = await listarAjustesCaixa({ p_empresa: empresa });
     if (atual !== consulta || empresa !== el("empresa").value) return;
     const chave = JSON.stringify([empresa, ajustes]);
     if (chave === exibido) return;
@@ -61,7 +61,7 @@ formulario.onsubmit = async evento => {
   if (dialogo.inert) return;
   dialogo.inert = true;
   try {
-    await executar("resolver_ajuste_comanda", {
+    await resolverAjuste({
       p_id: selecionado.id, p_aplicar: decisao.value === "aplicar", p_resolucao: el("nota-ajuste-caixa").value.trim()
     });
     dialogo.close();

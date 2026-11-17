@@ -1,9 +1,10 @@
+import { paraReais } from "../regras/moeda.mjs";
 export const el = (id) => document.getElementById(id);
 export const reais = (centavos) =>
   new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
-  }).format(centavos / 100);
+  }).format(paraReais(centavos));
 
 export function botao(texto, acao, secundario = false) {
   const elemento = document.createElement("button");

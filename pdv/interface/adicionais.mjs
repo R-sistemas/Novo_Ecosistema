@@ -1,4 +1,4 @@
-import { adicionarItens } from "../dados/adicionais.mjs";
+import { adicionarItens } from "../dados/comandas.mjs";
 import { carregarCozinha } from "../../cozinha.mjs";
 
 export function configurarAdicionais(ctx) {

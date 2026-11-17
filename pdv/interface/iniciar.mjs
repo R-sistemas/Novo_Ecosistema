@@ -126,6 +126,7 @@ const operarCaixa = configurarOperacaoCaixa({
   temItens,
 });
 montarAcesso({
+  editarProduto: admin.editarProduto,
   el,
   operar,
   atualizar,

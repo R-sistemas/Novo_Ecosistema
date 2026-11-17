@@ -1,3 +1,4 @@
+import { paraReais } from "../regras/moeda.mjs";
 import { configurarPixPdv } from "../../pix-pdv.mjs";
 import { carregarCozinha } from "../../cozinha.mjs";
 
@@ -19,7 +20,7 @@ export function configurarPixFrente(ctx) {
           const produto = ctx.produtos().find((p) => p.id === item.produto_id);
           if (produto) carrinho.set(produto.codigo, item.quantidade);
         }
-        if (resultado.desconto) el("valor-desconto").value = resultado.desconto / 100;
+        if (resultado.desconto) el("valor-desconto").value = paraReais(resultado.desconto);
       }
       ctx.renderizar();
     },

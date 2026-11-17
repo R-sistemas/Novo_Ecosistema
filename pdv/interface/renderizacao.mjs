@@ -1,3 +1,4 @@
+import { paraCentavos } from "../regras/moeda.mjs";
 import { saldo } from "../../caixa.mjs";
 import { detalhePesagem } from "../../pesagem.mjs";
 
@@ -148,7 +149,7 @@ export function configurarRenderizacao(ctx) {
     el("subtotal-frente").textContent = reais(subtotal());
     el("total").textContent = reais(total());
     const recebido = el("valor-recebido-frente").valueAsNumber;
-    const recebidoCentavos = Math.round(recebido * 100);
+    const recebidoCentavos = paraCentavos(recebido);
     el("troco-frente").textContent = reais(
       Number.isFinite(recebidoCentavos) ? Math.max(0, recebidoCentavos - total()) : 0,
     );

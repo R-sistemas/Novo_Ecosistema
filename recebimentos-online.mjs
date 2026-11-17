@@ -1,4 +1,5 @@
-import { executar } from "./supabase-pdv.mjs";
+import { paraReais } from "./pdv/regras/moeda.mjs";
+import { listarRecebimentosOnline } from "./pdv/dados/caixa.mjs";
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const dataLocal = () => new Intl.DateTimeFormat("en-CA", {
@@ -18,14 +19,14 @@ export function configurarRecebimentosOnline(empresaAtual) {
     botao.disabled = true;
     try {
       const dia = data.value;
-      const dados = await executar("recebimentos_online_da_loja", { p_empresa: empresa, p_dia: dia });
+      const dados = await listarRecebimentosOnline(empresa, dia);
       if (empresa !== empresaAtual() || dia !== data.value) return;
-      resumo.textContent = `${dados.quantidade} pedido(s) pago(s) online nesta data · ${moeda.format(dados.total_centavos / 100)} recebido(s), incluindo ${moeda.format(dados.frete_centavos / 100)} de taxa de entrega. Não altera o dinheiro esperado neste caixa.`;
+      resumo.textContent = `${dados.quantidade} pedido(s) pago(s) online nesta data · ${moeda.format(paraReais(dados.total_centavos))} recebido(s), incluindo ${moeda.format(paraReais(dados.frete_centavos))} de taxa de entrega. Não altera o dinheiro esperado neste caixa.`;
       lista.replaceChildren(...dados.pedidos.map(pedido => {
         const linha = document.createElement("li");
         const horario = new Date(pedido.confirmado_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
         const estado = pedido.estado_entrega || pedido.estado;
-        linha.textContent = `Pedido ${pedido.comanda} · ${meios[pedido.meio] || pedido.meio} · ${moeda.format(pedido.valor_centavos / 100)} · ${horario} · ${estado}`;
+        linha.textContent = `Pedido ${pedido.comanda} · ${meios[pedido.meio] || pedido.meio} · ${moeda.format(paraReais(pedido.valor_centavos))} · ${horario} · ${estado}`;
         return linha;
       }));
       if (!dados.pedidos.length) lista.textContent = "Nenhum pagamento online confirmado hoje.";

@@ -1,5 +1,5 @@
 import { validarAcerto } from "../regras/acertos.mjs";
-import { listarAcertos, confirmarAcerto } from "../dados/acertos.mjs";
+import { listarAcertos, confirmarAcerto } from "../dados/caixa.mjs";
 
 export function configurarAcertos(ctx) {
   const { el, botao, reais, operar, atualizar, carregarCozinha, estado } = ctx;

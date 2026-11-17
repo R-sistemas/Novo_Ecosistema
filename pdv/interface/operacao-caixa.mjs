@@ -1,10 +1,11 @@
+import { paraCentavos } from "../regras/moeda.mjs";
 import { abrirCaixa, fecharCaixa, movimentarCaixa } from "../dados/caixa.mjs";
 
 export function configurarOperacaoCaixa({ el, estado, operar, atualizar, temItens }) {
   function operarCaixa(acao) {
     const campo = el("amount");
     if (!campo.reportValidity()) return;
-    const valor = Math.round(campo.valueAsNumber * 100);
+    const valor = paraCentavos(campo.valueAsNumber);
     if (!Number.isSafeInteger(valor)) return;
     operar(async () => {
       const p_caixa = estado.sessao?.id;

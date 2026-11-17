@@ -1,4 +1,4 @@
-import { ajustarItemPesado } from "../dados/pesagem.mjs";
+import { ajustarItemPesado } from "../dados/comandas.mjs";
 import { quantidadeValida } from "../regras/quantidade.mjs";
 
 export function configurarItensFrente(ctx) {

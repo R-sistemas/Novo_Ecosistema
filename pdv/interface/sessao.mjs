@@ -1,4 +1,4 @@
-import { entrar, listar } from "../../supabase-pdv.mjs";
+import { entrar, carregarVinculosPdv } from "../dados/sessao.mjs";
 import { carregarCozinha } from "../../cozinha.mjs";
 import { carregarAjustesCaixa } from "../../ajustes-caixa.mjs";
 
@@ -11,10 +11,7 @@ export function configurarSessao(ctx) {
       ctx.setUsuario(await entrar(el("email").value, el("password").value));
       el("operador-frente").textContent = "Operador · " + el("email").value;
       el("password").value = "";
-      const [empresas, vinculos] = await Promise.all([
-        listar("empresas?select=id,nome&order=nome"),
-        listar("membros?select=empresa_id&papel=eq.gestor"),
-      ]);
+      const [empresas, vinculos] = await carregarVinculosPdv();
       ctx.setEmpresasGerenciadas(new Set(vinculos.map((vinculo) => vinculo.empresa_id)));
       ctx.setArea(el("entrada").value);
       const disponiveis =
@@ -43,7 +40,7 @@ export function configurarSessao(ctx) {
       ctx.setVendaPendente(undefined);
       limparPagamento();
       el("resultado-mesa").hidden = true;
-      editarProduto();
+      ctx.editarProduto();
       estado.sessao = null;
       estado.fechamentos = [];
       ctx.setProdutos([]);

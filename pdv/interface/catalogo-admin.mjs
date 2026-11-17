@@ -1,4 +1,4 @@
-import { atualizarProduto } from "../../supabase-pdv.mjs";
+import { atualizarProduto } from "../dados/catalogo.mjs";
 
 export function configurarCatalogoAdmin(ctx) {
   const { el, botao, reais, operar, atualizar } = ctx;

@@ -1,8 +1,8 @@
-import { executarApi } from "./supabase-pdv.mjs";
+import { paraReais } from "./pdv/regras/moeda.mjs";
+import { operarPixFrente as api } from "./pdv/dados/vendas.mjs";
 
 const el = id => document.getElementById(id);
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const api = dados => executarApi("checkout-pix-mercado-pago-quiosque", { fluxo: "frente-caixa", ...dados });
 const finais = {
   cancelado: "Cobrança cancelada. Se necessário, gere um novo Pix.",
   expirado: "Cobrança expirada. Gere um novo Pix.",
@@ -74,7 +74,7 @@ export function configurarPixPdv({ caixa, atualizar, recebido, aoFechar }) {
     }
     if (resultado.estado === "confirmado") {
       cobranca = undefined;
-      exibir({ sucesso: true, mensagem: `${moeda.format(resultado.valor / 100)} · Venda registrada` });
+      exibir({ sucesso: true, mensagem: `${moeda.format(paraReais(resultado.valor))} · Venda registrada` });
       abrir();
       el("ok-pix-frente").focus({ preventScroll: true });
       await recebido(resultado);
@@ -88,7 +88,7 @@ export function configurarPixPdv({ caixa, atualizar, recebido, aoFechar }) {
     }
     const retomando = !cobranca;
     cobranca = { ...contexto, ...resultado };
-    const valor = moeda.format(resultado.valor / 100);
+    const valor = moeda.format(paraReais(resultado.valor));
     exibir({ ...resultado, mensagem: (resultado.teste ? "Pix de teste · " : "") + `Aguardando pagamento · ${valor}` });
     if (retomando) abrir();
     atualizar(true);

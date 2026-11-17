@@ -9,6 +9,7 @@ export function montarAcesso(ctx) {
     atualizar,
     estado,
     carrinho,
+    editarProduto: ctx.editarProduto,
     limparPagamento: () => ctx.vendas().limparPagamento(),
     renderizar,
     carregarComandas: () => ctx.vendas().carregarComandas(),

@@ -1,5 +1,6 @@
+import { aplicarTema } from "../../tema-cardapio.mjs";
 import { otimizarImagem } from "../../imagens-cardapio.mjs";
-import { salvarAparencia } from "../dados/aparencia.mjs";
+import { salvarAparencia } from "../dados/administracao.mjs";
 
 export function configurarAparencia({ el, operar, modalAdminAtivo }) {
   let aparencia;

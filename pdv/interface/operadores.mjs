@@ -1,4 +1,4 @@
-import { listarOperadores, removerOperador } from "../dados/operadores.mjs";
+import { listarOperadores, removerOperador } from "../dados/administracao.mjs";
 
 export function configurarOperadores({ el, botao, operar, atualizar }) {
   async function carregarOperadores(apenasCozinha = false) {

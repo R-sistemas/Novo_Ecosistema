@@ -1,4 +1,5 @@
-import { cadastrarProduto, atualizarProduto } from "../../supabase-pdv.mjs";
+import { paraCentavos, paraReais } from "../regras/moeda.mjs";
+import { cadastrarProduto, atualizarProduto } from "../dados/catalogo.mjs";
 import { otimizarImagem } from "../../imagens-cardapio.mjs";
 
 export function configurarEdicaoProduto({ el, operar, atualizar }) {
@@ -17,7 +18,7 @@ export function configurarEdicaoProduto({ el, operar, atualizar }) {
     for (const campo of ["codigo", "nome", "categoria", "descricao", "composicao"]) {
       el("produto-" + campo).value = produto[campo] ?? "";
     }
-    el("produto-preco").value = produto.preco_centavos / 100;
+    el("produto-preco").value = paraReais(produto.preco_centavos);
     el("produto-queridinho").checked = produto.queridinho;
     configurarModoProduto();
   }
@@ -37,7 +38,7 @@ export function configurarEdicaoProduto({ el, operar, atualizar }) {
     operar(async () => {
       const codigo = el("produto-codigo").value.trim();
       const nome = el("produto-nome").value.trim();
-      const preco_centavos = Math.round(el("produto-preco").valueAsNumber * 100);
+      const preco_centavos = paraCentavos(el("produto-preco").valueAsNumber);
       if (!codigo || !nome || !Number.isSafeInteger(preco_centavos) || preco_centavos < 1) {
         throw new Error("Informe código, nome e preço válido.");
       }

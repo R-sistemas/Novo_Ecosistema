@@ -1,3 +1,5 @@
+import { centavosPorPeso, paraCentavos, paraReais } from "./pdv/regras/moeda.mjs";
+
 export function configurarPesagem(painel) {
   const modo = painel.querySelector("select");
   const entrada = painel.querySelector("input");
@@ -9,8 +11,8 @@ export function configurarPesagem(painel) {
   function atualizar() {
     const peso = modo.value === "peso";
     const valor = entrada.valueAsNumber;
-    const centavos = peso ? Math.round(precoQuilo * valor / 1000) : Math.round(valor * 100);
-    previa.textContent = Number.isFinite(centavos) && centavos > 0 ? `Total estimado ${moeda.format(centavos / 100)}` : "";
+    const centavos = peso ? centavosPorPeso(precoQuilo, valor) : paraCentavos(valor);
+    previa.textContent = Number.isFinite(centavos) && centavos > 0 ? `Total estimado ${moeda.format(paraReais(centavos))}` : "";
   }
 
   function escolherModo() {
@@ -35,7 +37,7 @@ export function configurarPesagem(painel) {
     },
     dados() {
       const peso = modo.value === "peso";
-      return { p_gramas: peso ? entrada.valueAsNumber : null, p_valor: peso ? null : Math.round(entrada.valueAsNumber * 100) };
+      return { p_gramas: peso ? entrada.valueAsNumber : null, p_valor: peso ? null : paraCentavos(entrada.valueAsNumber) };
     }
   };
 }

@@ -1,3 +1,5 @@
+import { paraCentavos } from "./moeda.mjs";
+
 export const precoAdicional = (comanda, produto) =>
   comanda?.itens.find((i) => i.produto_id === produto.id && !i.pesagem)?.preco_centavos ?? produto.preco;
 
@@ -10,7 +12,7 @@ export const subtotal = (pix, comanda, produtos, carrinho) =>
         0,
       );
 
-export const desconto = (comanda, gerenciada, valor) => (!comanda && gerenciada ? Math.round((valor || 0) * 100) : 0);
+export const desconto = (comanda, gerenciada, valor) => (!comanda && gerenciada ? paraCentavos(valor || 0) : 0);
 
 export const total = (pix, subtotalCentavos, descontoCentavos) => pix?.valor ?? subtotalCentavos - descontoCentavos;
 

@@ -1,11 +1,13 @@
-import { executar, cadastrarOperador } from "../../supabase-pdv.mjs";
+import {
+  cadastrarOperador, configurarMesa, configurarNomePdv, configurarEdicaoKds, configurarTerminal, configurarPagamentoNaEntrega,
+} from "../dados/administracao.mjs";
 
 export function configurarAdministracao(ctx) {
   const { el, operar, atualizar, temItens } = ctx;
   el("configurar-mesa").onsubmit = (evento) => {
     evento.preventDefault();
     operar(async () => {
-      const mesa = await executar("configurar_mesa_cardapio", {
+      const mesa = await configurarMesa({
         p_empresa: el("empresa").value,
         p_numero: el("numero-mesa").valueAsNumber,
       });
@@ -26,7 +28,7 @@ export function configurarAdministracao(ctx) {
   el("configurar-pdv").onsubmit = (evento) => {
     evento.preventDefault();
     operar(async () => {
-      await executar("configurar_nome_pdv", {
+      await configurarNomePdv({
         p_empresa: el("empresa").value,
         p_nome: el("nome-pdv").value.trim(),
       });
@@ -40,7 +42,7 @@ export function configurarAdministracao(ctx) {
   el("permissao-kds").onsubmit = (evento) => {
     evento.preventDefault();
     operar(async () => {
-      await executar("configurar_edicao_kds", {
+      await configurarEdicaoKds({
         p_empresa: el("empresa").value,
         p_email: el("email-permissao-kds").value.trim(),
         p_permitir: el("modo-permissao-kds").value === "conceder",
@@ -81,7 +83,7 @@ export function configurarAdministracao(ctx) {
   el("configurar-terminal").onsubmit = (evento) => {
     evento.preventDefault();
     operar(async () => {
-      await executar("configurar_terminal_pdv", {
+      await configurarTerminal({
         p_empresa: el("empresa").value,
         p_terminal: el("editar-terminal").value || null,
         p_nome: el("nome-terminal").value.trim(),
@@ -96,7 +98,7 @@ export function configurarAdministracao(ctx) {
   el("configuracao-entrega").addEventListener("submit", (evento) => {
     evento.preventDefault();
     operar(async () => {
-      await executar("configurar_pagamento_na_entrega", {
+      await configurarPagamentoNaEntrega({
         p_empresa: el("empresa").value,
         p_habilitado: el("pagamento-na-entrega").checked,
       });
