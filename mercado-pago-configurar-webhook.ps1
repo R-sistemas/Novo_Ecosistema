@@ -1,4 +1,4 @@
-Set-Location -LiteralPath 'C:\Users\RAFAEL_C\Documents\ChatGPT\Ecosistema'
+Set-Location -LiteralPath $PSScriptRoot
 $vercel = Join-Path (npm.cmd prefix -g) 'vercel.cmd'
 & $vercel env add MERCADO_PAGO_TEST_ACCESS_TOKEN --environment production --scope r-sistemas
 if ($LASTEXITCODE -eq 0) {

@@ -1,6 +1,6 @@
 # Auditoria do Android legado para autoatendimento — 16/11/2026
 
-Fonte examinada: `C:\Users\RAFAEL_C\Desktop\Ecosistema\DoRafaKDSPrint`. Esta análise lê o código e os artefatos existentes; não substitui teste no aparelho e na Bematech físicos.
+Fonte examinada: `Ecosistema\_arquivo_morto\DoRafaKDSPrint`. Esta análise lê o código e os artefatos existentes; não substitui teste no aparelho e na Bematech físicos.
 
 ## O que já existe
 

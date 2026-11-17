@@ -3,3 +3,5 @@ supabase/
 asaas-sandbox.mjs
 *.md
 tests/
+REMO/
+_arquivo_morto/

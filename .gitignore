@@ -1,3 +1,5 @@
 .vercel
 .env*
 supabase/.temp/
+REMO/
+_arquivo_morto/
