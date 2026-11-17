@@ -5,3 +5,4 @@ asaas-sandbox.mjs
 tests/
 REMO/
 _arquivo_morto/
+*.ps1
