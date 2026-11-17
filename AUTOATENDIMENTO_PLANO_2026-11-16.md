@@ -2,6 +2,14 @@
 
 Decisão informada por Rafael em 16/11/2026: o ciclo do ecossistema inclui um ponto de autoatendimento. A maquininha disponível é a **Moderninha Smart 2**. Em 16/11/2026, Rafael pediu para planejar o cartão presencial com uma **Mercado Pago Point integrada pela Orders API**, sem efetuar a compra ainda. Esta etapa permanece **pendente** até teste completo em produção no equipamento físico.
 
+## Sequência de implementação — decisão atualizada em 17/11/2026
+
+O autoatendimento é a etapa final do ecossistema, referida como Etapa 5 na atualização do plano. Continua bloqueado até a ordem explícita de iniciar autoatendimento, após as etapas anteriores. Este registro não autoriza implementação, compra ou integração antecipada.
+
+A primeira versão oferecerá **Pix** e **cartão de crédito online** no próprio terminal. Em Pix, o terminal exibe o QR. Em Cartão, o cliente digita os dados no formulário tokenizado do provedor e confirma o pagamento online. O terminal não armazena número do cartão ou código de segurança. Os dois meios usam a confirmação autenticada e persistida do servidor antes de liberar pedido, cozinha e comprovante.
+
+Preparar a separação entre crédito online e pagamento presencial por maquininha. A primeira versão independe de uma Point disponível. Em uma evolução, adquirir o modelo compatível, homologar o uso e integrar o cartão presencial via Orders API conforme o desenho abaixo. Os critérios de hardware Point pertencem a essa evolução.
+
 ## Experiência aprovada para desenvolver
 
 - Terminal Android dedicado exibe o cardápio da loja em tela cheia e impede o cliente de sair para outros aplicativos ou configurações. A saída para manutenção exige autenticação administrativa e fica registrada.
@@ -37,8 +45,9 @@ Fontes oficiais consultadas: [Android lock task](https://developer.android.com/w
 - [ ] Provisionar o aparelho escolhido como dispositivo Android dedicado; testar bloqueio, reinício e saída administrativa. Celular ou tablet são opções válidas.
 - [ ] Publicar interface de autoatendimento reutilizando catálogo, checkout e pedido, com provisionamento do terminal por QR e isolamento entre compradores.
 - [ ] Integrar Pix com confirmação real e idempotente, imprimir apenas após confirmação e conferir o registro no KDS/PDV.
-- [ ] Simular Point Orders API com terminal virtual, webhook e confirmação idempotente do pedido, sem aparelho físico; confirmar com Mercado Pago o uso sem atendente antes de adquirir o terminal.
-- [ ] Associar uma Point compatível à conta, loja e caixa, configurar o modo integrado e validar cobrança presencial real, conciliação e impressão. Se a opção PagBank voltar a ser considerada, exigir antes a interface suportada e a homologação da Smart 2.
+- [ ] Validar crédito online tokenizado, aprovação e recusa no terminal dedicado, com conciliação e limpeza da sessão entre compradores.
+- [ ] Evolução presencial: simular Point Orders API com terminal virtual, webhook e confirmação idempotente do pedido, sem aparelho físico; confirmar com Mercado Pago o uso sem atendente antes de adquirir o terminal.
+- [ ] Evolução presencial: associar uma Point compatível à conta, loja e caixa, configurar o modo integrado e validar cobrança presencial real, conciliação e impressão. Se a opção PagBank voltar a ser considerada, exigir antes a interface suportada e a homologação da Smart 2.
 - [ ] Testar transações aprovadas, recusadas, interrompidas e repetidas, sem criar pedidos pagos ou impressões duplicadas.
 
 As decisões de débito online suspenso, devolução financeira manual, REMO pré-paga e ausência de retirada no checkout público de entrega permanecem válidas. O autoatendimento presencial é um canal distinto do checkout público de entrega.
