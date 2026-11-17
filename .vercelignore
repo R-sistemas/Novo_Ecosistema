@@ -6,3 +6,5 @@ tests/
 REMO/
 _arquivo_morto/
 *.ps1
+android/
+.github/
