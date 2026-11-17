@@ -20,7 +20,7 @@ async function requisitar(caminho, dados, token, metodo = dados === undefined ? 
   return resultado;
 }
 
-async function solicitar(caminho, dados, metodo, base) {
+export async function solicitar(caminho, dados, metodo, base) {
   if (sessao && Date.now() >= sessao.expiraEm - 60_000) {
     if (!renovacao) {
       const atual = sessao;
@@ -51,7 +51,3 @@ export async function entrar(email, password) {
 export const listar = consulta => solicitar("/rest/v1/" + consulta);
 export const executar = (nome, dados) => solicitar("/rest/v1/rpc/" + nome, dados);
 export const executarApi = (caminho, dados) => solicitar("/api/" + caminho, dados, "POST", "");
-export const cadastrarProduto = dados => solicitar("/rest/v1/produtos", dados);
-export const cadastrarOperador = dados => solicitar("/api/cadastrar-operador", dados, "POST", "");
-export const atualizarProduto = (empresa, id, dados) =>
-  solicitar("/rest/v1/produtos?empresa_id=eq." + empresa + "&id=eq." + id, dados, "PATCH");

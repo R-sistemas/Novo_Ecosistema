@@ -1,4 +1,4 @@
-import { executar } from "./supabase-pdv.mjs";
+import { listarCancelamentos, resolverCancelamento, solicitarCancelamento } from "./pdv/dados/comandas.mjs";
 
 const el = id => document.getElementById(id);
 const etapas = { novo: "Novo", preparo: "Em preparo", pronto: "Pronto", entregue: "Entregue" };
@@ -37,7 +37,7 @@ export function configurarCancelamentos({ comandaAtual, atualizar }) {
 
   async function carregar() {
     formulario.hidden = true;
-    const { comandas, gestor, historico } = await executar("comandas_para_cancelar", {
+    const { comandas, gestor, historico } = await listarCancelamentos({
       p_empresa: empresa(), p_busca: el("numero-cancelamentos").value
     });
     const lista = el("lista-cancelamentos");
@@ -101,14 +101,14 @@ export function configurarCancelamentos({ comandaAtual, atualizar }) {
       let resultado;
       if (comanda.solicitacao) {
         const aprovar = decisao.value === "aprovar";
-        await executar("resolver_cancelamento_comanda", { p_empresa: empresa(), p_id: comanda.solicitacao,
+        await resolverCancelamento({ p_empresa: empresa(), p_id: comanda.solicitacao,
           p_aprovar: aprovar, p_decisao: aprovar ? null : motivo.value.trim() });
         resultado = aprovar ? "cancelado" : "negado";
       } else {
         const dados = { p_empresa: empresa(), p_pedido: comanda.id, p_motivo: motivo.value.trim() };
         const chave = JSON.stringify(dados);
         if (tentativa?.chave !== chave) tentativa = { chave, id: crypto.randomUUID() };
-        resultado = await executar("solicitar_cancelamento_comanda", { ...dados, p_id: tentativa.id });
+        resultado = await solicitarCancelamento({ ...dados, p_id: tentativa.id });
         tentativa = undefined;
       }
       atualizar(comanda.id, resultado);
