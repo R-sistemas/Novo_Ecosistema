@@ -1,0 +1,31 @@
+:root { color-scheme: light; font-family: system-ui, sans-serif; color: #192f2a; background: #f2f6f3; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; }
+.barra { display: flex; align-items: center; justify-content: space-between; padding: 1rem max(1rem, calc((100% - 68rem) / 2)); background: #153c33; color: white; }
+.barra a { color: white; text-decoration: none; font-weight: 750; }
+main { max-width: 70rem; margin: 0 auto; padding: 1.5rem 1rem; }
+h1 { margin: 0 0 1.25rem; font-size: clamp(1.6rem, 4vw, 2.25rem); }
+h2 { margin-top: 0; }
+.cartao, .rolagem, dialog { background: white; border: 1px solid #cfded6; border-radius: .75rem; }
+.cartao { width: min(100%, 26rem); padding: 1.25rem; }
+form label:not(fieldset label) { display: grid; gap: .25rem; margin-bottom: .75rem; }
+input:not([type="checkbox"]), select, textarea, button { min-height: 2.5rem; border: 1px solid #839f91; border-radius: .45rem; font: inherit; padding: .45rem .65rem; }
+input[type="file"] { max-width: 100%; }
+textarea { min-height: 4rem; resize: vertical; }
+button { background: #174c3e; color: white; cursor: pointer; }
+button:disabled { opacity: .55; cursor: default; }
+:focus-visible { outline: 3px solid #287d70; outline-offset: 2px; }
+.acoes { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; margin: 1rem 0; }
+.rolagem { overflow: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 49rem; }
+th, td { padding: .65rem .75rem; border-bottom: 1px solid #dde7e0; text-align: left; }
+th { background: #e5eee8; }
+.erro { color: #991f2b; }
+.erro:empty, #status:empty { display: none; }
+.ajuda { color: #415e50; font-size: .9rem; }
+dialog { width: min(36rem, calc(100% - 2rem)); max-height: calc(100% - 2rem); padding: 1.25rem; }
+dialog::backdrop { background: #132c2766; }
+.grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: 0 .75rem; }
+.grade label { min-width: 0; }
+fieldset { display: grid; gap: .35rem; border: 1px solid #cfded6; border-radius: .55rem; }

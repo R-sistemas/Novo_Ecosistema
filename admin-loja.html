@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="supabase-key" content="sb_publishable_s0oowaHaCZkMUZgNTo6upw_zljF76Na">
+<title>Catálogo | R Sistemas</title>
+<link rel="stylesheet" href="/admin-loja.css">
+<script type="module" src="/admin-loja.mjs"></script>
+</head>
+<body>
+<header class="barra">
+  <a href="/">R Sistemas</a>
+  <button id="sair" type="button">Sair</button>
+</header>
+<main>
+  <h1>Catálogo de produtos</h1>
+  <p id="erro" class="erro" role="alert"></p>
+  <p id="status" role="status"></p>
+  <form id="login" class="cartao">
+    <label>E-mail <input name="email" type="email" autocomplete="username" required></label>
+    <label>Senha <input name="senha" type="password" autocomplete="current-password" required></label>
+    <button type="submit">Entrar</button>
+  </form>
+  <section id="catalogo" hidden aria-label="Produtos da loja">
+    <div class="acoes">
+      <label>Loja <select id="loja"></select></label>
+      <button id="novo" type="button" disabled>Novo produto</button>
+    </div>
+    <div class="rolagem" tabindex="0" aria-label="Tabela de produtos">
+      <table>
+        <thead><tr><th>Produto</th><th>Código</th><th>Categoria</th><th>Preço</th>
+          <th>PDV</th><th>Cardápio</th><th>Destaque</th><th>Ações</th></tr></thead>
+        <tbody id="produtos"></tbody>
+      </table>
+    </div>
+    <p id="vazio" hidden>Nenhum produto nesta página.</p>
+    <nav class="acoes" aria-label="Paginação">
+      <button id="anterior" type="button" disabled>Anterior</button>
+      <span id="pagina" aria-live="polite"></span>
+      <button id="proxima" type="button" disabled>Próxima</button>
+    </nav>
+  </section>
+</main>
+<dialog id="editor" aria-labelledby="titulo-editor">
+  <form>
+    <h2 id="titulo-editor">Produto</h2>
+    <p class="erro" role="alert"></p>
+    <div class="grade">
+      <label>Código <input name="codigo" maxlength="32" required></label>
+      <label>Nome <input name="nome" maxlength="100" required></label>
+      <label>Categoria <input name="categoria" maxlength="60"></label>
+      <label>Venda <select name="modo"><option value="unidade">Unidade</option><option value="peso">Por peso</option></select></label>
+      <label><span data-preco>Preço unitário (R$)</span> <input name="preco" type="number" min="0.01" step="0.01" required></label>
+      <label>Foto do cardápio <input name="foto" type="file" accept="image/png,image/jpeg,image/webp"></label>
+    </div>
+    <label>Descrição <textarea name="descricao" maxlength="500"></textarea></label>
+    <label>Composição <textarea name="composicao" maxlength="500"></textarea></label>
+    <fieldset>
+      <legend>Disponibilidade</legend>
+      <label><input name="ativo" type="checkbox" checked> Ativo no PDV</label>
+      <label><input name="visivel_cardapio" type="checkbox" checked> Visível no cardápio</label>
+      <label><input name="queridinho" type="checkbox"> Destacar no cardápio</label>
+      <label><input name="preparo_cozinha" type="checkbox" checked> Enviar para preparo</label>
+      <label><input name="remover_foto" type="checkbox"> Remover foto atual</label>
+    </fieldset>
+    <p class="ajuda">O cardápio só oferece produtos ativos e visíveis. Produtos por peso são exclusivos do PDV.</p>
+    <div class="acoes">
+      <button type="button">Cancelar</button>
+      <button type="submit">Salvar produto</button>
+    </div>
+  </form>
+</dialog>
+</body>
+</html>

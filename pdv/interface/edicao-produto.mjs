@@ -1,4 +1,5 @@
-import { paraCentavos, paraReais } from "../regras/moeda.mjs";
+import { dadosProduto, textosProduto } from "../regras/produto.mjs";
+import { paraReais } from "../regras/moeda.mjs";
 import { cadastrarProduto, atualizarProduto } from "../dados/catalogo.mjs";
 import { otimizarImagem } from "../../imagens-cardapio.mjs";
 
@@ -36,25 +37,17 @@ export function configurarEdicaoProduto({ el, operar, atualizar }) {
   el("cadastro-produto").addEventListener("submit", (evento) => {
     evento.preventDefault();
     operar(async () => {
-      const codigo = el("produto-codigo").value.trim();
-      const nome = el("produto-nome").value.trim();
-      const preco_centavos = paraCentavos(el("produto-preco").valueAsNumber);
-      if (!codigo || !nome || !Number.isSafeInteger(preco_centavos) || preco_centavos < 1) {
-        throw new Error("Informe código, nome e preço válido.");
-      }
       const empresa = el("empresa").value;
       const foto = el("produto-foto").files[0];
-      const dados = {
-        codigo,
-        nome,
-        preco_centavos,
+      const dados = dadosProduto({
+        codigo: el("produto-codigo").value, nome: el("produto-nome").value,
+        preco: el("produto-preco").valueAsNumber,
         vendido_por_peso: el("produto-modo-venda").value === "peso",
         visivel_cardapio: el("produto-visivel").checked,
         preparo_cozinha: el("produto-preparo").checked,
         queridinho: el("produto-queridinho").checked,
-      };
-      for (const campo of ["categoria", "descricao", "composicao"])
-        dados[campo] = el("produto-" + campo).value.trim() || null;
+        ...Object.fromEntries(textosProduto.map(campo => [campo, el("produto-" + campo).value]))
+      });
       if (foto) dados.foto_cardapio = await otimizarImagem(foto);
       const editando = Boolean(produtoEditado);
       if (editando) await atualizarProduto(empresa, produtoEditado.id, dados);
