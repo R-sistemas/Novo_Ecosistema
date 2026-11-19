@@ -22,11 +22,16 @@
     <label>Senha <input name="senha" type="password" autocomplete="current-password" required></label>
     <button type="submit">Entrar</button>
   </form>
-  <section id="catalogo" hidden aria-label="Produtos da loja">
+  <section id="catalogo" hidden aria-label="Administração da loja">
     <div class="acoes">
       <label>Loja <select id="loja"></select></label>
-      <button id="novo" type="button" disabled>Novo produto</button>
     </div>
+    <nav class="acoes" aria-label="Áreas da loja">
+      <button id="aba-catalogo" type="button" aria-pressed="true">Catálogo</button>
+      <button id="aba-equipe" type="button" aria-pressed="false">Equipe e terminais</button>
+    </nav>
+    <section id="area-catalogo" aria-label="Produtos da loja">
+    <div class="acoes"><button id="novo" type="button" disabled>Novo produto</button></div>
     <div class="rolagem" tabindex="0" aria-label="Tabela de produtos">
       <table>
         <thead><tr><th>Produto</th><th>Código</th><th>Categoria</th><th>Preço</th>
@@ -40,6 +45,47 @@
       <span id="pagina" aria-live="polite"></span>
       <button id="proxima" type="button" disabled>Próxima</button>
     </nav>
+    </section>
+  <section id="area-equipe" hidden aria-label="Equipe e terminais">
+    <p data-erro-equipe class="erro" role="alert"></p>
+    <div class="grade">
+      <section aria-labelledby="titulo-equipe">
+        <h2 id="titulo-equipe">Equipe</h2>
+        <ul data-operadores class="lista-equipe"></ul>
+        <p data-sem-operadores hidden>Nenhum operador vinculado.</p>
+        <form data-cadastro class="cartao">
+          <fieldset disabled>
+            <legend>Cadastrar operador</legend>
+            <label>E-mail do operador <input name="email" type="email" required maxlength="254" autocomplete="off"></label>
+            <label>Senha inicial <input name="senha" type="password" required minlength="12" maxlength="72" autocomplete="new-password"></label>
+            <label>Caixa do operador <input name="caixa" required maxlength="60"></label>
+            <button type="submit">Cadastrar operador</button>
+          </fieldset>
+        </form>
+      </section>
+      <section aria-labelledby="titulo-terminais">
+        <h2 id="titulo-terminais">Terminais PDV</h2>
+        <ul data-terminais class="lista-equipe"></ul>
+        <p data-sem-terminais hidden>Nenhum terminal cadastrado.</p>
+        <form data-terminal class="cartao">
+          <fieldset disabled>
+            <legend>Configurar terminal</legend>
+            <label>Terminal <select name="id"></select></label>
+            <label>Nome do terminal <input name="nome" required maxlength="60"></label>
+            <label>Operador do terminal <select name="email" required></select></label>
+            <button type="submit">Salvar terminal</button>
+          </fieldset>
+        </form>
+        <form data-nome-pdv class="cartao">
+          <fieldset disabled>
+            <legend>Nome exibido no PDV</legend>
+            <label>Nome do PDV <input name="nome" maxlength="60"></label>
+            <button type="submit">Salvar nome do PDV</button>
+          </fieldset>
+        </form>
+      </section>
+    </div>
+  </section>
   </section>
 </main>
 <dialog id="editor" aria-labelledby="titulo-editor">

@@ -269,8 +269,8 @@ test("navegador usa Auth, bloqueia URL de outra loja e edita/recarrega o produto
     });
     const login = async url => {
       await page.goto(origin+url);
-      await page.getByLabel("E-mail").fill("gestor@example.invalid");
-      await page.getByLabel("Senha").fill("fixture");
+      await page.getByLabel("E-mail", { exact: true }).fill("gestor@example.invalid");
+      await page.getByLabel("Senha", { exact: true }).fill("fixture");
       await page.getByRole("button",{name:"Entrar"}).click();
     };
     await login("/admin-loja.html?empresa_id="+lojaB);

@@ -1,3 +1,4 @@
+import { prepararEquipe } from "./equipe.mjs";
 import { consultarProdutos, entrar, gravarProduto, lojasDoGestor, verificarLoja } from "../dados/catalogo.mjs";
 import { prepararEditor } from "./formulario-produto.mjs";
 import { paraReais } from "../../pdv/regras/moeda.mjs";
@@ -17,6 +18,22 @@ let cursores = [null];
 let indice = 0;
 let proximo;
 let consultando = false;
+let lojaAutorizada = false;
+let areaAtiva = "catalogo";
+const carregarEquipe = prepararEquipe(el("area-equipe"),aviso);
+async function mostrarArea(area) {
+  if (!lojaAutorizada || consultando) return;
+  areaAtiva = area;
+  for (const nome of ["catalogo","equipe"]) {
+    el("area-" + nome).hidden = nome !== area;
+    el("aba-" + nome).setAttribute("aria-pressed", String(nome === area));
+  }
+  falha("");
+  if (area === "catalogo") await carregar(cursores[indice], indice);
+  else await carregarEquipe(empresa);
+}
+el("aba-catalogo").onclick = () => mostrarArea("catalogo");
+el("aba-equipe").onclick = () => mostrarArea("equipe");
 const editar = prepararEditor(el("editor"), async (id, dados) => {
   try { await gravarProduto(empresa, id, dados); }
   catch (erro) { throw new Error(mensagem(erro)); }
@@ -78,6 +95,8 @@ async function carregar(cursor, pagina) {
 
 async function selecionarLoja() {
   if (consultando) return;
+  lojaAutorizada = false;
+  el("area-catalogo").hidden = el("area-equipe").hidden = true;
   empresa = el("loja").value;
   cursores = [null];
   indice = 0;
@@ -97,7 +116,10 @@ async function selecionarLoja() {
     falha(mensagem(erro));
     return;
   }
-  await carregar(null, 0);
+  lojaAutorizada = true;
+  consultando = false;
+  comandos(true);
+  await mostrarArea(areaAtiva);
 }
 
 el("login").addEventListener("submit", async evento => {
