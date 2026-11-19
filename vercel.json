@@ -4,6 +4,7 @@
     "api/checkout-pix-mercado-pago-teste.mjs": { "maxDuration": 45 }
   },
   "rewrites": [
+    { "source": "/api/painel-preferencias", "destination": "/api/cadastrar-operador?painel_preferencias=1" },
     { "source": "/api/painel-equipe", "destination": "/api/cadastrar-operador?painel_equipe=1" },
     { "source": "/api/painel-catalogo", "destination": "/api/cadastrar-operador?painel_catalogo=1" },
     { "source": "/api/painel-sessao", "destination": "/api/cadastrar-operador?painel_sessao=1" },

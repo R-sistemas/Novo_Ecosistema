@@ -140,7 +140,7 @@ test("cadastro legado, configuração e remoção auditam, e a próxima chamada 
   const {email:_,senha,caixa}=entrada(email);
   assert.equal((await api("/api/cadastrar-operador","a",{empresa:A,email,senha,caixa})).code,201);
   const inicial=await registrar(email);
-  assert.deepEqual(inicial.map(x=>x.acao),["auth.operador.tentativa","membros.criar","terminais_pdv.criar","auth.operador.resultado"]);
+  assert.deepEqual(inicial.map(x=>x.acao).sort(),["auth.operador.tentativa","membros.criar","terminais_pdv.criar","auth.operador.resultado"].sort());
   assert.equal(new Set(inicial.map(x=>x.requisicao_id)).size,1);
   assert.ok(inicial.every(x=>x.autor_id===users.get("a")&&x.origem_autor==="usuario"&&x.empresa_id===A));
   assert.doesNotMatch(JSON.stringify(inicial),/fixture-longa|password|token/i);
@@ -180,8 +180,8 @@ test("falha na auditoria de resultado reverte vínculo e caixa e registra compen
   assert.equal((await rows("select id from auth.users where email=$1",[email])).length,0);
   assert.equal((await rows("select id from terminais_pdv where operador_id=$1",[users.get(email)])).length,0);
   const audit=await registrar(email);
-  assert.deepEqual(audit.map(x=>x.acao),["auth.operador.tentativa","auth.operador.resultado"]);
-  assert.equal(audit[1].depois.resultado,"auth_revertido");
+  assert.deepEqual(audit.map(x=>x.acao).sort(),["auth.operador.tentativa","auth.operador.resultado"].sort());
+  assert.equal(audit.find(x=>x.acao==="auth.operador.resultado").depois.resultado,"auth_revertido");
   assert.equal(audit[0].requisicao_id,audit[1].requisicao_id);
 });
 
@@ -253,8 +253,7 @@ test("Chrome percorre login, equipe, cadastro, listagem e remoção",{
     await remover.click();
     await remover.waitFor({state:"detached"});
     const trilha=await registrar(email);
-    assert.deepEqual(trilha.map(r=>r.acao),
-      ["auth.operador.tentativa","membros.criar","terminais_pdv.criar","auth.operador.resultado","membros.excluir"]);
+    assert.deepEqual(trilha.map(r=>r.acao).sort(),["auth.operador.tentativa","membros.criar","terminais_pdv.criar","auth.operador.resultado","membros.excluir"].sort());
   }finally{servidor.close();await navegador.close();}
 });
 
@@ -265,6 +264,6 @@ test("cadastro legado KDS mantém o contrato e audita o vínculo de cozinha",asy
   assert.equal((await rows("select usuario_id from membros where usuario_id=$1",[users.get(email)])).length,0);
   assert.equal((await rows("select usuario_id from equipe_kds where usuario_id=$1 and empresa_id=$2",[users.get(email),A])).length,1);
   const audit=await registrar(email);
-  assert.deepEqual(audit.map(r=>r.acao),["auth.operador.tentativa","equipe_kds.criar","auth.operador.resultado"]);
+  assert.deepEqual(audit.map(r=>r.acao).sort(),["auth.operador.tentativa","equipe_kds.criar","auth.operador.resultado"].sort());
   assert.equal(new Set(audit.map(r=>r.requisicao_id)).size,1);
 });

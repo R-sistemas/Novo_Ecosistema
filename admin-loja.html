@@ -29,6 +29,7 @@
     <nav class="acoes" aria-label="Áreas da loja">
       <button id="aba-catalogo" type="button" aria-pressed="true">Catálogo</button>
       <button id="aba-equipe" type="button" aria-pressed="false">Equipe e terminais</button>
+      <button id="aba-preferencias" type="button" aria-pressed="false">Preferências</button>
     </nav>
     <section id="area-catalogo" aria-label="Produtos da loja">
     <div class="acoes"><button id="novo" type="button" disabled>Novo produto</button></div>
@@ -84,6 +85,45 @@
           </fieldset>
         </form>
       </section>
+    </div>
+  </section>
+  <section id="area-preferencias" hidden aria-labelledby="titulo-preferencias">
+    <h2 id="titulo-preferencias">Preferências</h2>
+    <p class="erro" role="alert"></p>
+    <div class="grade preferencias-grade">
+      <form>
+        <fieldset disabled>
+          <legend>Aparência do cardápio</legend>
+          <label>Cor principal <input name="cardapio_cor" type="color" value="#175d2d"></label>
+          <label>Cor de fundo <select name="cardapio_fundo">
+            <option value="#f4f6f2">Verde claro</option><option value="#ffffff">Branco</option>
+            <option value="#f1f3f5">Cinza claro</option><option value="#f8f4eb">Areia</option>
+          </select></label>
+          <label>Logo <input name="arquivo_logo" type="file" accept="image/png,image/jpeg,image/webp"></label>
+          <button type="button" data-remover-logo>Remover logo</button>
+          <label>Arte da mensagem de agradecimento <input name="arquivo_agradecimento" type="file" accept="image/png,image/jpeg,image/webp"></label>
+          <button type="button" data-remover-agradecimento>Remover arte</button>
+        </fieldset>
+        <fieldset disabled>
+          <legend>Centro do mapa</legend>
+          <label>Latitude <input name="mapa_centro_latitude" type="number" min="-90" max="90" step="0.000001" inputmode="decimal"></label>
+          <label>Longitude <input name="mapa_centro_longitude" type="number" min="-180" max="180" step="0.000001" inputmode="decimal"></label>
+          <p class="ajuda">Use graus decimais. Deixe os dois campos vazios para usar o centro padrão.</p>
+        </fieldset>
+        <fieldset disabled>
+          <legend>Operação</legend>
+          <label><input name="pagamento_na_entrega" type="checkbox"> Habilitar pagamento na entrega</label>
+          <p data-metodos class="ajuda"></p>
+        </fieldset>
+        <button type="submit" disabled>Salvar preferências</button>
+      </form>
+      <aside class="previa-preferencias" data-previa hidden aria-label="Prévia do cardápio">
+        <h3>Prévia do cardápio</h3>
+        <div class="previa-cabecalho"><img data-previa-logo alt="" hidden> <strong data-previa-nome></strong></div>
+        <ul data-previa-produtos></ul>
+        <p data-previa-vazia></p>
+        <img data-previa-agradecimento alt="Arte de agradecimento" hidden>
+      </aside>
     </div>
   </section>
   </section>

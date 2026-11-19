@@ -22,3 +22,8 @@ export async function otimizarImagem(arquivo, { lado = 640, limite = 60000, quad
     imagem.close();
   }
 }
+
+export function otimizarImagemAparencia(arquivo,tipo) {
+  const opcoes = tipo === "logo" ? { lado:320,limite:32000,quadrada:false } : { lado:900,quadrada:false };
+  return otimizarImagem(arquivo,opcoes);
+}

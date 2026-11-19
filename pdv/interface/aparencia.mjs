@@ -1,5 +1,5 @@
 import { aplicarTema } from "../../tema-cardapio.mjs";
-import { otimizarImagem } from "../../imagens-cardapio.mjs";
+import { otimizarImagemAparencia } from "../../imagens-cardapio.mjs";
 import { salvarAparencia } from "../dados/administracao.mjs";
 
 export function configurarAparencia({ el, operar, modalAdminAtivo }) {
@@ -21,10 +21,7 @@ export function configurarAparencia({ el, operar, modalAdminAtivo }) {
         const campo = el(tipo + "-cardapio");
         if (!campo.files.length) return "";
         try {
-          aparencia[tipo] = await otimizarImagem(
-            campo.files[0],
-            tipo === "logo" ? { lado: 320, limite: 32000, quadrada: false } : { lado: 900, quadrada: false },
-          );
+          aparencia[tipo] = await otimizarImagemAparencia(campo.files[0],tipo);
           previaAparencia();
           return "Imagem otimizada. Salve a aparência para publicar.";
         } finally {
