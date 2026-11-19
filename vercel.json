@@ -4,6 +4,7 @@
     "api/checkout-pix-mercado-pago-teste.mjs": { "maxDuration": 45 }
   },
   "rewrites": [
+    { "source": "/api/painel-sessao", "destination": "/api/cadastrar-operador?painel_sessao=1" },
     { "source": "/api/cotar-frete", "destination": "/api/checkout-pix-mercado-pago-teste?cotacao_frete=1" },
     { "source": "/api/monitor-gestor", "destination": "/api/cadastrar-operador?monitor=1" },
     { "source": "/api/despachar-remo", "destination": "/api/cadastrar-operador?despacho_remo=1" },
