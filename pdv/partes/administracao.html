@@ -1,0 +1,112 @@
+<section id="area-administracao" hidden>
+<div class="admin-cabecalho">
+  <span class="admin-etiqueta">ADMINISTRAÇÃO DA LOJA</span>
+  <h2 id="admin-nome-loja"></h2>
+  <p>Gerencie o catálogo, a equipe e as configurações da operação.</p>
+</div>
+<nav class="admin-atalhos" aria-label="Áreas da administração">
+  <section><h3>Equipe e caixas</h3><p>Cadastre acessos para Vendas ou Cozinha e atribua os caixas da loja.</p>
+    <div><button type="button" data-admin-abrir="cadastrar-operador">Cadastrar operador</button>
+    <button type="button" class="secondary" data-admin-abrir="lista-operadores">Lista de operadores</button>
+    <button type="button" class="secondary" data-admin-abrir="configurar-terminal">Gerenciar caixas</button>
+    <button type="button" class="secondary" data-admin-abrir="permissao-kds">Permissões da cozinha</button>
+    <button type="button" class="secondary" id="abrir-cancelamentos-gestor">Cancelamentos de comanda</button></div>
+  </section>
+  <section><h3>Cardápio e mesas</h3><p>Personalize o cardápio e gere o link de acesso de cada mesa.</p>
+    <div><button type="button" data-admin-abrir="aparencia-cardapio">Editar aparência</button>
+    <button type="button" class="secondary" data-admin-abrir="configurar-mesa">Obter link da mesa</button></div>
+  </section>
+  <section><h3>Configurações da loja</h3><p>Defina o nome do PDV e as opções de pagamento na entrega.</p>
+    <div><button type="button" class="secondary" data-admin-abrir="configurar-pdv">Nome do PDV</button>
+    <button type="button" class="secondary" data-admin-abrir="configuracao-entrega">Pagamento na entrega</button></div>
+  </section>
+</nav>
+<section id="lista-operadores" class="panel">
+<h2>Lista de operadores</h2>
+<p id="aviso-lista-operadores" role="status"></p>
+<ul id="operadores-da-loja"></ul>
+<button type="button" class="secondary" id="atualizar-lista-operadores">Atualizar lista</button>
+</section>
+<form id="permissao-kds" class="panel">
+<h2>Permissões da cozinha</h2>
+<label for="email-permissao-kds">Operador vinculado à cozinha</label>
+<select id="email-permissao-kds" required></select>
+<p id="aviso-operadores-kds" role="status"></p>
+<label for="modo-permissao-kds">Ajustes de comanda</label>
+<select id="modo-permissao-kds"><option value="conceder">Conceder acesso</option><option value="revogar">Revogar acesso</option></select>
+<button>Salvar permissão</button>
+</form>
+<form id="aparencia-cardapio" class="panel">
+<h2>Aparência do cardápio</h2>
+<label for="cor-cardapio">Cor dos botões</label><input id="cor-cardapio" type="color" value="#175d2d">
+<label for="fundo-cardapio">Fundo</label><select id="fundo-cardapio">
+<option value="#f4f6f2">Padrão</option><option value="#ffffff">Branco</option>
+<option value="#f1f3f5">Cinza claro</option><option value="#f8f4eb">Bege suave</option></select>
+<label for="logo-cardapio">Logo da loja</label><input id="logo-cardapio" type="file" accept="image/png,image/jpeg,image/webp">
+<label for="agradecimento-cardapio">Imagem de agradecimento</label><input id="agradecimento-cardapio" type="file" accept="image/png,image/jpeg,image/webp">
+<div id="previa-aparencia" class="panel" style="background:var(--fundo,#f4f6f2)">
+<img id="previa-logo" alt="Logo da loja" width="60" height="60" style="object-fit:contain" hidden>
+<strong id="previa-nome"></strong>
+<button type="button" style="background:var(--verde,#175d2d);color:var(--texto-botao,#fff);border-color:var(--verde,#175d2d)">Ver pedido</button>
+<img id="previa-agradecimento" alt="Arte de agradecimento" style="display:block;max-width:180px;margin-top:8px" hidden>
+</div>
+<button type="button" class="secondary" id="restaurar-aparencia">Restaurar padrão</button>
+<button>Salvar aparência</button>
+</form>
+<form id="configurar-mesa" class="panel">
+<h2>Link do cardápio da mesa</h2>
+<label for="numero-mesa">Número da mesa</label><input id="numero-mesa" type="number" min="1" max="999" step="1" required>
+<button>Obter link da mesa</button>
+<label for="link-mesa" id="resultado-mesa" hidden>Endereço para o QR da mesa<input id="link-mesa" readonly></label>
+</form>
+<form id="cadastrar-operador" class="panel">
+<h2>Cadastrar operador</h2>
+<label for="novo-operador-perfil">Área do operador</label>
+<select id="novo-operador-perfil"><option value="vendas">Vendas</option><option value="cozinha">Cozinha · KDS</option></select>
+<label for="novo-operador-email">E-mail do operador</label><input id="novo-operador-email" type="email" maxlength="254" required>
+<label for="novo-operador-senha">Senha inicial</label><input id="novo-operador-senha" type="password" minlength="12" maxlength="72" autocomplete="new-password" required>
+<div id="novo-operador-terminal"><label for="novo-operador-caixa">Nome de um novo caixa (opcional)</label><input id="novo-operador-caixa" maxlength="60" placeholder="Ex.: Caixa 02"></div>
+<button>Cadastrar operador</button>
+</form>
+<form id="configurar-pdv" class="panel">
+<h2>Identidade do PDV</h2>
+<label for="nome-pdv">Nome exibido</label><input id="nome-pdv" maxlength="100" required>
+<button>Salvar nome</button>
+</form>
+<form id="configurar-terminal" class="panel">
+<h2>Caixas e operadores</h2>
+<label for="editar-terminal">Caixa</label><select id="editar-terminal"></select>
+<label for="nome-terminal">Nome do caixa</label><input id="nome-terminal" maxlength="60" required>
+<label for="email-operador">E-mail do operador vinculado à loja</label><input id="email-operador" type="email" required>
+<button>Salvar caixa</button>
+</form>
+<form id="cadastro-produto" class="panel" hidden>
+<h2>Cadastrar produto</h2>
+<label for="produto-codigo">Código</label><input id="produto-codigo" maxlength="32" required>
+<label for="produto-nome">Nome</label><input id="produto-nome" maxlength="100" required>
+<label for="produto-modo-venda">Venda por</label><select id="produto-modo-venda"><option value="unidade">Unidade</option><option value="peso">Peso · preço por quilo</option></select>
+<p id="orientacao-produto-peso" hidden>Produto interno para comandas de mesa. O atendente pode lançar pelo peso ou informar o valor total.</p>
+<label id="rotulo-produto-preco" for="produto-preco">Preço unitário (R$)</label><input id="produto-preco" type="number" min="0.01" step="0.01" required>
+<label for="produto-categoria">Categoria</label><input id="produto-categoria" maxlength="60">
+<label for="produto-descricao">Descrição</label><input id="produto-descricao" maxlength="500">
+<label for="produto-composicao">Composição</label><input id="produto-composicao" maxlength="500">
+<label for="produto-foto">Foto do produto</label><input id="produto-foto" type="file" accept="image/png,image/jpeg,image/webp">
+<label><input id="produto-queridinho" type="checkbox" style="width:auto"> Exibir nos Queridinhos</label>
+<label><input id="produto-visivel" type="checkbox" checked style="width:auto"> Disponível no cardápio online</label>
+<label><input id="produto-preparo" type="checkbox" checked style="width:auto"> Adicionais passam pela cozinha</label>
+<button>Salvar produto</button>
+<button id="cancelar-produto" class="secondary" type="button">Limpar edição</button>
+</form>
+<section class="panel admin-catalogo">
+<div class="admin-catalogo-cabecalho"><div><h2>Catálogo de produtos</h2><p id="admin-contagem"></p></div>
+<button type="button" data-admin-abrir="cadastro-produto">+ Novo produto</button></div>
+<label for="buscar-produto-admin">Buscar produto</label><input id="buscar-produto-admin" type="search" placeholder="Nome, código ou categoria">
+<ul id="catalogo-gestor"></ul>
+</section>
+<form id="configuracao-entrega" class="panel" hidden>
+<h2>Configuração de entrega</h2>
+<label><input id="pagamento-na-entrega" type="checkbox"> Oferecer pagamento na entrega</label>
+<p>Exibe a opção no checkout de entrega desta loja.</p>
+<button>Salvar configuração</button>
+</form>
+</section>
