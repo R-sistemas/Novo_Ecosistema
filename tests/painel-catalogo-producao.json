@@ -1,0 +1,1749 @@
+{
+  "base": "b8a1a5c",
+  "contratos": [
+    {
+      "contrato": "acertos_entrega_pendentes",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_empresa uuid",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "e290c5ccc6e95f7240b57da8de6d7937",
+        "definicao_md5": "0551f831abb1b5b654a78e08b46c8461",
+        "existe": true,
+        "retorno": "jsonb",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "alertas_saldo_remo",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_empresa uuid",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "b620236943f351aa2276b24f45a98ff1",
+        "definicao_md5": "dbc816df994b983d722df2be511ea056",
+        "existe": true,
+        "retorno": "jsonb",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "comandas_para_cancelar",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_empresa uuid, p_busca text",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "00f8d2c98866091a71065f209e823cdf",
+        "definicao_md5": "9271638487c97a6aa8a664d6937198e5",
+        "existe": true,
+        "retorno": "jsonb",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "comandas_pendentes",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_empresa uuid, p_busca text DEFAULT ''::text",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "d3f56ee1804ae743e360a99152efa60f",
+        "definicao_md5": "373837d33f265a24f29698d27965dc96",
+        "existe": true,
+        "retorno": "jsonb",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "configurar_aparencia_cardapio",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_empresa uuid, p_cor text, p_fundo text, p_logo text, p_agradecimento text",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "8c9978a7b804899f612bbf9016ef2be2",
+        "definicao_md5": "3537031b35b101e32d7945570629a15e",
+        "existe": true,
+        "retorno": "void",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "configurar_edicao_kds",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_empresa uuid, p_email text, p_permitir boolean",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "4363989e4777dd6bf3efa58ef61d1f9c",
+        "definicao_md5": "1446f9510cacb8cf0d0fa950d2b3d27c",
+        "existe": true,
+        "retorno": "void",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "configurar_mesa_cardapio",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_empresa uuid, p_numero integer",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "d4f5e946b8b5aac2b83e963e279d947b",
+        "definicao_md5": "23d2ebdb46a90d48c6f27582f86529e5",
+        "existe": true,
+        "retorno": "jsonb",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "configurar_nome_pdv",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_empresa uuid, p_nome text",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "56acac8c2cbca08f3d3ad1d262c4b296",
+        "definicao_md5": "ff0c8984be81dab8f5ef16dcd7512a9b",
+        "existe": true,
+        "retorno": "void",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "configurar_pagamento_na_entrega",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_empresa uuid, p_habilitado boolean",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "381266c74732d85040fd52a61c48d286",
+        "definicao_md5": "7439ae3d222429c3048532d2cd43922e",
+        "existe": true,
+        "retorno": "void",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "configurar_terminal_pdv",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_empresa uuid, p_terminal uuid, p_nome text, p_email text",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "344edff66ae86cfd7e43bdede6f25ba9",
+        "definicao_md5": "6a3963cf363b4d26379fffa0e5401630",
+        "existe": true,
+        "retorno": "uuid",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "confirmar_acerto_entrega",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_caixa uuid, p_pedido uuid, p_meio text, p_total bigint, p_comprovante text, p_maquininha_devolvida boolean",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "396498542db92db92ce104f52ac29f49",
+        "definicao_md5": "53458b1c7fe38a987009aeae3db2e6f7",
+        "existe": true,
+        "retorno": "bigint",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "enviar_pedido_pagamento_na_entrega",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_slug text, p_id uuid, p_cliente text, p_itens jsonb, p_endereco jsonb, p_frete_centavos bigint",
+        "authenticated": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "d351468e7a6102e205e7d8f5f33f89cf",
+        "definicao_md5": "587befe22cc2982b9ccbf8637db4e81d",
+        "existe": true,
+        "retorno": "uuid",
+        "security_definer": true,
+        "service_role": true
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "enviar_pedido_pagamento_na_entrega_com_frete",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_slug text, p_id uuid, p_cliente text, p_itens jsonb, p_endereco jsonb, p_frete_centavos bigint",
+        "authenticated": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "17365fbdcfab747c444b2b094f123de6",
+        "definicao_md5": "36515c7d76705f16683784860d79721c",
+        "existe": true,
+        "retorno": "uuid",
+        "security_definer": true,
+        "service_role": true
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "foto_publica_cardapio",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_produto uuid, p_versao text",
+        "authenticated": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "6751a0f8203ce814541019584eaead82",
+        "definicao_md5": "3f075f1c42b09ddf225604fca23f6940",
+        "existe": true,
+        "retorno": "text",
+        "security_definer": true,
+        "service_role": true
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "listar_operadores_gestor",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_empresa uuid",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "036035c7ed4ff404a109fa7f22cacf4c",
+        "definicao_md5": "95fb9f2c8dac2ad091354a374456bf0f",
+        "existe": true,
+        "retorno": "TABLE(email text, vendas boolean, cozinha boolean, edita_comanda boolean, caixas text[])",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "listar_terminais_gestor",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_empresa uuid",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "a9bfd2daf267376a5a61f937ff7f4ab9",
+        "definicao_md5": "71a611bb65c612f3e2cffbd144397f49",
+        "existe": true,
+        "retorno": "TABLE(id uuid, nome text, email text)",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "metodos_checkout_publico",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "anon=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": true,
+        "argumentos": "p_slug text",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "ca8f89535ba14678a9f0c9981f54d3ad",
+        "definicao_md5": "4fa2cf93d94e6fb92c3b49071c893c15",
+        "existe": true,
+        "retorno": "jsonb",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "monitor_gestor",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_empresa uuid, p_dia date",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "d9eb13d95980e76b128e4aebaea27140",
+        "definicao_md5": "c3d30d554cd4d82c9ca7bb1da19d7746",
+        "existe": true,
+        "retorno": "jsonb",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "pagamento_na_entrega_disponivel",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "anon=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": true,
+        "argumentos": "p_slug text",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "1a7e0468ddf6fa0cedd6fa1d0a578e9f",
+        "definicao_md5": "6ecf2b64031a35ba6a0494aa7aa6cd7c",
+        "existe": true,
+        "retorno": "boolean",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "recebimentos_online_da_loja",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_empresa uuid, p_dia date",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "aafd9808b2afb6d5bab972bb028e629d",
+        "definicao_md5": "e937ab836485e8b7cbbcbe3389e76cee",
+        "existe": true,
+        "retorno": "jsonb",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "registrar_acerto_entrega",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_pedido uuid, p_ordem uuid, p_metodo text, p_valor bigint, p_comprovante text, p_entregador jsonb, p_declarado_em timestamp with time zone",
+        "authenticated": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "ba41f0deeb84e30b53b5cda7fd0c9893",
+        "definicao_md5": "b115533364ab0652b202c7dbddc57b66",
+        "existe": true,
+        "retorno": "boolean",
+        "security_definer": true,
+        "service_role": true
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "remover_operador_loja",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_empresa uuid, p_email text",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "b3c7000eced7f7718c1d5f77824b54fc",
+        "definicao_md5": "e107d98cb88c4fe662a942e0b1d11554",
+        "existe": true,
+        "retorno": "void",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "reservar_credito_entrega_frete_quiosque",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_id uuid, p_cliente text, p_itens jsonb, p_endereco jsonb, p_frete_centavos bigint",
+        "authenticated": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "68bdb5d3758cf756126b5e2523000f10",
+        "definicao_md5": "3d42325df19e5bfdad4103a836806a63",
+        "existe": true,
+        "retorno": "jsonb",
+        "security_definer": false,
+        "service_role": true
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "reservar_pix_entrega_frete_quiosque",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_id uuid, p_cliente text, p_itens jsonb, p_endereco jsonb, p_frete_centavos bigint",
+        "authenticated": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "5fb67ede53f796c5794be1aa5acd91c1",
+        "definicao_md5": "7c770ed782443a1cd02f62ec4049f5ea",
+        "existe": true,
+        "retorno": "jsonb",
+        "security_definer": false,
+        "service_role": true
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "reservar_pix_entrega_frete_teste",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_id uuid, p_cliente text, p_itens jsonb, p_endereco jsonb, p_frete_centavos bigint",
+        "authenticated": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "2feb38cdb4728d69ad3ae821b4e51496",
+        "definicao_md5": "21037c2c3d8f1127b461dc22dfaa2abf",
+        "existe": true,
+        "retorno": "jsonb",
+        "security_definer": false,
+        "service_role": true
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "reservar_pix_entrega_quiosque",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_id uuid, p_cliente text, p_itens jsonb, p_endereco jsonb, p_frete_centavos bigint",
+        "authenticated": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "69bacb171112af95170ac382124694b2",
+        "definicao_md5": "4c1de7c404a08ecf4271f47787e1a805",
+        "existe": true,
+        "retorno": "jsonb",
+        "security_definer": false,
+        "service_role": true
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "reservar_pix_entrega_teste",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_id uuid, p_cliente text, p_itens jsonb, p_endereco jsonb, p_frete_centavos bigint",
+        "authenticated": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "d4bea367128ab49cac52193cd75fcc08",
+        "definicao_md5": "40866add8632c28b8c85fed9f53ea553",
+        "existe": true,
+        "retorno": "jsonb",
+        "security_definer": false,
+        "service_role": true
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "resolver_cancelamento_comanda",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_empresa uuid, p_id uuid, p_aprovar boolean, p_decisao text",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "fb5d8a2d344ed3048fc5320a7911934f",
+        "definicao_md5": "0ffab531cc3fb62c03cfad6490b19ac3",
+        "existe": true,
+        "retorno": "void",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "solicitar_cancelamento_comanda",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_empresa uuid, p_pedido uuid, p_id uuid, p_motivo text",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "7b80bfd2d44cca3c56de5b6163361e7e",
+        "definicao_md5": "77bc75e8edbe704a6d98f9afcf6fc2c0",
+        "existe": true,
+        "retorno": "text",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "ver_cardapio",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "anon=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "anon": true,
+        "argumentos": "p_slug text",
+        "authenticated": true,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "ddc767d0df1b1e16bad0ad5b467323d0",
+        "definicao_md5": "496f422c0c3a59cfb2e3be3a4abbf772",
+        "existe": true,
+        "retorno": "jsonb",
+        "security_definer": true,
+        "service_role": false
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "vincular_novo_operador_pdv",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_gestor uuid, p_empresa uuid, p_operador uuid, p_caixa text",
+        "authenticated": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "187702b4e16a94d86cc1c96192c78c22",
+        "definicao_md5": "e9192686cff87974a3f78a37531adde0",
+        "existe": true,
+        "retorno": "uuid",
+        "security_definer": true,
+        "service_role": true
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "vincular_novo_usuario_kds",
+      "evidencia": {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "anon": false,
+        "argumentos": "p_gestor uuid, p_empresa uuid, p_operador uuid",
+        "authenticated": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "corpo_normalizado_md5": "bc203e50fcb37b4a23c8d7777e21a26c",
+        "definicao_md5": "af6801d369acbd2b3d6d2664478b618a",
+        "existe": true,
+        "retorno": "void",
+        "security_definer": true,
+        "service_role": true
+      },
+      "tipo": "rpc"
+    },
+    {
+      "contrato": "public.ajustes_comanda",
+      "evidencia": {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=Dxtm/postgres"
+        ],
+        "colunas": {
+          "antes": "jsonb",
+          "autor": "uuid",
+          "criado_em": "timestamp with time zone",
+          "depois": "jsonb",
+          "estado": "text",
+          "id": "uuid",
+          "motivo": "text",
+          "operacao": "text",
+          "pedido_id": "uuid",
+          "pedido_pesagem": "jsonb",
+          "produto_id": "uuid",
+          "produto_nome": "text",
+          "quantidade": "integer",
+          "resolucao": "text",
+          "resolvido_em": "timestamp with time zone",
+          "resolvido_por": "uuid"
+        },
+        "existe": true,
+        "force_rls": false,
+        "grants_colunas": null,
+        "politicas": null,
+        "restricoes": {
+          "ajustes_comanda_autor_fkey": "FOREIGN KEY (autor) REFERENCES auth.users(id)",
+          "ajustes_comanda_estado_check": "CHECK ((estado = ANY (ARRAY['pendente'::text, 'aplicado'::text, 'encerrado'::text])))",
+          "ajustes_comanda_operacao_check": "CHECK ((operacao = ANY (ARRAY['adicionar'::text, 'retirar'::text])))",
+          "ajustes_comanda_pedido_id_fkey": "FOREIGN KEY (pedido_id) REFERENCES pedidos_online(id)",
+          "ajustes_comanda_pkey": "PRIMARY KEY (id)",
+          "ajustes_comanda_produto_id_fkey": "FOREIGN KEY (produto_id) REFERENCES produtos(id)",
+          "ajustes_comanda_quantidade_check": "CHECK (((quantidade >= 1) AND (quantidade <= 100)))",
+          "ajustes_comanda_resolvido_por_fkey": "FOREIGN KEY (resolvido_por) REFERENCES auth.users(id)"
+        },
+        "rls": true
+      },
+      "tipo": "tabela"
+    },
+    {
+      "contrato": "public.caixas",
+      "evidencia": {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=Dxtm/postgres",
+          "authenticated=r/postgres"
+        ],
+        "colunas": {
+          "aberto_em": "timestamp with time zone",
+          "abertura_centavos": "bigint",
+          "contado_centavos": "bigint",
+          "empresa_id": "uuid",
+          "fechado_em": "timestamp with time zone",
+          "id": "uuid",
+          "operador_id": "uuid",
+          "terminal_id": "uuid"
+        },
+        "existe": true,
+        "force_rls": false,
+        "grants_colunas": null,
+        "politicas": [
+          {
+            "cmd": "SELECT",
+            "permissive": "PERMISSIVE",
+            "policyname": "caixas_visiveis",
+            "qual": "((empresa_id IN ( SELECT membros.empresa_id\n   FROM membros)) AND ((operador_id = ( SELECT auth.uid() AS uid)) OR (empresa_id IN ( SELECT membros.empresa_id\n   FROM membros\n  WHERE (membros.papel = 'gestor'::text)))))",
+            "roles": [
+              "authenticated"
+            ],
+            "with_check": null
+          }
+        ],
+        "restricoes": {
+          "caixas_abertura_centavos_check": "CHECK ((abertura_centavos >= 0))",
+          "caixas_check": "CHECK (((fechado_em IS NULL) = (contado_centavos IS NULL)))",
+          "caixas_contado_centavos_check": "CHECK ((contado_centavos >= 0))",
+          "caixas_empresa_id_fkey": "FOREIGN KEY (empresa_id) REFERENCES empresas(id)",
+          "caixas_empresa_id_id_key": "UNIQUE (empresa_id, id)",
+          "caixas_empresa_id_terminal_id_fkey": "FOREIGN KEY (empresa_id, terminal_id) REFERENCES terminais_pdv(empresa_id, id)",
+          "caixas_operador_id_fkey": "FOREIGN KEY (operador_id) REFERENCES auth.users(id)",
+          "caixas_pkey": "PRIMARY KEY (id)"
+        },
+        "rls": true
+      },
+      "tipo": "tabela"
+    },
+    {
+      "contrato": "public.cancelamentos_comanda",
+      "evidencia": {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=Dxtm/postgres"
+        ],
+        "colunas": {
+          "decisao": "text",
+          "estado": "text",
+          "etapa_pedido": "text",
+          "id": "uuid",
+          "motivo": "text",
+          "pedido_id": "uuid",
+          "resolvido_em": "timestamp with time zone",
+          "resolvido_por": "uuid",
+          "solicitado_em": "timestamp with time zone",
+          "solicitado_por": "uuid"
+        },
+        "existe": true,
+        "force_rls": false,
+        "grants_colunas": null,
+        "politicas": null,
+        "restricoes": {
+          "cancelamentos_comanda_estado_check": "CHECK ((estado = ANY (ARRAY['pendente'::text, 'cancelado'::text, 'negado'::text])))",
+          "cancelamentos_comanda_motivo_check": "CHECK (((length(btrim(motivo)) >= 3) AND (length(btrim(motivo)) <= 240)))",
+          "cancelamentos_comanda_pedido_id_fkey": "FOREIGN KEY (pedido_id) REFERENCES pedidos_online(id)",
+          "cancelamentos_comanda_pkey": "PRIMARY KEY (id)",
+          "cancelamentos_comanda_resolvido_por_fkey": "FOREIGN KEY (resolvido_por) REFERENCES auth.users(id)",
+          "cancelamentos_comanda_solicitado_por_fkey": "FOREIGN KEY (solicitado_por) REFERENCES auth.users(id)"
+        },
+        "rls": true
+      },
+      "tipo": "tabela"
+    },
+    {
+      "contrato": "public.empresas",
+      "evidencia": {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=rDxtm/postgres",
+          "authenticated=r/postgres"
+        ],
+        "colunas": {
+          "cardapio_agradecimento": "text",
+          "cardapio_cor": "text",
+          "cardapio_fundo": "text",
+          "cardapio_logo": "text",
+          "cardapio_slug": "text",
+          "id": "uuid",
+          "mapa_centro_latitude": "numeric(9,6)",
+          "mapa_centro_longitude": "numeric(9,6)",
+          "nome": "text",
+          "nome_pdv": "text",
+          "pagamento_na_entrega": "boolean"
+        },
+        "existe": true,
+        "force_rls": false,
+        "grants_colunas": null,
+        "politicas": [
+          {
+            "cmd": "SELECT",
+            "permissive": "PERMISSIVE",
+            "policyname": "empresas_do_usuario",
+            "qual": "(id IN ( SELECT membros.empresa_id\n   FROM membros))",
+            "roles": [
+              "authenticated"
+            ],
+            "with_check": null
+          }
+        ],
+        "restricoes": {
+          "empresas_cardapio_agradecimento_check": "CHECK (((length(cardapio_agradecimento) <= 82000) AND (cardapio_agradecimento ~ '^data:image/webp;base64,[A-Za-z0-9+/]+=*$'::text)))",
+          "empresas_cardapio_cor_check": "CHECK ((cardapio_cor ~ '^#[0-9a-fA-F]{6}$'::text))",
+          "empresas_cardapio_fundo_check": "CHECK ((cardapio_fundo = ANY (ARRAY['#f4f6f2'::text, '#ffffff'::text, '#f1f3f5'::text, '#f8f4eb'::text])))",
+          "empresas_cardapio_logo_check": "CHECK (((length(cardapio_logo) <= 44000) AND (cardapio_logo ~ '^data:image/webp;base64,[A-Za-z0-9+/]+=*$'::text)))",
+          "empresas_cardapio_slug_check": "CHECK ((cardapio_slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text))",
+          "empresas_cardapio_slug_key": "UNIQUE (cardapio_slug)",
+          "empresas_mapa_centro_latitude_check": "CHECK (((mapa_centro_latitude >= ('-90'::integer)::numeric) AND (mapa_centro_latitude <= (90)::numeric)))",
+          "empresas_mapa_centro_longitude_check": "CHECK (((mapa_centro_longitude >= ('-180'::integer)::numeric) AND (mapa_centro_longitude <= (180)::numeric)))",
+          "empresas_nome_check": "CHECK ((length(btrim(nome)) > 0))",
+          "empresas_nome_pdv_check": "CHECK (((length(btrim(nome_pdv)) >= 1) AND (length(btrim(nome_pdv)) <= 100)))",
+          "empresas_pkey": "PRIMARY KEY (id)"
+        },
+        "rls": true
+      },
+      "tipo": "tabela"
+    },
+    {
+      "contrato": "public.equipe_kds",
+      "evidencia": {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=Dxtm/postgres"
+        ],
+        "colunas": {
+          "edita_comanda": "boolean",
+          "empresa_id": "uuid",
+          "usuario_id": "uuid"
+        },
+        "existe": true,
+        "force_rls": false,
+        "grants_colunas": null,
+        "politicas": null,
+        "restricoes": {
+          "equipe_kds_empresa_id_fkey": "FOREIGN KEY (empresa_id) REFERENCES empresas(id)",
+          "equipe_kds_pkey": "PRIMARY KEY (empresa_id, usuario_id)",
+          "equipe_kds_usuario_id_fkey": "FOREIGN KEY (usuario_id) REFERENCES auth.users(id)"
+        },
+        "rls": true
+      },
+      "tipo": "tabela"
+    },
+    {
+      "contrato": "public.itens_venda",
+      "evidencia": {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=Dxtm/postgres",
+          "authenticated=r/postgres"
+        ],
+        "colunas": {
+          "id": "uuid",
+          "nome": "text",
+          "pesagem": "jsonb",
+          "preco_centavos": "bigint",
+          "produto_id": "uuid",
+          "quantidade": "integer",
+          "venda_id": "uuid"
+        },
+        "existe": true,
+        "force_rls": false,
+        "grants_colunas": null,
+        "politicas": [
+          {
+            "cmd": "SELECT",
+            "permissive": "PERMISSIVE",
+            "policyname": "itens_visiveis",
+            "qual": "(EXISTS ( SELECT 1\n   FROM vendas v\n  WHERE (v.id = itens_venda.venda_id)))",
+            "roles": [
+              "authenticated"
+            ],
+            "with_check": null
+          }
+        ],
+        "restricoes": {
+          "itens_venda_pkey": "PRIMARY KEY (id)",
+          "itens_venda_preco_centavos_check": "CHECK ((preco_centavos > 0))",
+          "itens_venda_produto_id_fkey": "FOREIGN KEY (produto_id) REFERENCES produtos(id)",
+          "itens_venda_quantidade_check": "CHECK ((quantidade > 0))",
+          "itens_venda_venda_id_fkey": "FOREIGN KEY (venda_id) REFERENCES vendas(id)"
+        },
+        "rls": true
+      },
+      "tipo": "tabela"
+    },
+    {
+      "contrato": "public.membros",
+      "evidencia": {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=Dxtm/postgres",
+          "authenticated=r/postgres"
+        ],
+        "colunas": {
+          "empresa_id": "uuid",
+          "papel": "text",
+          "usuario_id": "uuid"
+        },
+        "existe": true,
+        "force_rls": false,
+        "grants_colunas": null,
+        "politicas": [
+          {
+            "cmd": "SELECT",
+            "permissive": "PERMISSIVE",
+            "policyname": "membros_proprios",
+            "qual": "(usuario_id = ( SELECT auth.uid() AS uid))",
+            "roles": [
+              "authenticated"
+            ],
+            "with_check": null
+          }
+        ],
+        "restricoes": {
+          "membros_empresa_id_fkey": "FOREIGN KEY (empresa_id) REFERENCES empresas(id)",
+          "membros_papel_check": "CHECK ((papel = ANY (ARRAY['gestor'::text, 'operador'::text])))",
+          "membros_pkey": "PRIMARY KEY (empresa_id, usuario_id)",
+          "membros_usuario_id_fkey": "FOREIGN KEY (usuario_id) REFERENCES auth.users(id)"
+        },
+        "rls": true
+      },
+      "tipo": "tabela"
+    },
+    {
+      "contrato": "public.movimentos_caixa",
+      "evidencia": {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=Dxtm/postgres",
+          "authenticated=r/postgres"
+        ],
+        "colunas": {
+          "caixa_id": "uuid",
+          "criado_em": "timestamp with time zone",
+          "empresa_id": "uuid",
+          "id": "uuid",
+          "meio": "text",
+          "tipo": "text",
+          "valor_centavos": "bigint"
+        },
+        "existe": true,
+        "force_rls": false,
+        "grants_colunas": null,
+        "politicas": [
+          {
+            "cmd": "SELECT",
+            "permissive": "PERMISSIVE",
+            "policyname": "movimentos_visiveis",
+            "qual": "(EXISTS ( SELECT 1\n   FROM caixas c\n  WHERE (c.id = movimentos_caixa.caixa_id)))",
+            "roles": [
+              "authenticated"
+            ],
+            "with_check": null
+          }
+        ],
+        "restricoes": {
+          "movimentos_caixa_check": "CHECK (((tipo = 'venda'::text) OR (meio = 'dinheiro'::text)))",
+          "movimentos_caixa_empresa_id_caixa_id_fkey": "FOREIGN KEY (empresa_id, caixa_id) REFERENCES caixas(empresa_id, id)",
+          "movimentos_caixa_meio_check": "CHECK ((meio = ANY (ARRAY['dinheiro'::text, 'pix'::text, 'cartao'::text])))",
+          "movimentos_caixa_pkey": "PRIMARY KEY (id)",
+          "movimentos_caixa_tipo_check": "CHECK ((tipo = ANY (ARRAY['suprimento'::text, 'sangria'::text, 'venda'::text])))",
+          "movimentos_caixa_valor_centavos_check": "CHECK ((valor_centavos > 0))"
+        },
+        "rls": true
+      },
+      "tipo": "tabela"
+    },
+    {
+      "contrato": "public.pagamentos_online",
+      "evidencia": {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwDxtm/postgres"
+        ],
+        "colunas": {
+          "ambiente": "text",
+          "cobranca_id": "text",
+          "confirmado_em": "timestamp with time zone",
+          "empresa_id": "uuid",
+          "meio": "text",
+          "pedido_id": "uuid",
+          "provedor": "text",
+          "valor_centavos": "bigint"
+        },
+        "existe": true,
+        "force_rls": false,
+        "grants_colunas": null,
+        "politicas": null,
+        "restricoes": {
+          "pagamentos_online_ambiente_check": "CHECK ((ambiente = ANY (ARRAY['producao'::text, 'sandbox'::text])))",
+          "pagamentos_online_check": "CHECK (((confirmado_em IS NULL) OR (cobranca_id IS NOT NULL)))",
+          "pagamentos_online_empresa_id_provedor_ambiente_fkey": "FOREIGN KEY (empresa_id, provedor, ambiente) REFERENCES provedores_pagamento(empresa_id, provedor, ambiente)",
+          "pagamentos_online_empresa_id_provedor_cobranca_id_key": "UNIQUE (empresa_id, provedor, cobranca_id)",
+          "pagamentos_online_meio_check": "CHECK ((meio = ANY (ARRAY['pix'::text, 'credito'::text, 'debito'::text])))",
+          "pagamentos_online_pedido_id_fkey": "FOREIGN KEY (pedido_id) REFERENCES pedidos_online(id)",
+          "pagamentos_online_pkey": "PRIMARY KEY (pedido_id)",
+          "pagamentos_online_valor_centavos_check": "CHECK ((valor_centavos > 0))"
+        },
+        "rls": true
+      },
+      "tipo": "tabela"
+    },
+    {
+      "contrato": "public.pedidos_online",
+      "evidencia": {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=rDxtm/postgres",
+          "authenticated=r/postgres"
+        ],
+        "colunas": {
+          "cliente": "text",
+          "comanda": "bigint",
+          "criado_em": "timestamp with time zone",
+          "empresa_id": "uuid",
+          "estado": "text",
+          "id": "uuid",
+          "itens": "jsonb",
+          "itens_preparo_original": "jsonb",
+          "mesa": "integer",
+          "pix_sandbox_cobranca_id": "text",
+          "pix_sandbox_confirmado_em": "timestamp with time zone",
+          "pix_sandbox_solicitado": "boolean",
+          "total_centavos": "bigint"
+        },
+        "existe": true,
+        "force_rls": false,
+        "grants_colunas": {
+          "pix_sandbox_cobranca_id": [
+            "service_role=w/postgres"
+          ],
+          "pix_sandbox_confirmado_em": [
+            "service_role=w/postgres"
+          ],
+          "pix_sandbox_solicitado": [
+            "service_role=w/postgres"
+          ],
+          "total_centavos": [
+            "service_role=w/postgres"
+          ]
+        },
+        "politicas": [
+          {
+            "cmd": "SELECT",
+            "permissive": "PERMISSIVE",
+            "policyname": "pedidos_da_empresa",
+            "qual": "(empresa_id IN ( SELECT membros.empresa_id\n   FROM membros))",
+            "roles": [
+              "authenticated"
+            ],
+            "with_check": null
+          }
+        ],
+        "restricoes": {
+          "pedido_pix_confirmado_com_cobranca": "CHECK (((pix_sandbox_confirmado_em IS NULL) OR (pix_sandbox_cobranca_id IS NOT NULL)))",
+          "pedidos_online_check": "CHECK (((total_centavos > 0) OR ((total_centavos = 0) AND (estado = 'recusado'::text))))",
+          "pedidos_online_cliente_check": "CHECK (((length(btrim(cliente)) >= 1) AND (length(btrim(cliente)) <= 100)))",
+          "pedidos_online_comanda_key": "UNIQUE (comanda)",
+          "pedidos_online_empresa_id_fkey": "FOREIGN KEY (empresa_id) REFERENCES empresas(id)",
+          "pedidos_online_estado_check": "CHECK ((estado = ANY (ARRAY['novo'::text, 'preparo'::text, 'pronto'::text, 'entregue'::text, 'recusado'::text])))",
+          "pedidos_online_pix_sandbox_cobranca_id_key": "UNIQUE (pix_sandbox_cobranca_id)",
+          "pedidos_online_pkey": "PRIMARY KEY (id)"
+        },
+        "rls": true
+      },
+      "tipo": "tabela"
+    },
+    {
+      "contrato": "public.produtos",
+      "evidencia": {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=Dxtm/postgres",
+          "authenticated=arw/postgres"
+        ],
+        "colunas": {
+          "ativo": "boolean",
+          "categoria": "text",
+          "codigo": "text",
+          "composicao": "text",
+          "descricao": "text",
+          "empresa_id": "uuid",
+          "foto_cardapio": "text",
+          "id": "uuid",
+          "nome": "text",
+          "preco_centavos": "bigint",
+          "preparo_cozinha": "boolean",
+          "queridinho": "boolean",
+          "vendido_por_peso": "boolean",
+          "visivel_cardapio": "boolean"
+        },
+        "existe": true,
+        "force_rls": false,
+        "grants_colunas": null,
+        "politicas": [
+          {
+            "cmd": "UPDATE",
+            "permissive": "PERMISSIVE",
+            "policyname": "gestor_atualiza_produto",
+            "qual": "(empresa_id IN ( SELECT membros.empresa_id\n   FROM membros\n  WHERE (membros.papel = 'gestor'::text)))",
+            "roles": [
+              "authenticated"
+            ],
+            "with_check": "(empresa_id IN ( SELECT membros.empresa_id\n   FROM membros\n  WHERE (membros.papel = 'gestor'::text)))"
+          },
+          {
+            "cmd": "INSERT",
+            "permissive": "PERMISSIVE",
+            "policyname": "gestor_cadastra_produto",
+            "qual": null,
+            "roles": [
+              "authenticated"
+            ],
+            "with_check": "(empresa_id IN ( SELECT membros.empresa_id\n   FROM membros\n  WHERE (membros.papel = 'gestor'::text)))"
+          },
+          {
+            "cmd": "SELECT",
+            "permissive": "PERMISSIVE",
+            "policyname": "produtos_da_empresa",
+            "qual": "(empresa_id IN ( SELECT membros.empresa_id\n   FROM membros))",
+            "roles": [
+              "authenticated"
+            ],
+            "with_check": null
+          }
+        ],
+        "restricoes": {
+          "produtos_categoria_check": "CHECK ((length(categoria) <= 60))",
+          "produtos_check": "CHECK (((NOT vendido_por_peso) OR ((NOT visivel_cardapio) AND (NOT preparo_cozinha))))",
+          "produtos_codigo_check": "CHECK ((length(btrim(codigo)) > 0))",
+          "produtos_composicao_check": "CHECK ((length(composicao) <= 500))",
+          "produtos_descricao_check": "CHECK ((length(descricao) <= 500))",
+          "produtos_empresa_id_codigo_key": "UNIQUE (empresa_id, codigo)",
+          "produtos_empresa_id_fkey": "FOREIGN KEY (empresa_id) REFERENCES empresas(id)",
+          "produtos_empresa_id_id_key": "UNIQUE (empresa_id, id)",
+          "produtos_foto_cardapio_check": "CHECK (((length(foto_cardapio) <= 82000) AND (foto_cardapio ~ '^data:image/webp;base64,[A-Za-z0-9+/]+=*$'::text)))",
+          "produtos_nome_check": "CHECK ((length(btrim(nome)) > 0))",
+          "produtos_pkey": "PRIMARY KEY (id)",
+          "produtos_preco_centavos_check": "CHECK ((preco_centavos > 0))"
+        },
+        "rls": true
+      },
+      "tipo": "tabela"
+    },
+    {
+      "contrato": "public.terminais_pdv",
+      "evidencia": {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=Dxtm/postgres",
+          "authenticated=r/postgres"
+        ],
+        "colunas": {
+          "empresa_id": "uuid",
+          "id": "uuid",
+          "nome": "text",
+          "operador_id": "uuid"
+        },
+        "existe": true,
+        "force_rls": false,
+        "grants_colunas": null,
+        "politicas": [
+          {
+            "cmd": "SELECT",
+            "permissive": "PERMISSIVE",
+            "policyname": "consultar_terminal",
+            "qual": "(EXISTS ( SELECT 1\n   FROM membros m\n  WHERE ((m.empresa_id = terminais_pdv.empresa_id) AND (m.usuario_id = auth.uid()) AND ((m.papel = 'gestor'::text) OR (terminais_pdv.operador_id = m.usuario_id)))))",
+            "roles": [
+              "authenticated"
+            ],
+            "with_check": null
+          }
+        ],
+        "restricoes": {
+          "terminais_pdv_empresa_id_fkey": "FOREIGN KEY (empresa_id) REFERENCES empresas(id)",
+          "terminais_pdv_empresa_id_id_key": "UNIQUE (empresa_id, id)",
+          "terminais_pdv_nome_check": "CHECK (((length(btrim(nome)) >= 1) AND (length(btrim(nome)) <= 60)))",
+          "terminais_pdv_operador_id_fkey": "FOREIGN KEY (operador_id) REFERENCES auth.users(id)",
+          "terminais_pdv_pkey": "PRIMARY KEY (id)"
+        },
+        "rls": true
+      },
+      "tipo": "tabela"
+    },
+    {
+      "contrato": "public.vendas",
+      "evidencia": {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=rDxtm/postgres",
+          "authenticated=r/postgres"
+        ],
+        "colunas": {
+          "caixa_id": "uuid",
+          "criado_em": "timestamp with time zone",
+          "desconto_centavos": "bigint",
+          "empresa_id": "uuid",
+          "id": "uuid",
+          "meio": "text",
+          "total_centavos": "bigint"
+        },
+        "existe": true,
+        "force_rls": false,
+        "grants_colunas": null,
+        "politicas": [
+          {
+            "cmd": "SELECT",
+            "permissive": "PERMISSIVE",
+            "policyname": "vendas_visiveis",
+            "qual": "(EXISTS ( SELECT 1\n   FROM caixas c\n  WHERE (c.id = vendas.caixa_id)))",
+            "roles": [
+              "authenticated"
+            ],
+            "with_check": null
+          }
+        ],
+        "restricoes": {
+          "vendas_desconto_centavos_check": "CHECK ((desconto_centavos >= 0))",
+          "vendas_empresa_id_caixa_id_fkey": "FOREIGN KEY (empresa_id, caixa_id) REFERENCES caixas(empresa_id, id)",
+          "vendas_meio_check": "CHECK ((meio = ANY (ARRAY['dinheiro'::text, 'pix'::text, 'cartao'::text])))",
+          "vendas_pkey": "PRIMARY KEY (id)",
+          "vendas_total_centavos_check": "CHECK ((total_centavos > 0))"
+        },
+        "rls": true
+      },
+      "tipo": "tabela"
+    },
+    {
+      "contrato": "remo.acertos_entrega",
+      "evidencia": {
+        "acl": [
+          "postgres=arwdDxtm/postgres"
+        ],
+        "colunas": {
+          "caixa_id": "uuid",
+          "comprovante": "text",
+          "confirmado_em": "timestamp with time zone",
+          "confirmado_por": "uuid",
+          "declarado_em": "timestamp with time zone",
+          "entregador": "jsonb",
+          "maquininha_devolvida": "boolean",
+          "metodo": "text",
+          "ordem_remo": "uuid",
+          "pedido_id": "uuid",
+          "valor_centavos": "bigint"
+        },
+        "existe": true,
+        "force_rls": false,
+        "grants_colunas": null,
+        "politicas": null,
+        "restricoes": {
+          "acertos_entrega_caixa_id_fkey": "FOREIGN KEY (caixa_id) REFERENCES caixas(id)",
+          "acertos_entrega_check": "CHECK (((metodo = 'dinheiro'::text) OR (NULLIF(btrim(comprovante), ''::text) IS NOT NULL)))",
+          "acertos_entrega_check1": "CHECK ((((confirmado_em IS NULL) AND (caixa_id IS NULL) AND (confirmado_por IS NULL)) OR ((confirmado_em IS NOT NULL) AND (caixa_id IS NOT NULL) AND (confirmado_por IS NOT NULL))))",
+          "acertos_entrega_confirmado_por_fkey": "FOREIGN KEY (confirmado_por) REFERENCES auth.users(id)",
+          "acertos_entrega_metodo_check": "CHECK ((metodo = ANY (ARRAY['dinheiro'::text, 'maquininha'::text])))",
+          "acertos_entrega_ordem_remo_key": "UNIQUE (ordem_remo)",
+          "acertos_entrega_pedido_id_fkey": "FOREIGN KEY (pedido_id) REFERENCES pedidos_online(id)",
+          "acertos_entrega_pkey": "PRIMARY KEY (pedido_id)",
+          "acertos_entrega_valor_centavos_check": "CHECK ((valor_centavos > 0))"
+        },
+        "rls": true
+      },
+      "tipo": "tabela"
+    },
+    {
+      "contrato": "remo.solicitacoes",
+      "evidencia": {
+        "acl": [
+          "postgres=arwdDxtm/postgres"
+        ],
+        "colunas": {
+          "ambiente": "text",
+          "cobrar_na_entrega_centavos": "bigint",
+          "criada_em": "timestamp with time zone",
+          "destino": "jsonb",
+          "estado": "text",
+          "id": "uuid",
+          "ordem_remo": "uuid",
+          "origem": "text",
+          "referencia": "text",
+          "solicitante": "uuid"
+        },
+        "existe": true,
+        "force_rls": false,
+        "grants_colunas": null,
+        "politicas": null,
+        "restricoes": {
+          "solicitacoes_ambiente_check": "CHECK ((ambiente = ANY (ARRAY['sandbox'::text, 'producao'::text])))",
+          "solicitacoes_cobrar_na_entrega_centavos_check": "CHECK ((cobrar_na_entrega_centavos >= 0))",
+          "solicitacoes_destino_check": "CHECK ((jsonb_typeof(destino) = 'object'::text))",
+          "solicitacoes_estado_check": "CHECK ((estado = ANY (ARRAY['solicitada'::text, 'aceita'::text, 'em_rota'::text, 'entregue'::text, 'cancelada'::text])))",
+          "solicitacoes_ordem_remo_key": "UNIQUE (ordem_remo)",
+          "solicitacoes_origem_check": "CHECK ((origem = ANY (ARRAY['r_sistemas'::text, 'externa'::text])))",
+          "solicitacoes_origem_solicitante_referencia_key": "UNIQUE (origem, solicitante, referencia)",
+          "solicitacoes_pkey": "PRIMARY KEY (id)"
+        },
+        "rls": true
+      },
+      "tipo": "tabela"
+    },
+    {
+      "contrato": "remo.tentativas_despacho",
+      "evidencia": {
+        "acl": [
+          "postgres=arwdDxtm/postgres"
+        ],
+        "colunas": {
+          "atualizado_em": "timestamp with time zone",
+          "estado": "text",
+          "pedido_id": "uuid"
+        },
+        "existe": true,
+        "force_rls": false,
+        "grants_colunas": null,
+        "politicas": null,
+        "restricoes": {
+          "tentativas_despacho_estado_check": "CHECK ((estado = ANY (ARRAY['confirmando'::text, 'saldo_insuficiente'::text])))",
+          "tentativas_despacho_pedido_id_fkey": "FOREIGN KEY (pedido_id) REFERENCES pedidos_online(id) ON DELETE CASCADE",
+          "tentativas_despacho_pkey": "PRIMARY KEY (pedido_id)"
+        },
+        "rls": true
+      },
+      "tipo": "tabela"
+    }
+  ],
+  "comparacao_corpos": [
+    {
+      "rpc": "acertos_entrega_pendentes",
+      "referencia": {
+        "corpo_normalizado_md5": "e290c5ccc6e95f7240b57da8de6d7937",
+        "migration": "202611160043_acerto_entrega.sql",
+        "argumentos": "p_empresa uuid"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "alertas_saldo_remo",
+      "referencia": {
+        "corpo_normalizado_md5": "b620236943f351aa2276b24f45a98ff1",
+        "migration": "202611150042_despacho_integrado_remo.sql",
+        "argumentos": "p_empresa uuid"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "comandas_para_cancelar",
+      "referencia": {
+        "corpo_normalizado_md5": "00f8d2c98866091a71065f209e823cdf",
+        "migration": "202611070037_cancelar_comanda.sql",
+        "argumentos": "p_empresa uuid,p_busca text"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "comandas_pendentes",
+      "referencia": {
+        "corpo_normalizado_md5": "d3f56ee1804ae743e360a99152efa60f",
+        "migration": "202611070038_pix_frente_caixa.sql",
+        "argumentos": "p_empresa uuid, p_busca text default ''"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "configurar_aparencia_cardapio",
+      "referencia": {
+        "corpo_normalizado_md5": "8c9978a7b804899f612bbf9016ef2be2",
+        "migration": "202611060028_aparencia_cardapio.sql",
+        "argumentos": "p_empresa uuid,p_cor text,p_fundo text,p_logo text,p_agradecimento text"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "configurar_edicao_kds",
+      "referencia": {
+        "corpo_normalizado_md5": "4363989e4777dd6bf3efa58ef61d1f9c",
+        "migration": "202611070033_ajustes_kds.sql",
+        "argumentos": "p_empresa uuid,p_email text,p_permitir boolean"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "configurar_mesa_cardapio",
+      "referencia": {
+        "corpo_normalizado_md5": "d4f5e946b8b5aac2b83e963e279d947b",
+        "migration": "202611060027_comandas_mesa.sql",
+        "argumentos": "p_empresa uuid,p_numero integer"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "configurar_nome_pdv",
+      "referencia": {
+        "corpo_normalizado_md5": "56acac8c2cbca08f3d3ad1d262c4b296",
+        "migration": "202611060023_terminais_pdv.sql",
+        "argumentos": "p_empresa uuid, p_nome text"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "configurar_pagamento_na_entrega",
+      "referencia": {
+        "corpo_normalizado_md5": "381266c74732d85040fd52a61c48d286",
+        "migration": "202611060013_pagamento_na_entrega.sql",
+        "argumentos": "p_empresa uuid, p_habilitado boolean"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "configurar_terminal_pdv",
+      "referencia": {
+        "corpo_normalizado_md5": "344edff66ae86cfd7e43bdede6f25ba9",
+        "migration": "202611060023_terminais_pdv.sql",
+        "argumentos": "p_empresa uuid, p_terminal uuid, p_nome text, p_email text"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "confirmar_acerto_entrega",
+      "referencia": {
+        "corpo_normalizado_md5": "396498542db92db92ce104f52ac29f49",
+        "migration": "202611160043_acerto_entrega.sql",
+        "argumentos": "p_caixa uuid,p_pedido uuid,p_meio text,\r\n  p_total bigint,p_comprovante text,p_maquininha_devolvida boolean"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "enviar_pedido_pagamento_na_entrega",
+      "referencia": {
+        "corpo_normalizado_md5": "d351468e7a6102e205e7d8f5f33f89cf",
+        "migration": "202611170046_reconciliar_funcoes_producao.sql",
+        "argumentos": "p_slug text, p_id uuid, p_cliente text, p_itens jsonb, p_endereco jsonb, p_frete_centavos bigint"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "enviar_pedido_pagamento_na_entrega_com_frete",
+      "referencia": {
+        "corpo_normalizado_md5": "17365fbdcfab747c444b2b094f123de6",
+        "migration": "202611170046_reconciliar_funcoes_producao.sql",
+        "argumentos": "p_slug text, p_id uuid, p_cliente text, p_itens jsonb, p_endereco jsonb, p_frete_centavos bigint"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "foto_publica_cardapio",
+      "referencia": {
+        "corpo_normalizado_md5": "6751a0f8203ce814541019584eaead82",
+        "migration": "202611070032_adicionais_comanda.sql",
+        "argumentos": "p_produto uuid,p_versao text"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "listar_operadores_gestor",
+      "referencia": {
+        "corpo_normalizado_md5": "036035c7ed4ff404a109fa7f22cacf4c",
+        "migration": "202611070034_lista_operadores.sql",
+        "argumentos": "p_empresa uuid"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "listar_terminais_gestor",
+      "referencia": {
+        "corpo_normalizado_md5": "a9bfd2daf267376a5a61f937ff7f4ab9",
+        "migration": "202611070035_remover_operador.sql",
+        "argumentos": "p_empresa uuid"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "metodos_checkout_publico",
+      "referencia": {
+        "corpo_normalizado_md5": "ca8f89535ba14678a9f0c9981f54d3ad",
+        "migration": "202611150046_metodos_checkout_publico.sql",
+        "argumentos": "p_slug text"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "monitor_gestor",
+      "referencia": {
+        "corpo_normalizado_md5": "d9eb13d95980e76b128e4aebaea27140",
+        "migration": "202611070040_retorno_status_remo.sql",
+        "argumentos": "p_empresa uuid, p_dia date"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "pagamento_na_entrega_disponivel",
+      "referencia": {
+        "corpo_normalizado_md5": "1a7e0468ddf6fa0cedd6fa1d0a578e9f",
+        "migration": "202611060018_pix_entrega_teste.sql",
+        "argumentos": "p_slug text"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "recebimentos_online_da_loja",
+      "referencia": {
+        "corpo_normalizado_md5": "aafd9808b2afb6d5bab972bb028e629d",
+        "migration": "202611160044_recebimentos_online_pdv.sql",
+        "argumentos": "p_empresa uuid, p_dia date"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "registrar_acerto_entrega",
+      "referencia": {
+        "corpo_normalizado_md5": "ba41f0deeb84e30b53b5cda7fd0c9893",
+        "migration": "202611160043_acerto_entrega.sql",
+        "argumentos": "p_pedido uuid,p_ordem uuid,p_metodo text,\r\n  p_valor bigint,p_comprovante text,p_entregador jsonb,p_declarado_em timestamptz"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "remover_operador_loja",
+      "referencia": {
+        "corpo_normalizado_md5": "b3c7000eced7f7718c1d5f77824b54fc",
+        "migration": "202611070035_remover_operador.sql",
+        "argumentos": "p_empresa uuid,p_email text"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "reservar_credito_entrega_frete_quiosque",
+      "referencia": {
+        "corpo_normalizado_md5": "68bdb5d3758cf756126b5e2523000f10",
+        "migration": "202611170046_reconciliar_funcoes_producao.sql",
+        "argumentos": "p_id uuid, p_cliente text, p_itens jsonb, p_endereco jsonb, p_frete_centavos bigint"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "reservar_pix_entrega_frete_quiosque",
+      "referencia": {
+        "corpo_normalizado_md5": "5fb67ede53f796c5794be1aa5acd91c1",
+        "migration": "202611170046_reconciliar_funcoes_producao.sql",
+        "argumentos": "p_id uuid, p_cliente text, p_itens jsonb, p_endereco jsonb, p_frete_centavos bigint"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "reservar_pix_entrega_frete_teste",
+      "referencia": {
+        "corpo_normalizado_md5": "2feb38cdb4728d69ad3ae821b4e51496",
+        "migration": "202611170046_reconciliar_funcoes_producao.sql",
+        "argumentos": "p_id uuid, p_cliente text, p_itens jsonb, p_endereco jsonb, p_frete_centavos bigint"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "reservar_pix_entrega_quiosque",
+      "referencia": {
+        "corpo_normalizado_md5": "69bacb171112af95170ac382124694b2",
+        "migration": "202611170046_reconciliar_funcoes_producao.sql",
+        "argumentos": "p_id uuid, p_cliente text, p_itens jsonb, p_endereco jsonb, p_frete_centavos bigint"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "reservar_pix_entrega_teste",
+      "referencia": {
+        "corpo_normalizado_md5": "d4bea367128ab49cac52193cd75fcc08",
+        "migration": "202611170046_reconciliar_funcoes_producao.sql",
+        "argumentos": "p_id uuid, p_cliente text, p_itens jsonb, p_endereco jsonb, p_frete_centavos bigint"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "resolver_cancelamento_comanda",
+      "referencia": {
+        "corpo_normalizado_md5": "fb5d8a2d344ed3048fc5320a7911934f",
+        "migration": "202611070037_cancelar_comanda.sql",
+        "argumentos": "p_empresa uuid,p_id uuid,p_aprovar boolean,p_decisao text"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "solicitar_cancelamento_comanda",
+      "referencia": {
+        "corpo_normalizado_md5": "7b80bfd2d44cca3c56de5b6163361e7e",
+        "migration": "202611070037_cancelar_comanda.sql",
+        "argumentos": "p_empresa uuid,p_pedido uuid,p_id uuid,p_motivo text"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "ver_cardapio",
+      "referencia": {
+        "corpo_normalizado_md5": "ddc767d0df1b1e16bad0ad5b467323d0",
+        "migration": "202611150045_centro_mapa_cardapio.sql",
+        "argumentos": "p_slug text"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "vincular_novo_operador_pdv",
+      "referencia": {
+        "corpo_normalizado_md5": "187702b4e16a94d86cc1c96192c78c22",
+        "migration": "202611060025_cadastro_operador.sql",
+        "argumentos": "p_gestor uuid, p_empresa uuid, p_operador uuid, p_caixa text"
+      },
+      "corpo_igual": true
+    },
+    {
+      "rpc": "vincular_novo_usuario_kds",
+      "referencia": {
+        "corpo_normalizado_md5": "bc203e50fcb37b4a23c8d7777e21a26c",
+        "migration": "202611060030_kds_exclusivo.sql",
+        "argumentos": "p_gestor uuid,p_empresa uuid,p_operador uuid"
+      },
+      "corpo_igual": true
+    }
+  ],
+  "historico": {
+    "versoes_remotas": [
+      "202611050001",
+      "202611050002",
+      "202611050003",
+      "202611060001",
+      "202611060002",
+      "202611060003",
+      "202611060004",
+      "202611060005",
+      "202611060006",
+      "202611060007",
+      "202611060008",
+      "202611150042",
+      "202611150043",
+      "202611150044",
+      "202611150045",
+      "202611150046",
+      "202611160043",
+      "202611160044"
+    ],
+    "locais_sem_registro_remoto": [
+      "202611060009",
+      "202611060010",
+      "202611060011",
+      "202611060012",
+      "202611060013",
+      "202611060014",
+      "202611060015",
+      "202611060016",
+      "202611060017",
+      "202611060018",
+      "202611060019",
+      "202611060020",
+      "202611060021",
+      "202611060022",
+      "202611060023",
+      "202611060024",
+      "202611060025",
+      "202611060026",
+      "202611060027",
+      "202611060028",
+      "202611060029",
+      "202611060030",
+      "202611060031",
+      "202611070032",
+      "202611070033",
+      "202611070034",
+      "202611070035",
+      "202611070036",
+      "202611070037",
+      "202611070038",
+      "202611070039",
+      "202611070040",
+      "202611080041",
+      "202611160001",
+      "202611160045",
+      "202611170046"
+    ],
+    "remotas_sem_arquivo_local": []
+  }
+}

@@ -1,3 +1,4 @@
+import { painelSessao } from "../lib/painel-sessao.mjs";
 import { monitorGestor } from "../lib/monitor-gestor.mjs";
 import { atualizarDespachoRemo, despacharRemo } from "../lib/despacho-remo.mjs";
 
@@ -5,6 +6,7 @@ const uuid = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
 
 export default async function handler(req, res) {
   if (req.query?.monitor === "1") return monitorGestor(req, res);
+  if (req.query?.painel_sessao === "1") return painelSessao(req, res);
   if (req.query?.despacho_remo === "1") return despacharRemo(req, res);
   if (req.query?.status_remo === "1") return atualizarDespachoRemo(req, res);
   res.setHeader("Cache-Control", "no-store");
