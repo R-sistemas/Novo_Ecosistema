@@ -29,6 +29,7 @@
     <nav class="acoes" aria-label="Áreas da loja">
       <button id="aba-catalogo" type="button" aria-pressed="true">Catálogo</button>
       <button id="aba-equipe" type="button" aria-pressed="false">Equipe e terminais</button>
+      <button id="aba-pedidos" type="button" aria-pressed="false">Pedidos</button>
       <button id="aba-preferencias" type="button" aria-pressed="false">Preferências</button>
     </nav>
     <section id="area-catalogo" aria-label="Produtos da loja">
@@ -125,6 +126,39 @@
         <img data-previa-agradecimento alt="Arte de agradecimento" hidden>
       </aside>
     </div>
+  </section>
+  <section id="area-pedidos" hidden aria-labelledby="aba-pedidos">
+    <form class="acoes" aria-label="Filtros de pedidos">
+      <label>De <input type="date" name="inicio"></label>
+      <label>Até <input type="date" name="fim"></label>
+      <div><label for="pedidos-estado">Estado</label><select id="pedidos-estado" name="estado">
+        <option value="">Todos</option><option value="novo">Novo</option><option value="preparo">Preparo</option>
+        <option value="pronto">Pronto</option><option value="entregue">Entregue no KDS</option>
+        <option value="recusado">Recusado</option><option value="cancelado">Cancelado</option>
+      </select></div>
+      <div><label for="pedidos-origem">Origem</label><select id="pedidos-origem" name="origem">
+        <option value="">Todas</option><option value="cardapio">Cardápio</option><option value="entrega">Entrega</option>
+      </select></div>
+      <button type="submit">Aplicar filtros</button>
+    </form>
+    <label>Buscar cliente, comanda ou ID nesta página <input type="search" data-pedidos-busca disabled></label>
+    <div class="rolagem">
+      <table aria-label="Pedidos da loja"><thead><tr>
+        <th>Pedido</th><th>Data e hora</th><th>Itens</th><th>Total</th>
+        <th>Origem</th><th>Estado do pedido</th><th>Entrega REMO</th><th>Pagamento</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+    <div class="acoes">
+      <button type="button" data-pedidos-anterior disabled>Anterior</button>
+      <span role="status"></span>
+      <button type="button" data-pedidos-proxima disabled>Próxima</button>
+    </div>
+    <dialog aria-labelledby="titulo-pedido">
+      <h2 id="titulo-pedido">Detalhe do pedido</h2>
+      <dl data-pedido-dados></dl>
+      <h3>Itens</h3><ul data-pedido-itens></ul>
+      <button type="button">Fechar</button>
+    </dialog>
   </section>
   </section>
 </main>

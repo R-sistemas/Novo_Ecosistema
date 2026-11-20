@@ -1,3 +1,4 @@
+import { prepararPedidos } from "./pedidos.mjs";
 import { prepararPreferencias } from "./preferencias.mjs";
 import { prepararEquipe } from "./equipe.mjs";
 import { consultarProdutos, entrar, gravarProduto, lojasDoGestor, verificarLoja } from "../dados/catalogo.mjs";
@@ -23,18 +24,22 @@ let lojaAutorizada = false;
 let areaAtiva = "catalogo";
 const carregarEquipe = prepararEquipe(el("area-equipe"),aviso);
 const carregarPreferencias = prepararPreferencias(el("area-preferencias"),aviso);
+const pedidos = prepararPedidos(el("area-pedidos"));
 async function mostrarArea(area) {
   if (!lojaAutorizada || consultando) return;
+  pedidos.limparDetalhe();
   areaAtiva = area;
-  for (const nome of ["catalogo","equipe","preferencias"]) {
+  for (const nome of ["catalogo","equipe","preferencias","pedidos"]) {
     el("area-" + nome).hidden = nome !== area;
     el("aba-" + nome).setAttribute("aria-pressed", String(nome === area));
   }
   falha("");
   if (area === "catalogo") await carregar(cursores[indice], indice);
   else if (area === "equipe") await carregarEquipe(empresa);
-  else await carregarPreferencias(empresa);
+  else if (area === "preferencias") await carregarPreferencias(empresa);
+  else await pedidos.abrirLoja(empresa);
 }
+el("aba-pedidos").onclick = () => mostrarArea("pedidos");
 el("aba-catalogo").onclick = () => mostrarArea("catalogo");
 el("aba-equipe").onclick = () => mostrarArea("equipe");
 el("aba-preferencias").onclick = () => mostrarArea("preferencias");
@@ -50,7 +55,7 @@ function comandos(habilitado) {
   el("anterior").disabled = !habilitado || indice === 0;
   el("proxima").disabled = !habilitado || !proximo;
   el("loja").disabled = consultando;
-  for (const aba of ["catalogo","equipe","preferencias"]) el("aba-" + aba).disabled = consultando || !lojaAutorizada;
+  for (const aba of ["catalogo","equipe","preferencias","pedidos"]) el("aba-" + aba).disabled = consultando || !lojaAutorizada;
 }
 
 function renderizar(produtos) {
@@ -101,6 +106,8 @@ async function carregar(cursor, pagina) {
 async function selecionarLoja() {
   if (consultando) return;
   lojaAutorizada = false;
+  pedidos.limparDetalhe();
+  el("area-pedidos").hidden = true;
   el("area-catalogo").hidden = el("area-equipe").hidden = el("area-preferencias").hidden = true;
   empresa = el("loja").value;
   cursores = [null];
