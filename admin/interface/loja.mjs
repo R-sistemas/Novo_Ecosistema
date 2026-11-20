@@ -1,6 +1,7 @@
 import { prepararNavegacao } from "./navegacao-loja.mjs";
 import { prepararMesas } from "./mesas.mjs";
 import { prepararVisao } from "./visao.mjs";
+import { prepararEntregas } from "./entregas.mjs";
 import { prepararPedidos } from "./pedidos.mjs";
 import { prepararPreferencias } from "./preferencias.mjs";
 import { prepararEquipe } from "./equipe.mjs";
@@ -29,6 +30,7 @@ let areaAtiva = "catalogo";
 let produtosDaPagina = [];
 const carregarEquipe = prepararEquipe(el("area-equipe"),aviso);
 const carregarPreferencias = prepararPreferencias(el("area-preferencias"),aviso);
+const entregas = prepararEntregas(el("area-entregas"));
 const pedidos = prepararPedidos(el("area-pedidos"));
 const mesas = prepararMesas(el("area-mesas"));
 const visao = prepararVisao(el("area-visao"),{
@@ -38,6 +40,7 @@ const visao = prepararVisao(el("area-visao"),{
 async function mostrarArea(area,opcoes={}) {
   if (!lojaAutorizada || consultando) return;
   pedidos.limparDetalhe();
+  entregas.limpar();
   areaAtiva = area;
   navegacao.selecionar(area);
   falha("");
@@ -47,12 +50,14 @@ async function mostrarArea(area,opcoes={}) {
   }
   else if (area === "equipe") await carregarEquipe(empresa);
   else if (area === "preferencias") await carregarPreferencias(empresa);
+  else if (area === "entregas") await entregas.abrirLoja(empresa);
   else if (area === "pedidos") await pedidos.abrirLoja(empresa,opcoes.campos,opcoes.intervalo);
   else if (area === "visao") await visao(empresa);
   else await mesas(empresa);
 }
 el("aba-mesas").onclick = () => mostrarArea("mesas");
 el("aba-visao").onclick = () => mostrarArea("visao");
+el("aba-entregas").onclick = () => mostrarArea("entregas");
 el("aba-pedidos").onclick = () => mostrarArea("pedidos");
 el("aba-catalogo").onclick = () => mostrarArea("catalogo");
 el("aba-equipe").onclick = () => mostrarArea("equipe");
@@ -70,7 +75,7 @@ function comandos(habilitado) {
   el("anterior").disabled = !habilitado || indice === 0;
   el("proxima").disabled = !habilitado || !proximo;
   el("loja").disabled = consultando;
-  for (const aba of ["catalogo","equipe","preferencias","pedidos","visao","mesas"]) el("aba-" + aba).disabled = consultando || !lojaAutorizada;
+  for (const aba of ["catalogo","equipe","preferencias","pedidos","entregas","visao","mesas"]) el("aba-" + aba).disabled = consultando || !lojaAutorizada;
 }
 
 function renderizar() {
@@ -124,6 +129,8 @@ async function selecionarLoja() {
   if (consultando) return;
   lojaAutorizada = false;
   pedidos.limparDetalhe();
+  entregas.limpar();
+  el("area-entregas").hidden = true;
   el("area-mesas").hidden = el("area-pedidos").hidden = el("area-visao").hidden = true;
   el("area-catalogo").hidden = el("area-equipe").hidden = el("area-preferencias").hidden = true;
   empresa = el("loja").value;

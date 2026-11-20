@@ -93,7 +93,7 @@ body:has(.lateral-painel:not([hidden])) { padding-inline-start: var(--barra-late
 #area-preferencias form { width: 100%; min-width: 0; }
 #area-preferencias fieldset { min-width: 0; }
 #area-preferencias [data-mapa-atual] { color: #175b36; }
-#area-pedidos td:first-child button { background: #edf6ee; color: #20563a; border-color: #d7e8db; }
+:is(#area-pedidos,#area-entregas) td:first-child button { background: #edf6ee; color: #20563a; border-color: #d7e8db; }
 .pedido-drawer { position: fixed; inset: 0 0 0 auto; margin: 0; height: 100dvh; max-height: none; width: min(100vw, 34rem); border-radius: 1rem 0 0 1rem; padding: 1.5rem; overflow: auto; box-shadow: -14px 0 50px #14281b26; }
 .pedido-drawer dl { display: grid; grid-template-columns: minmax(6rem, 1fr) minmax(0, 2fr); gap: .45rem .75rem; }
 .pedido-drawer dt { font-weight: 650; }
@@ -178,7 +178,7 @@ form.filtros-painel > :is(label,div), form.filtros-painel > div > label {
   min-width: 0;
 }
 form.filtros-painel :is(input,select), .campos-equipe :is(input,select) { min-width: 0; width: 100%; }
-#area-pedidos th + th { border-inline-start: 1px solid #b7cbbf; }
+:is(#area-pedidos,#area-entregas) th + th { border-inline-start: 1px solid #b7cbbf; }
 
 /* Formulários da equipe e grupos de preferências */
 #area-equipe > .grade { grid-template-columns: repeat(2,minmax(0,1fr)); }

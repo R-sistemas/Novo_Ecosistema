@@ -1,3 +1,4 @@
+import { painelEntregas } from "../lib/painel-entregas.mjs";
 import { painelMesas } from "../lib/painel-mesas.mjs";
 import { painelVisao } from "../lib/painel-visao.mjs";
 import { painelPedidos } from "../lib/painel-pedidos.mjs";
@@ -16,6 +17,7 @@ export default async function handler(req, res) {
   if (req.query?.painel_equipe === "1") return painelEquipe(req, res);
   if (req.query?.painel_mesas === "1") return painelMesas(req, res);
   if (req.query?.painel_visao === "1") return painelVisao(req, res);
+  if (req.query?.painel_entregas === "1") return painelEntregas(req, res);
   if (req.query?.painel_pedidos === "1") return painelPedidos(req, res);
   if (req.query?.painel_preferencias === "1") return painelPreferencias(req, res);
   if (req.query?.despacho_remo === "1") return despacharRemo(req, res);

@@ -28,7 +28,7 @@
       <label class="espaco-painel">Espaço de trabalho <select id="loja" aria-label="Loja"></select></label>
       <button id="instalar-pwa" class="secondary" type="button" hidden>Instalar painel</button>
       <nav aria-label="Operação"><p>Operação</p><button id="aba-visao" type="button" aria-pressed="false">Visão geral</button>
-        <button id="aba-pedidos" type="button" aria-pressed="false">Pedidos</button><button id="aba-catalogo" type="button" aria-pressed="true">Catálogo</button>
+        <button id="aba-pedidos" type="button" aria-pressed="false">Pedidos</button><button id="aba-entregas" type="button" aria-pressed="false">Entregas</button><button id="aba-catalogo" type="button" aria-pressed="true">Catálogo</button>
         <button id="aba-mesas" type="button" aria-pressed="false">Mesas</button></nav>
       <nav aria-label="Administração"><p>Administração</p><button id="aba-equipe" type="button" aria-pressed="false">Equipe e terminais</button>
         <button id="aba-preferencias" type="button" aria-pressed="false">Preferências</button></nav>
@@ -133,7 +133,7 @@
       </aside>
     </div>
   </section>
-  <section id="area-pedidos" hidden aria-labelledby="aba-pedidos">
+  <section id="area-entregas" hidden aria-labelledby="aba-entregas"></section><section id="area-pedidos" hidden aria-labelledby="aba-pedidos">
     <div class="barra-filtros-pedidos"><form class="acoes filtros-painel" aria-label="Filtros de pedidos">
       <label>De <input type="date" name="inicio"></label>
       <label>Até <input type="date" name="fim"></label>
@@ -197,5 +197,4 @@
     </div>
   </form>
 </dialog>
-</body>
-</html>
+</body></html>

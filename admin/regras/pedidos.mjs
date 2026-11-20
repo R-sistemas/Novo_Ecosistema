@@ -14,6 +14,8 @@ const meios = {pix:"Pix",credito:"Crédito",debito:"Débito",cartao:"Cartão",di
 export const pagamento = pedido => [pagamentos[pedido.pagamento_estado],meios[pedido.pagamento_meio] || pedido.pagamento_meio]
   .filter(Boolean).join(" · ");
 export const identificacao = pedido => pedido.comanda == null ? pedido.id : "Comanda " + pedido.comanda;
+export const enderecoTexto = e => [e.logradouro,e.numero,e.complemento,e.bairro,e.cidade,e.uf,e.cep]
+  .filter(Boolean).join(", ");
 export const itemResumo = item => (item.quantidade ?? "—") + " × " + (item.nome || "Item");
 
 function diaLocal(dia,incremento) {

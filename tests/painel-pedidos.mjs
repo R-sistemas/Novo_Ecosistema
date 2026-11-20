@@ -45,6 +45,15 @@ before(async()=>{
     ($1,'{"logradouro":"Rua de teste","telefone":"11922223333","segredo":"interno"}','na_entrega',300)`,[pedido(27)]);
   await db.query(`insert into remo.solicitacoes(origem,ambiente,referencia,solicitante,destino,estado,ordem_remo,cobrar_na_entrega_centavos)
     values('r_sistemas','producao',$1,$2,'{}','entregue',$3,1300)`,[pedido(27),a,pedido(99)]);
+  await db.query(`insert into remo.solicitacoes(id,origem,ambiente,referencia,solicitante,destino,estado,criada_em,cobrar_na_entrega_centavos)
+    select ('51000000-0000-0000-0000-'||lpad(n::text,12,'0'))::uuid,'r_sistemas',
+      case when n=1 then 'sandbox' else 'producao' end,
+      ('50000000-0000-0000-0000-'||lpad(n::text,12,'0')),case when n=28 then $2::uuid else $1::uuid end,
+      '{"logradouro":"Endereço REMO","telefone":"11900000000","segredo":"privado"}',
+      'aceita','2026-11-19 16:00:00+00'::timestamptz,0
+    from generate_series(1,28) n where n<>27`,[a,b]);
+  await db.query(`update remo.solicitacoes set id='51000000-0000-0000-0000-000000000027',criada_em='2026-11-20 01:30:00+00'
+    where referencia=$1 and solicitante=$2`,[pedido(27),a]);
   await db.query(`insert into cancelamentos_comanda(id,pedido_id,solicitado_por,motivo,estado,etapa_pedido)
     values($3,$1,$2,'Teste','cancelado','novo')`,[pedido(2),ids.a,pedido(98)]);
   await db.query("insert into caixas(id,empresa_id,operador_id,abertura_centavos) values($1,$2,$3,0)",[pedido(96),a,ids.op]);
@@ -114,6 +123,57 @@ test("PII somente no detalhe da própria loja e snapshot de preço preservado",a
   await assert.rejects(como("a","select * from painel_privado.pedidos_leitura"),{code:"42501"});
 });
 
+
+const remoid = n => "51000000-0000-0000-0000-"+String(n).padStart(12,"0");
+const entregas = (token,empresa,acao="listar",dados={}) => como(token,
+  "select painel_entregas($1,$2,$3) dados",[empresa,acao,JSON.stringify(dados)]).then(r=>r.rows[0].dados);
+
+test("Entregas pagina por tempo e UUID, recorta São Paulo e exclui sandbox",async()=>{
+  const vistos=[];
+  let cursor;
+  do{
+    const pagina=await entregas("a",a,"listar",{limite:5,...(cursor&&{cursor_data:cursor.data,cursor_id:cursor.id})});
+    assert.doesNotMatch(JSON.stringify(pagina),/destino|endereco|telefone|Endereço REMO|11900000000/);
+    vistos.push(...pagina.entregas.map(x=>x.id));
+    cursor=pagina.proximo_cursor;
+  }while(cursor);
+  assert.deepEqual(vistos,Array.from({length:26},(_,i)=>remoid(27-i)));
+  const faixa={inicio:"2026-11-19T03:00:00Z",fim:"2026-11-20T03:00:00Z",estado:"entregue",busca:pedido(27)};
+  assert.deepEqual((await entregas("a",a,"listar",faixa)).entregas.map(e=>e.id),[remoid(27)]);
+  assert.equal((await entregas("a",a,"listar",{...faixa,inicio:"2026-11-20T00:00:00-03:00",fim:"2026-11-21T00:00:00-03:00"})).entregas.length,0);
+  assert.deepEqual((await entregas("b",b)).entregas.map(e=>e.id),[remoid(28)]);
+  const [{comanda}]=(await db.query("select comanda from public.pedidos_online where id=$1",[pedido(27)])).rows;
+  assert.deepEqual((await entregas("a",a,"listar",{busca:String(comanda)})).entregas.map(e=>e.id),[remoid(27)]);
+  for(const f of [{limite:51},{estado:"inexistente"},{cursor_id:remoid(22)}])await assert.rejects(entregas("a",a,"listar",f),{code:"22023"});
+  await assert.rejects(entregas("a",a,"despachar"),{code:"22023"});
+});
+
+test("Entregas restringe detalhe, endereço e snapshots ao gestor da loja",async()=>{
+  for(const [token,empresa] of [["a",b],["b",a],["op",a],[null,a]]){
+    await assert.rejects(entregas(token,empresa),{code:"42501"});
+    await assert.rejects(entregas(token,empresa,"detalhe",{id:remoid(27)}),{code:"42501"});
+  }
+  await assert.rejects(entregas("b",b,"detalhe",{id:remoid(27)}),{code:"PT404"});
+  await assert.rejects(entregas("a",a,"detalhe",{id:remoid(1)}),{code:"PT404"});
+  const d=await entregas("a",a,"detalhe",{id:remoid(27)});
+  assert.deepEqual(d.destino,{logradouro:"Rua de teste",telefone:"11922223333"});
+  assert.deepEqual(d.itens,snapshot);
+  assert.deepEqual((await entregas("a",a,"detalhe",{id:remoid(26)})).destino,{logradouro:"Endereço REMO",telefone:"11900000000"});
+});
+
+test("Entregas mantém status da Function e do rewrite e aceita somente GET",async t=>{
+  simular(t);
+  for(const path of ["/api/painel-entregas?","/api/cadastrar-operador?painel_entregas=1&"]){
+    const rota=empresa=>path+"empresa_id="+empresa;
+    for (const [token,empresa,status] of [["a",a,200],["a",b,403],["b",a,403],["op",a,403],[null,a,401],["ruim",a,401]]){
+      assert.equal((await api(rota(empresa),token)).code,status);
+    }
+    assert.equal((await api(rota(a),"a","POST")).code,405);
+    assert.equal((await api(rota(a)+"&entrega_id="+remoid(28),"a")).code,404);
+    assert.equal((await api(rota(a)+"&entrega_id="+remoid(27),"a")).body.destino.logradouro,"Rua de teste");
+  }
+});
+
 function simular(t){
   process.env.SUPABASE_URL="https://banco.example";
   process.env.SUPABASE_ANON_KEY="fixture";
@@ -126,6 +186,7 @@ function simular(t){
       const rpc=new URL(u).pathname.split("/").at(-1);
       if(rpc==="painel_contexto_sessao")return Response.json((await como(token,"select painel_contexto_sessao($1) dados",[p.p_empresa_id])).rows[0].dados);
       if(rpc==="painel_listar_produtos")return Response.json({produtos:[]});
+      if(rpc==="painel_entregas")return Response.json(await entregas(token,p.p_empresa,p.p_acao,p.p_dados));
       if(rpc==="painel_detalhe_pedido")return Response.json(await detalhe(token,p.p_empresa,p.p_pedido));
       return Response.json(await lista(token,p.p_empresa,[p.p_inicio,p.p_fim,p.p_estado,p.p_origem,p.p_cursor_data,p.p_cursor_id,p.p_limite]));
     }catch(e){
@@ -231,5 +292,48 @@ test("Chrome abre filtros, paginação e detalhe pela entrada do painel",{
     await dialogo.waitFor();
     await pagina.keyboard.press("Escape");
     assert.equal(await area.locator("[data-pedido-dados]").textContent(),"");
+
+    const nav=pagina.locator("#lateral-painel nav button");
+    assert.deepEqual(await nav.evaluateAll(ns=>ns.map(n=>n.id)),["aba-visao","aba-pedidos","aba-entregas","aba-catalogo","aba-mesas","aba-equipe","aba-preferencias"]);
+    await pagina.getByRole("button",{name:"Entregas",exact:true}).click();
+    const areaEnt=pagina.locator("#area-entregas"), statusEnt=areaEnt.getByRole("status");
+    await statusEnt.getByText("Página 1",{exact:true}).waitFor();
+    await areaEnt.getByRole("button",{name:"Próxima",exact:true}).click();
+    await statusEnt.getByText("Página 2",{exact:true}).waitFor();
+    await areaEnt.getByRole("button",{name:"Anterior",exact:true}).click();
+    await statusEnt.getByText("Página 1",{exact:true}).waitFor();
+    await areaEnt.locator('select[name="estado"]').selectOption("entregue");
+    await areaEnt.getByLabel("De",{exact:true}).fill("2026-11-19");
+    await areaEnt.getByLabel("Até",{exact:true}).fill("2026-11-19");
+    await areaEnt.getByLabel("Comanda ou ID do pedido").fill(pedido(27));
+    const respostaEnt=pagina.waitForResponse(r=>r.url().includes("/api/painel-entregas?")&&r.url().includes("estado=entregue"));
+    await areaEnt.getByRole("button",{name:"Aplicar filtros"}).click();
+    const req=await respostaEnt;
+    assert.equal(req.status(),200);
+    assert.equal(new URL(req.url()).searchParams.get("fim"),"2026-11-20T03:00:00.000Z");
+    await areaEnt.locator("tbody tr").first().waitFor();
+    assert.equal(await areaEnt.locator("tbody tr").count(),1);
+    assert.doesNotMatch(await areaEnt.locator("tbody").innerText(),/Rua de teste|11922223333/);
+    const captura=process.env.PAINEL_CAPTURAS;
+    const guardar=nome=>captura&&pagina.screenshot({path:resolve(captura,nome+".png"),animations:"disabled"});
+    await guardar("entregas-desktop");
+    await areaEnt.locator("tbody button").click();
+    const drawer=areaEnt.getByRole("dialog");
+    await drawer.getByText("Rua de teste",{exact:true}).waitFor();
+    await drawer.getByText("11922223333",{exact:true}).waitFor();
+    await drawer.getByText(/Produto histórico/).waitFor();
+    await guardar("entregas-detalhe-desktop");
+    await pagina.keyboard.press("Escape");
+    assert.equal(await areaEnt.locator("dialog dl").textContent(),"");
+    await pagina.setViewportSize({width:390,height:844});
+    await pagina.getByRole("button",{name:"Abrir menu"}).click();
+    assert.equal(await pagina.getByRole("button",{name:"Entregas",exact:true}).isVisible(),true);
+    await guardar("entregas-sidebar-mobile");
+    await pagina.getByRole("button",{name:"Entregas",exact:true}).click();
+    await statusEnt.getByText("Página 1",{exact:true}).waitFor();
+    await guardar("entregas-mobile");
+    await areaEnt.locator("tbody button").first().click();
+    await drawer.getByText("Rua de teste",{exact:true}).waitFor();
+    await guardar("entregas-detalhe-mobile");
   }finally{servidor.close();await navegador.close();}
 });

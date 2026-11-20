@@ -1,6 +1,6 @@
 import { ico } from "./icones-v1.mjs";
 
-const areas = {visao:["Visão geral","grid"],pedidos:["Pedidos","bag"],catalogo:["Catálogo","shopping"],
+const areas = {visao:["Visão geral","grid"],pedidos:["Pedidos","bag"],entregas:["Entregas","bag"],catalogo:["Catálogo","shopping"],
   mesas:["Mesas","box"],equipe:["Equipe e terminais","users"],preferencias:["Preferências","palette"]};
 
 export function prepararNavegacao() {

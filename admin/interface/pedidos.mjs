@@ -1,5 +1,5 @@
 import { listarPedidos, detalharPedido } from "../dados/pedidos.mjs";
-import { buscarNaPagina, estadoLogistico, estados, filtrosPedidos, horario, identificacao,
+import { buscarNaPagina, enderecoTexto, estadoLogistico, estados, filtrosPedidos, horario, identificacao,
   itemResumo, origens, pagamento, valor } from "../regras/pedidos.mjs";
 
 const mensagens = {
@@ -20,7 +20,7 @@ function mostrarDetalhe(dialogo,pedido) {
   };
   if (pedido.endereco) {
     const e = pedido.endereco;
-    campos.Endereço = [e.logradouro,e.numero,e.complemento,e.bairro,e.cidade,e.uf,e.cep].filter(Boolean).join(", ");
+    campos.Endereço = enderecoTexto(e);
     campos.Telefone = e.telefone;
   }
   texto.replaceChildren();
