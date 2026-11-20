@@ -27,13 +27,16 @@
       <label>Loja <select id="loja"></select></label>
     </div>
     <nav class="acoes" aria-label="Áreas da loja">
+      <button id="aba-visao" type="button" aria-pressed="false">Visão geral</button>
       <button id="aba-catalogo" type="button" aria-pressed="true">Catálogo</button>
       <button id="aba-equipe" type="button" aria-pressed="false">Equipe e terminais</button>
       <button id="aba-pedidos" type="button" aria-pressed="false">Pedidos</button>
       <button id="aba-preferencias" type="button" aria-pressed="false">Preferências</button>
     </nav>
+    <section id="area-visao" hidden aria-labelledby="aba-visao"></section>
     <section id="area-catalogo" aria-label="Produtos da loja">
     <div class="acoes"><button id="novo" type="button" disabled>Novo produto</button></div>
+    <label><input type="checkbox" id="catalogo-ativos"> Somente ativos nesta página</label>
     <div class="rolagem" tabindex="0" aria-label="Tabela de produtos">
       <table>
         <thead><tr><th>Produto</th><th>Código</th><th>Categoria</th><th>Preço</th>

@@ -1,3 +1,4 @@
+import { prepararVisao } from "./visao.mjs";
 import { prepararPedidos } from "./pedidos.mjs";
 import { prepararPreferencias } from "./preferencias.mjs";
 import { prepararEquipe } from "./equipe.mjs";
@@ -22,23 +23,33 @@ let proximo;
 let consultando = false;
 let lojaAutorizada = false;
 let areaAtiva = "catalogo";
+let produtosDaPagina = [];
 const carregarEquipe = prepararEquipe(el("area-equipe"),aviso);
 const carregarPreferencias = prepararPreferencias(el("area-preferencias"),aviso);
 const pedidos = prepararPedidos(el("area-pedidos"));
-async function mostrarArea(area) {
+const visao = prepararVisao(el("area-visao"),{
+  pedidos:(campos,intervalo)=>mostrarArea("pedidos",{campos,intervalo}),
+  catalogo:()=>mostrarArea("catalogo",{ativos:true})
+});
+async function mostrarArea(area,opcoes={}) {
   if (!lojaAutorizada || consultando) return;
   pedidos.limparDetalhe();
   areaAtiva = area;
-  for (const nome of ["catalogo","equipe","preferencias","pedidos"]) {
+  for (const nome of ["catalogo","equipe","preferencias","pedidos","visao"]) {
     el("area-" + nome).hidden = nome !== area;
     el("aba-" + nome).setAttribute("aria-pressed", String(nome === area));
   }
   falha("");
-  if (area === "catalogo") await carregar(cursores[indice], indice);
+  if (area === "catalogo") {
+    el("catalogo-ativos").checked = opcoes.ativos === true;
+    await carregar(opcoes.ativos ? null : cursores[indice],opcoes.ativos ? 0 : indice);
+  }
   else if (area === "equipe") await carregarEquipe(empresa);
   else if (area === "preferencias") await carregarPreferencias(empresa);
-  else await pedidos.abrirLoja(empresa);
+  else if (area === "pedidos") await pedidos.abrirLoja(empresa,opcoes.campos,opcoes.intervalo);
+  else await visao(empresa);
 }
+el("aba-visao").onclick = () => mostrarArea("visao");
 el("aba-pedidos").onclick = () => mostrarArea("pedidos");
 el("aba-catalogo").onclick = () => mostrarArea("catalogo");
 el("aba-equipe").onclick = () => mostrarArea("equipe");
@@ -52,13 +63,15 @@ const editar = prepararEditor(el("editor"), async (id, dados) => {
 
 function comandos(habilitado) {
   el("novo").disabled = !habilitado;
+  el("catalogo-ativos").disabled = !habilitado;
   el("anterior").disabled = !habilitado || indice === 0;
   el("proxima").disabled = !habilitado || !proximo;
   el("loja").disabled = consultando;
-  for (const aba of ["catalogo","equipe","preferencias","pedidos"]) el("aba-" + aba).disabled = consultando || !lojaAutorizada;
+  for (const aba of ["catalogo","equipe","preferencias","pedidos","visao"]) el("aba-" + aba).disabled = consultando || !lojaAutorizada;
 }
 
-function renderizar(produtos) {
+function renderizar() {
+  const produtos = produtosDaPagina.filter(p=>!el("catalogo-ativos").checked || p.ativo);
   const linhas = produtos.map(produto => {
     const tr = document.createElement("tr");
     const valores = [
@@ -93,7 +106,8 @@ async function carregar(cursor, pagina) {
     cursores[indice] = cursor;
     proximo = dados.proximo_cursor;
     el("pagina").textContent = "Página " + (indice + 1);
-    renderizar(dados.produtos);
+    produtosDaPagina = dados.produtos;
+    renderizar();
     habilitado = true;
   } catch (erro) {
     falha(mensagem(erro));
@@ -107,7 +121,7 @@ async function selecionarLoja() {
   if (consultando) return;
   lojaAutorizada = false;
   pedidos.limparDetalhe();
-  el("area-pedidos").hidden = true;
+  el("area-pedidos").hidden = el("area-visao").hidden = true;
   el("area-catalogo").hidden = el("area-equipe").hidden = el("area-preferencias").hidden = true;
   empresa = el("loja").value;
   cursores = [null];
@@ -160,6 +174,7 @@ el("login").addEventListener("submit", async evento => {
 });
 
 el("loja").addEventListener("change", selecionarLoja);
+el("catalogo-ativos").onchange = renderizar;
 el("novo").onclick = () => editar();
 el("anterior").onclick = () => carregar(cursores[indice - 1], indice - 1);
 el("proxima").onclick = () => carregar(proximo, indice + 1);

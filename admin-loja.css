@@ -30,6 +30,11 @@ dialog::backdrop { background: #132c2766; }
 .grade label { min-width: 0; }
 fieldset { display: grid; gap: .35rem; border: 1px solid #cfded6; border-radius: .55rem; }
 
+.visao-grade { grid-template-columns: repeat(auto-fit,minmax(min(100%,17rem),1fr)); }
+.visao-grade .cartao { width: 100%; }
+.visao-grade dl { display: grid; grid-template-columns: 1fr auto; gap: .5rem; }
+.visao-grade dd { margin: 0; text-align: right; }
+
 .lista-equipe { padding-left: 1.1rem; }
 .lista-equipe li { margin-bottom: .65rem; overflow-wrap: anywhere; }
 .lista-equipe li button { margin-inline-start: .55rem; }

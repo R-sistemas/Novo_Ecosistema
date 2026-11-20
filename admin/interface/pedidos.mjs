@@ -133,11 +133,12 @@ export function prepararPedidos(area) {
   proxima.onclick = () => carregar(pagina+1,proximo);
   busca.oninput = renderizar;
 
-  function abrirLoja(loja) {
+  function abrirLoja(loja,campos={},intervalo={}) {
     empresa = loja;
     form.reset();
     busca.value = "";
-    filtros = {};
+    for (const [chave,valor] of Object.entries(campos)) form.elements[chave].value = valor;
+    filtros = intervalo;
     cursores = [];
     return carregar(0,null);
   }
