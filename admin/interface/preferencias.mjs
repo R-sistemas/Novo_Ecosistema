@@ -1,3 +1,4 @@
+import { coordenadasDoMapa, linkDoCentro } from "../regras/link-mapa.mjs";
 import { consultarPreferencias, consultarVitrine, salvarPreferencias } from "../dados/preferencias.mjs";
 import { alteracoesPreferencias, imagens, validarPreferencias } from "../regras/preferencias.mjs";
 import { otimizarImagemAparencia } from "../../imagens-cardapio.mjs";
@@ -10,18 +11,16 @@ export function prepararPreferencias(area,avisar) {
   const erro = area.querySelector("[role=alert]");
   const painel = area.querySelector("[data-previa]");
   const metodos = area.querySelector("[data-metodos]");
+  const mapaAtual = area.querySelector("[data-mapa-atual]");
   let empresa, original, menu, arte, ocupada = false, versao = 0;
   const bloquear = ativo => {
     ocupada = ativo;
     for (const grupo of grupos) grupo.disabled = ativo;
     form.querySelector('[type="submit"]').disabled = ativo;
   };
-  const numero = input => input.value === "" && !input.validity.badInput ? null : input.valueAsNumber;
   const rascunho = () => ({
     nome:original.nome, ...arte,
     cardapio_cor:campos.cardapio_cor.value, cardapio_fundo:campos.cardapio_fundo.value,
-    mapa_centro_latitude:numero(campos.mapa_centro_latitude),
-    mapa_centro_longitude:numero(campos.mapa_centro_longitude),
     pagamento_na_entrega:campos.pagamento_na_entrega.checked
   });
   const previa = () => {
@@ -33,8 +32,13 @@ export function prepararPreferencias(area,avisar) {
 
   function preencher(config) {
     original = config;
-    for (const campo of ["cardapio_cor","cardapio_fundo","mapa_centro_latitude","mapa_centro_longitude"])
+    for (const campo of ["cardapio_cor","cardapio_fundo"])
       campos[campo].value = config[campo] ?? "";
+    const link = linkDoCentro(config);
+    campos.mapa_link.value = link;
+    mapaAtual.hidden = !link;
+    if (link) mapaAtual.href = link;
+    else mapaAtual.removeAttribute("href");
     campos.pagamento_na_entrega.checked = config.pagamento_na_entrega;
     arte = Object.fromEntries(Object.keys(imagens).map(c => [c,config[c]]));
     metodos.textContent = !config.metodos ? "Métodos públicos indisponíveis sem link de cardápio."
@@ -81,7 +85,7 @@ export function prepararPreferencias(area,avisar) {
     erro.textContent = "";
     bloquear(true);
     try {
-      const dados = alteracoesPreferencias(original,rascunho());
+      const dados = alteracoesPreferencias(original,{...rascunho(),...coordenadasDoMapa(campos.mapa_link.value)});
       if (!Object.keys(dados).length) return;
       const confirmada = await salvarPreferencias(empresa,dados);
       if (atual !== versao) return;
@@ -107,6 +111,8 @@ export function prepararPreferencias(area,avisar) {
     erro.textContent = "";
     painel.hidden = true;
     metodos.textContent = "";
+    mapaAtual.hidden = true;
+    mapaAtual.removeAttribute("href");
     form.reset();
     bloquear(true);
     try {

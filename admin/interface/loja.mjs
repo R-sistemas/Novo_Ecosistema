@@ -1,3 +1,4 @@
+import { prepararNavegacao } from "./navegacao-loja.mjs";
 import { prepararMesas } from "./mesas.mjs";
 import { prepararVisao } from "./visao.mjs";
 import { prepararPedidos } from "./pedidos.mjs";
@@ -8,6 +9,7 @@ import { prepararEditor } from "./formulario-produto.mjs";
 import { paraReais } from "../../pdv/regras/moeda.mjs";
 
 const el = id => document.getElementById(id);
+const navegacao = prepararNavegacao();
 const dinheiro = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const mensagens = {
   400: "Confira os dados do produto.", 401: "Sua sessão terminou. Entre novamente.",
@@ -37,10 +39,7 @@ async function mostrarArea(area,opcoes={}) {
   if (!lojaAutorizada || consultando) return;
   pedidos.limparDetalhe();
   areaAtiva = area;
-  for (const nome of ["catalogo","equipe","preferencias","pedidos","visao","mesas"]) {
-    el("area-" + nome).hidden = nome !== area;
-    el("aba-" + nome).setAttribute("aria-pressed", String(nome === area));
-  }
+  navegacao.selecionar(area);
   falha("");
   if (area === "catalogo") {
     el("catalogo-ativos").checked = opcoes.ativos === true;
@@ -168,6 +167,7 @@ el("login").addEventListener("submit", async evento => {
     if (solicitada) el("loja").value = solicitada;
     form.hidden = true;
     el("catalogo").hidden = false;
+    navegacao.revelar();
     await selecionarLoja();
   } catch (erro) {
     falha(erro.status === 400 || erro.status === 401 ? "Confira o e-mail e a senha." : mensagem(erro));

@@ -225,14 +225,14 @@ test("Chrome sobrepõe rascunho à vitrine real do ensaio e abre o cardápio atu
     await pagina.getByLabel("Logo",{exact:true}).setInputFiles({name:"logo.png",mimeType:"image/png",buffer:Buffer.from(png)});
     await pagina.waitForFunction(()=>document.querySelector("[data-previa-logo]").naturalWidth===2);
     assert.match(await previa.locator("[data-previa-logo]").getAttribute("src"),/^data:image\/webp;base64,/);
-    await pagina.getByLabel("Latitude").fill("-16.2");
-    await pagina.getByLabel("Longitude").fill("-48.2");
+    await pagina.getByLabel("Link do Google Maps").fill("https://www.google.com/maps?q=-16.2,-48.2");
     await pagina.getByLabel("Habilitar pagamento na entrega").check();
     assert.equal(await previa.evaluate(node=>node.style.getPropertyValue("--verde")),"#226655");
     assert.notEqual((await publicacao("a")).cor,"#226655");
     await pagina.getByRole("button",{name:"Salvar preferências"}).click();
     await pagina.getByText("Preferências salvas.",{exact:true}).waitFor();
     assert.equal(await aceita("a"),true);
+    assert.deepEqual((await publicacao("a")).mapa_centro,{latitude:-16.2,longitude:-48.2});
     await pagina.goto(base+"/cardapio.html?loja=a");
     await pagina.locator("#loja").getByText("Loja A",{exact:true}).waitFor();
     assert.equal(await pagina.locator("html").evaluate(e=>e.style.getPropertyValue("--verde")),"#226655");

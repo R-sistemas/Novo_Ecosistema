@@ -59,3 +59,61 @@ button[aria-pressed="true"] { box-shadow: inset 0 -3px 0 #a8e0cc; }
   [data-mesas-qr][open] { position: absolute; inset: 0 auto auto 0; margin: 0; border: 0; }
   [data-mesas-qr][open]::backdrop { background: none; }
 }
+
+/* Estrutura visual do painel da loja */
+:root { --barra-lateral: 258px; --painel-escuro: #101c18; --painel-borda: #e6ebe7; --painel-sombra: 0 14px 35px #14281b0b; background: #f6f8f6; }
+.barra { position: sticky; top: 0; z-index: 10; min-height: 70px; padding: 0 2rem; background: white; color: #364941; border-bottom: 1px solid var(--painel-borda); }
+.barra a { color: #415e50; }
+.caminho { display: flex; align-items: center; gap: .7rem; min-width: 0; font-size: .86rem; }
+.caminho span { color: #73867c; }
+.barra button { background: white; color: #294739; border-color: #dce5df; }
+#menu-painel { display: none; }
+main { max-width: 100rem; padding: 1.75rem 2rem 3rem; }
+h1 { letter-spacing: -.035em; color: #14271b; }
+h2 { font-size: 1.05rem; }
+.rolagem, .cartao, dialog { border-color: var(--painel-borda); }
+.rolagem, .cartao { box-shadow: var(--painel-sombra); }
+body:has(.lateral-painel:not([hidden])) { padding-inline-start: var(--barra-lateral); }
+.lateral-painel { position: fixed; inset: 0 auto 0 0; z-index: 20; width: var(--barra-lateral); overflow: auto; padding: 1.35rem .9rem; background: var(--painel-escuro); color: #d1dfd5; }
+.marca-painel { display: flex; gap: .75rem; align-items: center; margin: .2rem .55rem 1.35rem; text-decoration: none; color: white; font-size: 1.07rem; font-weight: 750; }
+.marca-painel img { border-radius: .7rem; object-fit: contain; background: white; }
+.marca-painel small { display: block; color: #a2b7a9; font-size: .72rem; font-weight: 550; }
+.espaco-painel { display: grid; gap: .4rem; margin: 0 .45rem 1.15rem; padding: .7rem; border: 1px solid #31463a; border-radius: .85rem; font-size: .76rem; color: #b1c7b8; }
+.espaco-painel select { width: 100%; background: #21362a; color: white; border-color: #4a6352; }
+.lateral-painel nav { display: grid; gap: .2rem; margin-bottom: .85rem; }
+.lateral-painel nav p { margin: .5rem .85rem; font-size: .68rem; color: #9db4a5; font-weight: 750; text-transform: uppercase; letter-spacing: .1em; }
+.lateral-painel nav button { display: flex; align-items: center; gap: .7rem; text-align: start; padding: .62rem .8rem; border: 0; border-radius: .65rem; background: transparent; color: #c1d2c7; font-size: .88rem; }
+.lateral-painel svg { flex: none; }
+.lateral-painel nav button:hover { color: white; background: #23382a; }
+.lateral-painel nav button[aria-pressed="true"] { background: #1d4430; color: #fff; box-shadow: inset 3px 0 #45d576; }
+.fundo-menu { position: fixed; inset: 0; z-index: 19; background: #101c1866; }
+#area-catalogo > .acoes:first-child { margin-top: 0; }
+#area-equipe .grade > section, #area-preferencias form, #area-catalogo { padding: 1rem; background: #fff; border: 1px solid var(--painel-borda); border-radius: 1rem; box-shadow: var(--painel-sombra); }
+#area-catalogo .rolagem { box-shadow: none; }
+#area-preferencias form { width: 100%; min-width: 0; }
+#area-preferencias fieldset { min-width: 0; }
+#area-preferencias [data-mapa-atual] { color: #175b36; }
+#area-pedidos td:first-child button { background: #edf6ee; color: #20563a; border-color: #d7e8db; }
+.pedido-drawer { position: fixed; inset: 0 0 0 auto; margin: 0; height: 100dvh; max-height: none; width: min(100vw, 34rem); border-radius: 1rem 0 0 1rem; padding: 1.5rem; overflow: auto; box-shadow: -14px 0 50px #14281b26; }
+.pedido-drawer dl { display: grid; grid-template-columns: minmax(6rem, 1fr) minmax(0, 2fr); gap: .45rem .75rem; }
+.pedido-drawer dt { font-weight: 650; }
+.pedido-drawer dd { margin: 0; overflow-wrap: anywhere; }
+.visao-grade { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.visao-grade .metricas-painel { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: .8rem; margin: 0 0 .9rem; }
+.visao-grade .metricas-painel > div { min-width: 0; border: 1px solid var(--painel-borda); border-radius: 1rem; background: #fff; padding: 1rem; box-shadow: var(--painel-sombra); }
+.metricas-painel dt { display: flex; justify-content: space-between; align-items: start; gap: .45rem; min-height: 2.6rem; font-size: .8rem; color: #4d6656; }
+.metricas-painel dt svg { flex: none; color: #167046; background: #eaf8ed; width: 32px; height: 32px; padding: 7px; border-radius: .55rem; }
+.visao-grade .metricas-painel dd { text-align: left; font-size: clamp(1rem,2vw,1.6rem); letter-spacing: -.045em; font-weight: 750; }
+@media(max-width: 1080px) { .visao-grade .metricas-painel { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media(max-width: 850px) {
+  body:has(.lateral-painel:not([hidden])) { padding-inline-start: 0; }
+  #menu-painel { display: inline-flex; align-items: center; }
+  .barra { padding-inline: .9rem; min-height: 60px; }
+  main { padding: 1.15rem .85rem 2rem; }
+  .lateral-painel { transform: translateX(-100%); transition: transform .2s ease; }
+  .lateral-painel.aberta { transform: translateX(0); }
+  .pedido-drawer { border-radius: 0; }
+  .visao-grade { grid-template-columns: minmax(0,1fr); }
+}
+@media(prefers-reduced-motion: reduce) { .lateral-painel { transition: none; } }
+@media print { body:has([data-mesas-qr][open]) { padding-inline-start: 0; } }

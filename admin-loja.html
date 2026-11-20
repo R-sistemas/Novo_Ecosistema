@@ -4,17 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="supabase-key" content="sb_publishable_s0oowaHaCZkMUZgNTo6upw_zljF76Na">
-<title>Catálogo | R Sistemas</title>
+<title>Painel da loja | R Sistemas</title>
 <link rel="stylesheet" href="/admin-loja.css">
 <script type="module" src="/admin-loja.mjs"></script>
 </head>
 <body>
-<header class="barra">
-  <a href="/">R Sistemas</a>
-  <button id="sair" type="button">Sair</button>
-</header>
+<header class="barra"><div class="caminho"><button id="menu-painel" type="button" aria-label="Abrir menu" aria-controls="lateral-painel" aria-expanded="false" hidden>Menu</button>
+  <a href="/">R Sistemas</a><span aria-hidden="true">/</span><strong id="breadcrumb">Administração</strong></div><button id="sair" type="button">Sair</button></header>
 <main>
-  <h1>Catálogo de produtos</h1>
+  <h1 id="titulo-area">Administração da loja</h1>
   <p id="erro" class="erro" role="alert"></p>
   <p id="status" role="status"></p>
   <form id="login" class="cartao">
@@ -23,17 +21,16 @@
     <button type="submit">Entrar</button>
   </form>
   <section id="catalogo" hidden aria-label="Administração da loja">
-    <div class="acoes">
-      <label>Loja <select id="loja"></select></label>
-    </div>
-    <nav class="acoes" aria-label="Áreas da loja">
-      <button id="aba-mesas" type="button" aria-pressed="false">Mesas</button>
-      <button id="aba-visao" type="button" aria-pressed="false">Visão geral</button>
-      <button id="aba-catalogo" type="button" aria-pressed="true">Catálogo</button>
-      <button id="aba-equipe" type="button" aria-pressed="false">Equipe e terminais</button>
-      <button id="aba-pedidos" type="button" aria-pressed="false">Pedidos</button>
-      <button id="aba-preferencias" type="button" aria-pressed="false">Preferências</button>
-    </nav>
+    <div id="fundo-menu" class="fundo-menu" hidden></div>
+    <aside id="lateral-painel" class="lateral-painel" aria-label="Menu principal" hidden>
+      <a class="marca-painel" href="/"><img src="/icone-pwa-192.png" alt="" width="44" height="44"><span>R Sistemas<small>Painel da loja</small></span></a>
+      <label class="espaco-painel">Espaço de trabalho <select id="loja" aria-label="Loja"></select></label>
+      <nav aria-label="Operação"><p>Operação</p><button id="aba-visao" type="button" aria-pressed="false">Visão geral</button>
+        <button id="aba-pedidos" type="button" aria-pressed="false">Pedidos</button><button id="aba-catalogo" type="button" aria-pressed="true">Catálogo</button>
+        <button id="aba-mesas" type="button" aria-pressed="false">Mesas</button></nav>
+      <nav aria-label="Administração"><p>Administração</p><button id="aba-equipe" type="button" aria-pressed="false">Equipe e terminais</button>
+        <button id="aba-preferencias" type="button" aria-pressed="false">Preferências</button></nav>
+    </aside>
     <section id="area-mesas" hidden aria-labelledby="aba-mesas"></section>
     <section id="area-visao" hidden aria-labelledby="aba-visao"></section>
     <section id="area-catalogo" aria-label="Produtos da loja">
@@ -112,8 +109,9 @@
         </fieldset>
         <fieldset disabled>
           <legend>Centro do mapa</legend>
-          <label>Latitude <input name="mapa_centro_latitude" type="number" min="-90" max="90" step="0.000001" inputmode="decimal"></label>
-          <label>Longitude <input name="mapa_centro_longitude" type="number" min="-180" max="180" step="0.000001" inputmode="decimal"></label>
+          <label>Link do Google Maps <input name="mapa_link" type="text" inputmode="url" aria-describedby="mapa-ajuda"></label>
+          <p id="mapa-ajuda" class="ajuda">Abra o local no Maps e copie o endereço completo da barra do navegador. Deixe em branco para remover o centro.</p>
+          <a data-mapa-atual href="#" target="_blank" rel="noopener noreferrer" hidden>Ver local atual no Google Maps</a>
           <p class="ajuda">Use graus decimais. Deixe os dois campos vazios para usar o centro padrão.</p>
         </fieldset>
         <fieldset disabled>
@@ -158,7 +156,7 @@
       <span role="status"></span>
       <button type="button" data-pedidos-proxima disabled>Próxima</button>
     </div>
-    <dialog aria-labelledby="titulo-pedido">
+    <dialog class="pedido-drawer" aria-labelledby="titulo-pedido">
       <h2 id="titulo-pedido">Detalhe do pedido</h2>
       <dl data-pedido-dados></dl>
       <h3>Itens</h3><ul data-pedido-itens></ul>

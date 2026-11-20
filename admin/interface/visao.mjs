@@ -1,3 +1,4 @@
+import { ico } from "./icones-v1.mjs";
 import { consultarVisao } from "../dados/visao.mjs";
 import { estados, valor } from "../regras/pedidos.mjs";
 import { meiaNoiteSP, periodo } from "../regras/periodo.mjs";
@@ -31,7 +32,7 @@ export function prepararVisao(area,{pedidos,catalogo}) {
       <div class="acoes"><button type="button" data-visao-pedidos>Ver pedidos do período</button>
       <button type="button" data-visao-catalogo>Ver produtos ativos nesta página</button></div>
       <div class="grade visao-grade">
-        <section class="cartao"><h2>Indicadores</h2><dl data-visao-totais></dl></section>
+        <dl class="metricas-painel" data-visao-totais aria-label="Indicadores"></dl>
         <section class="cartao"><h2>Pedidos por estado</h2><dl data-visao-estados></dl></section>
         <section class="cartao"><h2>Receita confirmada por canal</h2><dl data-visao-canais></dl></section>
       </div>
@@ -60,10 +61,17 @@ export function prepararVisao(area,{pedidos,catalogo}) {
       status.textContent="Consultando indicadores…";
       const r=await consultarVisao(empresa,faixa);
       if (atual!==consulta) return;
-      linhas(achar("[data-visao-totais]"),[
-        ["Pedidos",r.pedidos_total],["Receita bruta confirmada",valor(r.receita_centavos)],
-        ["Aguardando confirmação online",r.pendentes_online],["Ticket médio por recebimento",valor(r.ticket_medio_centavos)]
-      ]);
+      achar("[data-visao-totais]").replaceChildren(...[
+        ["Pedidos",r.pedidos_total,"bag"],["Receita bruta confirmada",valor(r.receita_centavos),"wallet"],
+        ["Aguardando confirmação online",r.pendentes_online,"clock"],["Ticket médio por recebimento",valor(r.ticket_medio_centavos),"activity"]
+      ].map(([rotulo,valor,icone])=>{
+        const card=document.createElement("div"), nome=document.createElement("dt"), total=document.createElement("dd");
+        nome.textContent=rotulo;
+        nome.insertAdjacentHTML("beforeend",ico(icone));
+        total.textContent=valor;
+        card.append(nome,total);
+        return card;
+      }));
       linhas(achar("[data-visao-estados]"),Object.entries(estados).map(([k,nome])=>[k==="entregue"?"Entregue":nome,r.por_estado[k]]));
       linhas(achar("[data-visao-canais]"),Object.entries(canais).map(([k,nome])=>[nome,valor(r.por_canal[k])]));
       achar("tbody").replaceChildren(...r.serie.map(d=>{
