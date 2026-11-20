@@ -1,3 +1,4 @@
+import { linkDaMesa } from "../../cardapio/regras/link-mesa.mjs";
 import {
   cadastrarOperador, configurarMesa, configurarNomePdv, configurarEdicaoKds, configurarTerminal, configurarPagamentoNaEntrega,
 } from "../dados/administracao.mjs";
@@ -11,9 +12,7 @@ export function configurarAdministracao(ctx) {
         p_empresa: el("empresa").value,
         p_numero: el("numero-mesa").valueAsNumber,
       });
-      const link = new URL("./cardapio.html", location.href);
-      link.search = new URLSearchParams(mesa);
-      el("link-mesa").value = link.href;
+      el("link-mesa").value = linkDaMesa(mesa,location.href);
       el("resultado-mesa").hidden = false;
       return "Link da mesa disponível.";
     });
