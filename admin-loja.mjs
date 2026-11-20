@@ -1,2 +1,2 @@
-import "./admin/interface/registrar-sw.mjs";
+import "./instalar-pwa.mjs";
 import "./admin/interface/loja.mjs";

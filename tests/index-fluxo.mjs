@@ -37,8 +37,10 @@ try {
   }));
   await dom.goto(base + "/");
   await dom.waitForFunction(() => window.pdvCarregado && !document.getElementById("login").inert);
+  await dom.locator("#instalar-pwa:visible").waitFor();
   const atual = await dom.evaluate(estrutura);
   await dom.setContent(original.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, ""));
+  await dom.locator("#instalar-pwa").evaluate(botao => { botao.hidden = false; });
   assert.deepEqual(atual, await dom.evaluate(estrutura));
   console.log("PASS DOM completo, atributos, textos e hierarquia iguais à base");
   testes++;
