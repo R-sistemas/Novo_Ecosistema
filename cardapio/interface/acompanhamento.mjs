@@ -1,4 +1,5 @@
 import { consultarPedido } from "../dados/pedidos.mjs";
+import { exibirAvisosPedido } from "./avisos-pedido.mjs";
 import { resumirPedido } from "../regras/acompanhamento.mjs";
 const el = id => document.getElementById(id);
 
@@ -24,6 +25,7 @@ export function configurarAcompanhamento(ctx) {
     ctx.aguardandoPix = resumo.aguardandoPix;
     ctx.acompanhamentoAtivo = resumo.acompanhamentoAtivo;
     el("mensagem").textContent = resumo.mensagem;
+    exibirAvisosPedido(el("mensagem"),pedido.avisos ?? []);
     if (!ctx.aguardandoPix) el("pagamento-pix").hidden = true;
     const { pixConfirmado } = resumo;
     const painelConfirmacao = el("pix-confirmado");

@@ -238,3 +238,8 @@ form.filtros-painel :is(input,select), .campos-equipe :is(input,select) { min-wi
   #area-equipe .lista-equipe li:has(button) button { display: table; margin: .45rem 0 0; }
 }
 .lateral-painel > .secondary { width: calc(100% - .9rem); margin: 0 .45rem .85rem; background: #fff; color: #20563a; border-color: #dce5df; }
+
+.perfil-equipe { display: inline-block; padding: .15rem .5rem; border-radius: 1rem; background: #eaf2eb; color: #20563a; }
+.acoes-equipe { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem 1rem; }
+.acoes-equipe label { display: inline-flex; align-items: center; gap: .25rem; }
+.acoes-equipe input[type="checkbox"] { width: auto; min-height: auto; }

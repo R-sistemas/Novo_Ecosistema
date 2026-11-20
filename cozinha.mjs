@@ -2,6 +2,7 @@ import { executar, executarApi } from "./supabase-pdv.mjs";
 import { estadosEntrega } from "./estado-entrega.mjs";
 import { criarAlertaPedidos } from "./alerta-pedidos.mjs";
 import { imprimirCozinha } from "./impressao-cozinha.mjs";
+import { contatoPedido } from "./kds/interface/contato-pedido.mjs";
 
 const fila = document.getElementById("fila-cozinha");
 const aviso = document.getElementById("aviso-cozinha");
@@ -81,6 +82,7 @@ export async function carregarCozinha() {
       }
       etapa.className = "etapa-kds";
       artigo.append(titulo, etapa, resumo);
+      if (kds && !pedido.adicional) artigo.append(contatoPedido(pedido,idEmpresa,carregarCozinha));
       if (!kds) artigo.append(financeiro);
       if (kds && pedido.edita_comanda && !pedido.cancelamento_pendente) {
         const editar = document.createElement("button");

@@ -254,6 +254,23 @@ test("Chrome percorre login, equipe, cadastro, listagem e remoção",{
     await remover.waitFor({state:"detached"});
     const trilha=await registrar(email);
     assert.deepEqual(trilha.map(r=>r.acao).sort(),["auth.operador.tentativa","membros.criar","terminais_pdv.criar","auth.operador.resultado","membros.excluir"].sort());
+    const cozinha="browser-cozinha@example.invalid";
+    await pagina.locator("[data-cadastro] select[name=perfil]").selectOption("cozinha");
+    assert.equal(await pagina.getByLabel("Caixa do operador").isVisible(),false);
+    await pagina.getByLabel("E-mail do operador").fill(cozinha);
+    await pagina.getByLabel("Senha inicial").fill("fixture-longa-123");
+    await pagina.getByRole("button",{name:"Cadastrar operador"}).click();
+    const linha=pagina.locator("[data-operadores] li").filter({hasText:cozinha});
+    await linha.getByText("Cozinha",{exact:true}).waitFor();
+    const editar=linha.getByRole("checkbox",{name:/Pode editar comanda/});
+    const contato=linha.getByRole("checkbox",{name:/Pode contatar cliente/});
+    await editar.click();
+    await pagina.waitForFunction(() => document.querySelector('[aria-label="Pode editar comanda · browser-cozinha@example.invalid"]')?.checked);
+    await contato.click();
+    await pagina.waitForFunction(() => document.querySelector('[aria-label="Pode contatar cliente · browser-cozinha@example.invalid"]')?.checked);
+    assert.ok(!(await pagina.locator("[data-terminal] select[name=email] option").allTextContents()).includes(cozinha));
+    await linha.getByRole("button",{name:/Remover/}).click();
+    await linha.waitFor({state:"detached"});
   }finally{servidor.close();await navegador.close();}
 });
 
@@ -266,4 +283,95 @@ test("cadastro legado KDS mantém o contrato e audita o vínculo de cozinha",asy
   const audit=await registrar(email);
   assert.deepEqual(audit.map(r=>r.acao).sort(),["auth.operador.tentativa","equipe_kds.criar","auth.operador.resultado"].sort());
   assert.equal(new Set(audit.map(r=>r.requisicao_id)).size,1);
+});
+
+test("painel cadastra cozinha sem caixa, aplica permissões e remove vínculo",async t=>{
+  mock(t);
+  const email="painel-cozinha@example.invalid";
+  const cadastro={...entrada(email),perfil:"cozinha",caixa:null};
+  assert.equal((await api(url(A),"a",{...cadastro,caixa:"Indevido"})).code,400);
+  assert.equal((await api(url(B),"a",cadastro)).code,403);
+  assert.equal((await api(url(A),"a",cadastro)).code,201);
+  const ler=async()=> (await api(url(A),"a")).body.operadores.find(o=>o.email===email);
+  assert.deepEqual(await ler(),{email,vendas:false,cozinha:true,edita_comanda:false,contato_cliente:false,caixas:[]});
+  assert.equal((await api(url(A),"a",{acao:"terminal",dados:{email,nome:"Indevido"}})).code,403);
+  for (const acao of ["edicao_comanda","contato_cliente"]) {
+    const dados={email,permitir:true};
+    assert.equal((await api(url(B),"a",{acao,dados})).code,403);
+    assert.equal((await api(url(A),"b",{acao,dados})).code,403);
+    assert.equal((await api(url(A),"op",{acao,dados})).code,403);
+    assert.equal((await api(url(A),"a",{acao,dados:{email,permitir:"true"}})).code,400);
+    assert.equal((await api(url(A),"a",{acao,dados})).code,200);
+  }
+  assert.equal((await ler()).edita_comanda,true);
+  assert.equal((await ler()).contato_cliente,true);
+  assert.equal((await api(url(A),"a",{acao:"remover",dados:{email}})).code,200);
+  assert.equal(await ler(),undefined);
+  const trilha=await registrar(email);
+  const edicoes=trilha.filter(r=>r.acao==="equipe_kds.editar");
+  assert.equal(edicoes.length,2);
+  assert.ok(edicoes.some(r=>r.depois.contato_cliente===true));
+  assert.ok(edicoes.some(r=>r.depois.edita_comanda===true));
+  assert.equal(trilha.find(r=>r.acao==="equipe_kds.excluir")?.autor_id,users.get("a"));
+  assert.deepEqual((await como(email,"select * from lojas_kds()",[])).rows,[]);
+});
+
+test("cozinha avisa apenas pedidos próprios e vê telefone apenas sob permissão",async ()=>{
+  const cozinha="cozinha@example.invalid";
+  const [entrega,mesa,outra]=Array.from({length:3},()=>randomUUID());
+  await db.query("update empresas set cardapio_slug=case when id=$1 then 'equipe-a' else 'equipe-b' end where id in ($1,$2)",[A,B]);
+  await db.query(`insert into pedidos_online(id,empresa_id,cliente,itens,total_centavos,estado,mesa)
+    values($1,$4,'Entrega','[{"nome":"Teste","quantidade":1}]',2000,'preparo',null),
+    ($2,$4,'Mesa','[{"nome":"Teste","quantidade":1}]',2000,'preparo',7),
+    ($3,$5,'Outra','[{"nome":"Teste","quantidade":1}]',2000,'preparo',null)`,[entrega,mesa,outra,A,B]);
+  await db.query(`insert into entregas_pedido values
+    ($1,'{"logradouro":"Rua fictícia","telefone":"11922223333"}','na_entrega',300)`,[entrega]);
+  const fila=async()=> (await como(cozinha,"select fila_cozinha($1) as fila",[A])).rows[0].fila;
+  assert.equal((await fila()).find(p=>p.id===entrega).telefone_cliente,undefined);
+  assert.equal((await fila()).find(p=>p.id===mesa).pode_avisar,true);
+  await assert.rejects(()=>como(cozinha,"select configurar_contato_cliente_kds($1,$2,true)",[A,cozinha]),{code:"42501"});
+  await equipe("a",A,"contato_cliente",{email:cozinha,permitir:true});
+  const f=await fila();
+  assert.equal(f.find(p=>p.id===entrega).telefone_cliente,"11922223333");
+  assert.equal(f.find(p=>p.id===entrega).endereco_entrega,undefined);
+  assert.equal(f.find(p=>p.id===mesa).telefone_cliente,undefined);
+  assert.ok(!f.some(p=>p.id===outra));
+  const avisar=(token,loja,pedido,msg="Sem maionese. Podemos trocar?")=>
+    como(token,"select enviar_aviso_pedido($1,$2,$3)",[loja,pedido,msg]);
+  await assert.rejects(()=>avisar(cozinha,B,outra),{code:"42501"});
+  await assert.rejects(()=>avisar(cozinha,A,outra),{code:"42501"});
+  await assert.rejects(()=>avisar("op",A,entrega),{code:"42501"});
+  await assert.rejects(()=>avisar(cozinha,A,entrega,"  "),{code:"22023"});
+  await assert.rejects(()=>avisar(cozinha,A,entrega,"x".repeat(241)),{code:"22023"});
+  const acompanha=async(slug,id)=>(await como(null,"select acompanhar_pedido($1,$2) as pedido",[slug,id],"anon")).rows[0].pedido;
+  assert.deepEqual((await acompanha("equipe-a",entrega)).avisos,[]);
+  await avisar(cozinha,A,entrega);
+  const aviso=(await acompanha("equipe-a",entrega)).avisos[0];
+  assert.equal(aviso.mensagem,"Sem maionese. Podemos trocar?");
+  assert.deepEqual(Object.keys(aviso).sort(),["criado_em","mensagem"]);
+  assert.deepEqual((await acompanha("equipe-a",mesa)).avisos,[]);
+  assert.deepEqual((await acompanha("equipe-b",outra)).avisos,[]);
+  assert.equal(await acompanha("equipe-b",entrega),null);
+  assert.equal((await fila()).find(p=>p.id===entrega).avisos[0].mensagem,aviso.mensagem);
+  await assert.rejects(()=>como(null,"select * from painel_privado.avisos_pedido",[],"anon"),{code:"42501"});
+  const trilha=await rows("select autor_id,empresa_id,depois from painel_privado.auditoria where acao='avisos_pedido.criar'");
+  assert.deepEqual(trilha,[{autor_id:users.get(cozinha),empresa_id:A,depois:{pedido_id:entrega}}]);
+  await equipe("a",A,"contato_cliente",{email:cozinha,permitir:false});
+  assert.equal((await fila()).find(p=>p.id===entrega).telefone_cliente,undefined);
+  await db.exec(`create function painel_privado.teste_bloquear_aviso() returns trigger language plpgsql as $teste$
+    begin
+      if new.acao='avisos_pedido.criar' then raise exception 'Falha de auditoria simulada'; end if;
+      return new;
+    end;
+  $teste$;
+    create trigger teste_bloquear_aviso before insert on painel_privado.auditoria
+      for each row execute function painel_privado.teste_bloquear_aviso();`);
+  try {
+    await assert.rejects(()=>avisar(cozinha,A,mesa,"Reverter"),{code:"P0001"});
+    assert.deepEqual((await acompanha("equipe-a",mesa)).avisos,[]);
+  } finally {
+    await db.exec("drop trigger teste_bloquear_aviso on painel_privado.auditoria; drop function painel_privado.teste_bloquear_aviso()");
+  }
+  await avisar(cozinha,A,mesa,"Aviso de mesa");
+  assert.equal((await acompanha("equipe-a",mesa)).avisos[0].mensagem,"Aviso de mesa");
 });

@@ -130,6 +130,73 @@ try {
     testes++;
     await page.close();
   }
+
+  const contexto = await browser.newContext();
+  const kds = await contexto.newPage();
+  const cardapio = await contexto.newPage();
+  const avisos = [];
+  const pedidoEntrega = "7d94b9fd-080d-4caa-817a-284f835cbb7f";
+  const pedidoMesa = "55a28c5b-ad69-4cdc-baed-ab2a4f22ecf6";
+  const ativo = {cliente:"Teste",estado:"preparo",itens:[{nome:"Lanche",quantidade:1}],pode_avisar:true};
+  const mensagens = "Sem maionese <b>podemos trocar?</b>";
+  const falhas = [];
+  for (const pagina of [kds,cardapio]) pagina.on("pageerror",e=>falhas.push(e.message));
+  await contexto.route("https://eyqxxlcmxlilgogxdcoq.supabase.co/**",async route=>{
+    const nome = new URL(route.request().url()).pathname.split("/").at(-1);
+    const dados = route.request().postDataJSON();
+    if (nome === "token") return route.fulfill({json:{user:{id:"cozinha-teste"},access_token:"fixture",refresh_token:"fixture",expires_in:3600}});
+    if (nome === "lojas_kds") return route.fulfill({json:[{id:"loja-teste",nome:"Loja de teste"}]});
+    if (nome === "fila_cozinha") return route.fulfill({json:[
+      {...ativo,id:pedidoEntrega,pagamento_entrega:"na_entrega",telefone_cliente:"11922223333",avisos},
+      {...ativo,id:pedidoMesa,mesa:7,avisos:[]}
+    ]});
+    if (nome === "cancelamentos_recentes_kds") return route.fulfill({json:[]});
+    if (nome === "pode_editar_comanda_kds") return route.fulfill({json:false});
+    if (nome === "enviar_aviso_pedido") {
+      assert.deepEqual(dados,{p_empresa:"loja-teste",p_pedido:pedidoEntrega,p_mensagem:mensagens});
+      avisos.push({mensagem:mensagens,criado_em:"2026-11-20T15:00:00Z"});
+      return route.fulfill({status:204});
+    }
+    if (nome === "ver_cardapio") return route.fulfill({json:{nome:"Loja de teste",produtos:[]}});
+    if (nome === "acompanhar_pedido") {
+      assert.ok([pedidoEntrega,pedidoMesa].includes(dados.p_id));
+      return route.fulfill({json:{estado:"preparo",total_centavos:2000,
+        avisos:dados.p_id===pedidoEntrega ? avisos : []}});
+    }
+    throw new Error("RPC inesperada " + nome);
+  });
+  try {
+    await kds.goto(base + "/kds.html");
+    await kds.locator("#email-kds").fill("cozinha@example.invalid");
+    await kds.locator("#senha-kds").fill("fixture");
+    await kds.getByRole("button",{name:"Entrar na cozinha"}).click();
+    const entrega = kds.locator("#fila-cozinha article").filter({hasText:"Teste · Entrega"});
+    const mesa = kds.locator("#fila-cozinha article").filter({hasText:"Teste · Mesa 7"});
+    const whatsapp = entrega.getByRole("link",{name:"WhatsApp"});
+    await whatsapp.waitFor();
+    assert.equal(await whatsapp.getAttribute("href"),"https://wa.me/5511922223333");
+    assert.equal(await mesa.getByRole("link",{name:"WhatsApp"}).count(),0);
+    const linkPedido = id => base + "/cardapio.html?loja=loja-teste&pedido=" + id;
+    await cardapio.goto(linkPedido(pedidoEntrega));
+    await cardapio.locator("#mensagem").filter({hasText:/preparo/i}).waitFor();
+    assert.equal(await cardapio.locator("#avisos-pedido").count(),0);
+    await entrega.getByRole("button",{name:"Avisar cliente"}).click();
+    await kds.getByLabel("Mensagem para o cliente").fill(mensagens);
+    await kds.getByRole("button",{name:"Enviar aviso"}).click();
+    await entrega.getByText("Avisos enviados (1)",{exact:true}).click();
+    await entrega.getByText(mensagens,{exact:false}).waitFor();
+    await cardapio.locator("#acompanhar").click();
+    await cardapio.locator("#avisos-pedido").getByText(mensagens,{exact:true}).waitFor();
+    assert.equal(await cardapio.locator("#avisos-pedido b").count(),0);
+    await cardapio.goto(linkPedido(pedidoMesa));
+    await cardapio.locator("#mensagem").filter({hasText:/preparo/i}).waitFor();
+    assert.equal(await cardapio.locator("#avisos-pedido").count(),0);
+    assert.deepEqual(falhas,[]);
+    console.log("PASS KDS envia aviso, WhatsApp só na entrega e Cardápio exibe no pedido correspondente");
+    testes++;
+  } finally {
+    await contexto.close();
+  }
   console.log(testes + " fluxos em Chromium aprovados.");
 } finally {
   await browser.close();
