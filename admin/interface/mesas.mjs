@@ -11,7 +11,7 @@ const mensagem = e => mensagens[e.status] || "Não foi possível acessar as mesa
 
 export function prepararMesas(area) {
   area.innerHTML = `
-    <form class="acoes" aria-label="Criar mesa">
+    <form class="acoes filtros-painel" aria-label="Criar mesa">
       <label>Número da mesa <input name="numero" type="number" min="1" max="999" step="1" required></label>
       <button type="submit" disabled>Criar mesa</button>
     </form>

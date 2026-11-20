@@ -19,7 +19,7 @@ function linhas(lista,pares) {
 
 export function prepararVisao(area,{pedidos,catalogo}) {
   area.innerHTML = `
-    <form class="acoes" aria-label="Período dos indicadores">
+    <form class="acoes filtros-painel" aria-label="Período dos indicadores">
       <div><label for="visao-periodo">Período</label>
       <select id="visao-periodo" name="tipo"><option value="hoje">Hoje</option><option value="7">7 dias</option>
       <option value="30">30 dias</option><option value="personalizado">Personalizado</option></select></div>

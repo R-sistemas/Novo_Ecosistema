@@ -117,3 +117,123 @@ body:has(.lateral-painel:not([hidden])) { padding-inline-start: var(--barra-late
 }
 @media(prefers-reduced-motion: reduce) { .lateral-painel { transition: none; } }
 @media print { body:has([data-mesas-qr][open]) { padding-inline-start: 0; } }
+
+/* Controles e superfícies das seis áreas */
+:root {
+  --controle-altura: 2.65rem;
+  --controle-raio: .6rem;
+  --controle-padding: .5rem .85rem;
+  --cartao-raio: 1rem;
+  --cartao-padding: 1rem;
+  --grade-espaco: .85rem;
+}
+button {
+  min-height: var(--controle-altura);
+  padding: var(--controle-padding);
+  border-radius: var(--controle-raio);
+  font-weight: 650;
+}
+.lateral-painel nav button { padding: var(--controle-padding); border-radius: var(--controle-raio); }
+input:not([type="checkbox"]), select {
+  height: var(--controle-altura);
+  min-height: var(--controle-altura);
+  border-radius: var(--controle-raio);
+}
+input[type="file"] { padding: .4rem .65rem; }
+.cartao, .rolagem, dialog,
+#area-catalogo, #area-equipe .grade > section, #area-preferencias form,
+.visao-grade .metricas-painel > div {
+  border-radius: var(--cartao-raio);
+}
+.cartao, #area-catalogo, #area-equipe .grade > section, .visao-grade .metricas-painel > div {
+  padding: var(--cartao-padding);
+}
+.pedido-drawer { border-start-end-radius: 0; border-end-end-radius: 0; }
+.grade { gap: var(--grade-espaco); }
+.grade > *, fieldset, .grade input, .grade select, .grade textarea { min-width: 0; }
+#catalogo :is(h2,h3), dialog h2 { margin: 0 0 .75rem; font-size: 1.05rem; font-weight: 750; }
+[data-visao-resultados] > h2 { margin-top: var(--grade-espaco); }
+.rolagem { min-width: 0; }
+.escolha-filtro, .busca-pedidos { display: flex; align-items: center; gap: .6rem; margin-block: var(--grade-espaco); }
+.barra-filtros-pedidos { display: grid; grid-template-columns: minmax(0,5fr) minmax(0,1.25fr); align-items: end; gap: var(--grade-espaco); margin-block: var(--grade-espaco); }
+.barra-filtros-pedidos > form { margin: 0; }
+.barra-filtros-pedidos .busca-pedidos { display: grid; gap: .35rem; margin: 0; min-width: 0; }
+.busca-pedidos input { width: 100%; min-width: 0; }
+
+/* O label ocupa a faixa acima do controle. A ação acompanha a base dos campos. */
+form.filtros-painel {
+  display: grid;
+  grid-template-columns: repeat(auto-fill,minmax(min(100%, 9.2rem),1fr));
+  align-items: end;
+  justify-content: start;
+  gap: var(--grade-espaco);
+}
+#area-visao form.filtros-painel, #area-mesas form.filtros-painel {
+  grid-template-columns: repeat(auto-fill,minmax(min(100%, 9.2rem), 12rem));
+}
+form.filtros-painel > :is(label,div), form.filtros-painel > div > label {
+  display: grid;
+  gap: .35rem;
+  margin: 0;
+  min-width: 0;
+}
+form.filtros-painel :is(input,select), .campos-equipe :is(input,select) { min-width: 0; width: 100%; }
+#area-pedidos th + th { border-inline-start: 1px solid #b7cbbf; }
+
+/* Formulários da equipe e grupos de preferências */
+#area-equipe > .grade { grid-template-columns: repeat(2,minmax(0,1fr)); }
+#area-equipe form.cartao { padding: 0; margin-block: var(--grade-espaco); box-shadow: none; border: 0; }
+.campos-equipe {
+  display: grid;
+  grid-template-columns: minmax(0,1fr);
+  gap: .75rem;
+  padding: var(--cartao-padding);
+}
+.campos-equipe label, .grupo-preferencia label:not(:has(input[type="checkbox"])) {
+  display: grid;
+  gap: .35rem;
+  min-width: 0;
+}
+.campos-equipe button { justify-self: stretch; }
+#area-preferencias form { display: grid; gap: var(--grade-espaco); padding: 0; border: 0; background: transparent; box-shadow: none; }
+#area-preferencias .grupo-preferencia {
+  margin: 0;
+  padding: var(--cartao-padding);
+  gap: .75rem;
+  border: 1px solid var(--painel-borda);
+  border-radius: var(--cartao-raio);
+  background: white;
+  box-shadow: var(--painel-sombra);
+}
+.grupo-preferencia legend, .campos-equipe legend { font-weight: 700; padding-inline: .35rem; }
+.grupo-preferencia :is(p,label) { margin: 0; }
+.grupo-preferencia :is(input:not([type="checkbox"]),select) { width: 100%; }
+.grupo-cores, .grupo-imagens { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.grupo-imagens label, .grupo-cores label { align-content: end; }
+.grupo-imagens label:nth-of-type(2) { grid-column: 2; grid-row: 1; }
+#area-preferencias form > button { justify-self: start; }
+[data-mesas-qr] > img {
+  width: min(196px, 100%);
+  height: auto;
+  margin: .75rem auto;
+}
+[data-mesas-qr] .acoes { justify-content: center; }
+[data-mesas-qr] input { width: 100%; min-width: 0; }
+
+@media(max-width: 620px) {
+  #area-equipe > .grade,
+  #catalogo form.filtros-painel,
+  .grupo-cores, .grupo-imagens { grid-template-columns: minmax(0,1fr); }
+  .grupo-imagens label:nth-of-type(2) { grid-column: auto; grid-row: auto; }
+  .busca-pedidos { display: grid; }
+  .busca-pedidos input { width: 100%; }
+  #area-preferencias form > button { justify-self: stretch; }
+}
+@media(max-width: 1050px) { .barra-filtros-pedidos { grid-template-columns: minmax(0,1fr); } }
+@media(max-width: 850px) { .pedido-drawer { border-radius: 0; } }
+
+.visao-grade .metricas-painel > div { display: flex; flex-direction: column; }
+.metricas-painel dt { flex: 1; }
+@media(max-width: 620px) {
+  #area-equipe .lista-equipe li:has(button) button { display: table; margin: .45rem 0 0; }
+}

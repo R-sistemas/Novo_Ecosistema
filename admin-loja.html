@@ -35,7 +35,7 @@
     <section id="area-visao" hidden aria-labelledby="aba-visao"></section>
     <section id="area-catalogo" aria-label="Produtos da loja">
     <div class="acoes"><button id="novo" type="button" disabled>Novo produto</button></div>
-    <label><input type="checkbox" id="catalogo-ativos"> Somente ativos nesta página</label>
+    <label class="escolha-filtro"><input type="checkbox" id="catalogo-ativos"> Somente ativos nesta página</label>
     <div class="rolagem" tabindex="0" aria-label="Tabela de produtos">
       <table>
         <thead><tr><th>Produto</th><th>Código</th><th>Categoria</th><th>Preço</th>
@@ -58,7 +58,7 @@
         <ul data-operadores class="lista-equipe"></ul>
         <p data-sem-operadores hidden>Nenhum operador vinculado.</p>
         <form data-cadastro class="cartao">
-          <fieldset disabled>
+          <fieldset class="campos-equipe" disabled>
             <legend>Cadastrar operador</legend>
             <label>E-mail do operador <input name="email" type="email" required maxlength="254" autocomplete="off"></label>
             <label>Senha inicial <input name="senha" type="password" required minlength="12" maxlength="72" autocomplete="new-password"></label>
@@ -72,7 +72,7 @@
         <ul data-terminais class="lista-equipe"></ul>
         <p data-sem-terminais hidden>Nenhum terminal cadastrado.</p>
         <form data-terminal class="cartao">
-          <fieldset disabled>
+          <fieldset class="campos-equipe" disabled>
             <legend>Configurar terminal</legend>
             <label>Terminal <select name="id"></select></label>
             <label>Nome do terminal <input name="nome" required maxlength="60"></label>
@@ -81,7 +81,7 @@
           </fieldset>
         </form>
         <form data-nome-pdv class="cartao">
-          <fieldset disabled>
+          <fieldset class="campos-equipe" disabled>
             <legend>Nome exibido no PDV</legend>
             <label>Nome do PDV <input name="nome" maxlength="60"></label>
             <button type="submit">Salvar nome do PDV</button>
@@ -90,30 +90,31 @@
       </section>
     </div>
   </section>
-  <section id="area-preferencias" hidden aria-labelledby="titulo-preferencias">
-    <h2 id="titulo-preferencias">Preferências</h2>
+  <section id="area-preferencias" hidden aria-labelledby="aba-preferencias">
     <p class="erro" role="alert"></p>
     <div class="grade preferencias-grade">
       <form>
-        <fieldset disabled>
-          <legend>Aparência do cardápio</legend>
+        <fieldset class="grupo-preferencia grupo-cores" disabled>
+          <legend>Cores do cardápio</legend>
           <label>Cor principal <input name="cardapio_cor" type="color" value="#175d2d"></label>
           <label>Cor de fundo <select name="cardapio_fundo">
             <option value="#f4f6f2">Verde claro</option><option value="#ffffff">Branco</option>
             <option value="#f1f3f5">Cinza claro</option><option value="#f8f4eb">Areia</option>
           </select></label>
+        </fieldset>
+        <fieldset class="grupo-preferencia grupo-imagens" disabled><legend>Imagens do cardápio</legend>
           <label>Logo <input name="arquivo_logo" type="file" accept="image/png,image/jpeg,image/webp"></label>
           <button type="button" data-remover-logo>Remover logo</button>
           <label>Arte da mensagem de agradecimento <input name="arquivo_agradecimento" type="file" accept="image/png,image/jpeg,image/webp"></label>
           <button type="button" data-remover-agradecimento>Remover arte</button>
         </fieldset>
-        <fieldset disabled>
+        <fieldset class="grupo-preferencia" disabled>
           <legend>Centro do mapa</legend>
           <label>Link do Google Maps <input name="mapa_link" type="text" inputmode="url" aria-describedby="mapa-ajuda"></label>
           <p id="mapa-ajuda" class="ajuda">Abra o local no Maps e copie o endereço completo da barra do navegador. Deixe em branco para remover o centro.</p>
           <a data-mapa-atual href="#" target="_blank" rel="noopener noreferrer" hidden>Ver local atual no Google Maps</a>
         </fieldset>
-        <fieldset disabled>
+        <fieldset class="grupo-preferencia" disabled>
           <legend>Operação</legend>
           <label><input name="pagamento_na_entrega" type="checkbox"> Habilitar pagamento na entrega</label>
           <p data-metodos class="ajuda"></p>
@@ -130,7 +131,7 @@
     </div>
   </section>
   <section id="area-pedidos" hidden aria-labelledby="aba-pedidos">
-    <form class="acoes" aria-label="Filtros de pedidos">
+    <div class="barra-filtros-pedidos"><form class="acoes filtros-painel" aria-label="Filtros de pedidos">
       <label>De <input type="date" name="inicio"></label>
       <label>Até <input type="date" name="fim"></label>
       <div><label for="pedidos-estado">Estado</label><select id="pedidos-estado" name="estado">
@@ -143,11 +144,11 @@
       </select></div>
       <button type="submit">Aplicar filtros</button>
     </form>
-    <label>Buscar cliente, comanda ou ID nesta página <input type="search" data-pedidos-busca disabled></label>
+    <label class="busca-pedidos">Buscar cliente, comanda ou ID nesta página <input type="search" data-pedidos-busca disabled></label></div>
     <div class="rolagem">
       <table aria-label="Pedidos da loja"><thead><tr>
         <th>Pedido</th><th>Data e hora</th><th>Itens</th><th>Total</th>
-        <th>Origem</th><th>Estado do pedido</th><th>Entrega REMO</th><th>Pagamento</th>
+        <th>Origem</th><th>Status</th><th>Entrega REMO</th><th>Pagamento</th>
       </tr></thead><tbody></tbody></table>
     </div>
     <div class="acoes">
