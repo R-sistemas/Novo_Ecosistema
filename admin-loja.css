@@ -237,3 +237,4 @@ form.filtros-painel :is(input,select), .campos-equipe :is(input,select) { min-wi
 @media(max-width: 620px) {
   #area-equipe .lista-equipe li:has(button) button { display: table; margin: .45rem 0 0; }
 }
+.lateral-painel > .secondary { width: calc(100% - .9rem); margin: 0 .45rem .85rem; background: #fff; color: #20563a; border-color: #dce5df; }
