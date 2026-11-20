@@ -40,6 +40,7 @@ before(async () => {
 after(() => db.close());
 
 const queries = {
+  enviar_aviso_pedido:["p_empresa","p_pedido","p_mensagem"],
   painel_contexto_sessao:["p_empresa_id"], painel_equipe:["p_empresa","p_acao","p_dados"],
   painel_iniciar_cadastro_operador:["p_gestor","p_empresa","p_email","p_perfil"],
   painel_concluir_cadastro_operador:["p_requisicao","p_operador","p_caixa","p_resultado"],
@@ -328,13 +329,14 @@ test("cozinha avisa apenas pedidos próprios e vê telefone apenas sob permissã
     ($1,'{"logradouro":"Rua fictícia","telefone":"11922223333"}','na_entrega',300)`,[entrega]);
   const fila=async()=> (await como(cozinha,"select fila_cozinha($1) as fila",[A])).rows[0].fila;
   assert.equal((await fila()).find(p=>p.id===entrega).telefone_cliente,undefined);
-  assert.equal((await fila()).find(p=>p.id===mesa).pode_avisar,true);
+  assert.equal((await fila()).find(p=>p.id===mesa).pode_avisar,false);
   await assert.rejects(()=>como(cozinha,"select configurar_contato_cliente_kds($1,$2,true)",[A,cozinha]),{code:"42501"});
   await equipe("a",A,"contato_cliente",{email:cozinha,permitir:true});
   const f=await fila();
   assert.equal(f.find(p=>p.id===entrega).telefone_cliente,"11922223333");
   assert.equal(f.find(p=>p.id===entrega).endereco_entrega,undefined);
   assert.equal(f.find(p=>p.id===mesa).telefone_cliente,undefined);
+  assert.equal(f.find(p=>p.id===mesa).pode_avisar,true);
   assert.ok(!f.some(p=>p.id===outra));
   const avisar=(token,loja,pedido,msg="Sem maionese. Podemos trocar?")=>
     como(token,"select enviar_aviso_pedido($1,$2,$3)",[loja,pedido,msg]);
@@ -367,11 +369,33 @@ test("cozinha avisa apenas pedidos próprios e vê telefone apenas sob permissã
     create trigger teste_bloquear_aviso before insert on painel_privado.auditoria
       for each row execute function painel_privado.teste_bloquear_aviso();`);
   try {
-    await assert.rejects(()=>avisar(cozinha,A,mesa,"Reverter"),{code:"P0001"});
+    await assert.rejects(()=>avisar("a",A,mesa,"Reverter"),{code:"P0001"});
     assert.deepEqual((await acompanha("equipe-a",mesa)).avisos,[]);
   } finally {
     await db.exec("drop trigger teste_bloquear_aviso on painel_privado.auditoria; drop function painel_privado.teste_bloquear_aviso()");
   }
-  await avisar(cozinha,A,mesa,"Aviso de mesa");
+  await avisar("a",A,mesa,"Aviso de mesa");
   assert.equal((await acompanha("equipe-a",mesa)).avisos[0].mensagem,"Aviso de mesa");
+});
+
+test("RPC de aviso exige contato_cliente para cozinha e preserva acesso do gestor",async ()=>{
+  const cozinha="cozinha@example.invalid";
+  const pedido=randomUUID();
+  await db.query(`insert into pedidos_online(id,empresa_id,cliente,itens,total_centavos,estado)
+    values($1,$2,'Cliente de teste','[{"nome":"Teste","quantidade":1}]',1000,'preparo')`,[pedido,A]);
+  const fila=async token=>(await como(token,"select fila_cozinha($1) as fila",[A])).rows[0].fila.find(p=>p.id===pedido);
+  const enviar=async token=>(await supabase(new URL("https://banco.example/rest/v1/rpc/enviar_aviso_pedido"),{
+    headers:{Authorization:"Bearer "+token},
+    body:JSON.stringify({p_empresa:A,p_pedido:pedido,p_mensagem:"Aviso de teste"})
+  })).status;
+  assert.equal((await fila(cozinha)).pode_avisar,false);
+  assert.equal(await enviar(cozinha),403);
+  assert.equal((await fila("a")).pode_avisar,true);
+  assert.equal(await enviar("a"),200);
+  await equipe("a",A,"contato_cliente",{email:cozinha,permitir:true});
+  assert.equal((await fila(cozinha)).pode_avisar,true);
+  assert.equal(await enviar(cozinha),200);
+  await equipe("a",A,"contato_cliente",{email:cozinha,permitir:false});
+  assert.equal((await fila(cozinha)).pode_avisar,false);
+  assert.equal(await enviar(cozinha),403);
 });

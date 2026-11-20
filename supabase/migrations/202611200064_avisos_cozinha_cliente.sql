@@ -24,9 +24,9 @@ create function public.enviar_aviso_pedido(p_empresa uuid,p_pedido uuid,p_mensag
 returns void language plpgsql security definer set search_path='' as $$
 declare v_pedido public.pedidos_online; v_id uuid;
 begin
-  -- Aviso operacional permitido à equipe da cozinha e ao gestor.
+  -- Aviso operacional reservado ao gestor e à cozinha com permissão de contato.
   if not (public.eh_gestor_kds(p_empresa) or exists (
-    select 1 from public.equipe_kds k where k.empresa_id=p_empresa and k.usuario_id=auth.uid()
+    select 1 from public.equipe_kds k where k.empresa_id=p_empresa and k.usuario_id=auth.uid() and k.contato_cliente
   )) then raise insufficient_privilege; end if;
   if p_mensagem is null or char_length(btrim(p_mensagem)) not between 1 and 240 then
     raise sqlstate '22023' using message='Escreva um aviso de 1 a 240 caracteres.';
@@ -57,7 +57,7 @@ returns jsonb language sql stable security definer set search_path='' as $$
     f.item || jsonb_build_object('avisos',painel_privado.avisos_recentes(p.id),
       'pode_avisar',p.estado in ('novo','preparo','pronto') and f.item->>'estado'<>'entregue'
         and not public.cancelamento_comanda_pendente(p.id)
-        and (public.eh_gestor_kds(p_empresa) or k.usuario_id is not null)) ||
+        and (public.eh_gestor_kds(p_empresa) or coalesce(k.contato_cliente,false))) ||
       case when k.contato_cliente and p.mesa is null
         and nullif(btrim(d.endereco->>'telefone'),'') is not null
         then jsonb_build_object('telefone_cliente',d.endereco->>'telefone') else '{}'::jsonb end ||
