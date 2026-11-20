@@ -40,3 +40,11 @@ Violação desta regra é motivo de rejeição da entrega.
 6. Antes de entregar: contar as linhas de todos os arquivos, usar `git grep` para comprovar consumidores de cada módulo e testar o fluxo principal de ponta a ponta.
 
 Ordem de refatoração: começar por `pdv.mjs` e pelos quatro arquivos de teste/protótipo publicados sem consumidor; depois tratar os demais arquivos acima do limite. Preservar o comportamento publicado durante a divisão em módulos.
+
+## Pendência operacional — Deploy automático Vercel
+
+Diagnóstico de 20/11/2026: os projetos Vercel `novo-ecossistema` e `remo` **não possuem conexão Git** (`link: null` na API). Todo deploy é manual via `vercel --prod` (CLI), o que já causou 6+ deploys seguidos manuais nas janelas do painel. Push na `main` nunca dispara build.
+
+Correção autorizada: conectar cada projeto ao seu repositório GitHub — `R-sistemas/Novo_Ecosistema` e `R-sistemas/REMO` — com production branch `main` e previews de branch limitados/desativados. A conta Vercel usa login via GitHub (mesma identidade do repo); a autorização do GitHub App é única e fica permanente.
+
+Critério de aceite: após conectar, um push na `main` deve gerar deployment automático `READY` sem intervenção CLI; verificar que o deploy automático corresponde ao SHA do commit; e confirmar que branches `codex/*` não geram deploys de produção indevidos.
