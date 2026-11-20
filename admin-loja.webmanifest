@@ -1,0 +1,15 @@
+{
+  "id": "/admin-loja.html",
+  "name": "R Sistemas · Painel da loja",
+  "short_name": "Painel da loja",
+  "start_url": "/admin-loja.html",
+  "scope": "/admin-loja.html",
+  "display": "standalone",
+  "lang": "pt-BR",
+  "background_color": "#f3f6f3",
+  "theme_color": "#175d2d",
+  "icons": [
+    { "src": "/icone-pwa-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icone-pwa-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
