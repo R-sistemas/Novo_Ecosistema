@@ -294,7 +294,7 @@ test("Chrome abre filtros, paginação e detalhe pela entrada do painel",{
     assert.equal(await area.locator("[data-pedido-dados]").textContent(),"");
 
     const nav=pagina.locator("#lateral-painel nav button");
-    assert.deepEqual(await nav.evaluateAll(ns=>ns.map(n=>n.id)),["aba-visao","aba-pedidos","aba-entregas","aba-catalogo","aba-mesas","aba-equipe","aba-preferencias"]);
+    assert.deepEqual(await nav.evaluateAll(ns=>ns.map(n=>n.id)),["aba-visao","aba-pedidos","aba-entregas","aba-financeiro","aba-catalogo","aba-mesas","aba-equipe","aba-preferencias"]);
     await pagina.getByRole("button",{name:"Entregas",exact:true}).click();
     const areaEnt=pagina.locator("#area-entregas"), statusEnt=areaEnt.getByRole("status");
     await statusEnt.getByText("Página 1",{exact:true}).waitFor();

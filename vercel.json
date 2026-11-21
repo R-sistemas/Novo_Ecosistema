@@ -7,6 +7,7 @@
   "rewrites": [
     { "source": "/api/painel-mesas", "destination": "/api/cadastrar-operador?painel_mesas=1" },
     { "source": "/api/painel-visao", "destination": "/api/cadastrar-operador?painel_visao=1" },
+    { "source": "/api/painel-financeiro", "destination": "/api/cadastrar-operador?painel_financeiro=1" },
     { "source": "/api/painel-entregas", "destination": "/api/cadastrar-operador?painel_entregas=1" },
     { "source": "/api/painel-pedidos", "destination": "/api/cadastrar-operador?painel_pedidos=1" },
     { "source": "/api/painel-preferencias", "destination": "/api/cadastrar-operador?painel_preferencias=1" },

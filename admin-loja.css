@@ -243,3 +243,13 @@ form.filtros-painel :is(input,select), .campos-equipe :is(input,select) { min-wi
 .acoes-equipe { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem 1rem; }
 .acoes-equipe label { display: inline-flex; align-items: center; gap: .25rem; }
 .acoes-equipe input[type="checkbox"] { width: auto; min-height: auto; }
+
+.financeiro-cards { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(13rem,100%),1fr)); }
+#area-financeiro .cartao { width: 100%; margin-block-end: 1rem; min-width: 0; }
+.financeiro-cards dl { display: grid; grid-template-columns: 1fr auto; gap: .45rem .7rem; overflow-wrap: anywhere; }
+.financeiro-cards dd { margin: 0; font-variant-numeric: tabular-nums; }
+.financeiro-barras { display: flex; gap: .6rem; list-style: none; height: 9rem; padding: 0 0 1.5rem; margin: 0; }
+.financeiro-barras li { display: flex; min-width: 2.2rem; flex: 0 1 3rem; justify-content: end; flex-direction: column; position: relative; }
+.financeiro-barras span { display: block; background: #397a60; border-radius: .25rem .25rem 0 0; }
+.financeiro-barras time { position: absolute; top: 100%; width: 100%; text-align: center; font-size: .75rem; }
+#area-financeiro table { min-width: 52rem; }
