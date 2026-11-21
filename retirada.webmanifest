@@ -1,0 +1,23 @@
+{
+  "id": "/retirada.html",
+  "name": "R Sistemas · Retirada",
+  "short_name": "Retirada",
+  "start_url": "/retirada.html",
+  "scope": "/retirada.html",
+  "display": "standalone",
+  "lang": "pt-BR",
+  "theme_color": "#175d2d",
+  "background_color": "#102219",
+  "icons": [
+    {
+      "src": "/icone-pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icone-pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

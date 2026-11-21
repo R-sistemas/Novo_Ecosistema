@@ -15,6 +15,7 @@ export function configurarEnvio(ctx) {
   });
   el("pedido").onsubmit = evento => {
     evento.preventDefault();
+    ctx.prepararSomMesa();
     ctx.executarComFeedback(async () => {
       el("erro-pedido").textContent = "";
       const p_itens = ctx.carrinho.itens();
@@ -31,6 +32,7 @@ export function configurarEnvio(ctx) {
           totalCentavos, pedido: { p_slug: ctx.p_slug, p_mesa: ctx.p_mesa, p_itens, p_cliente, p_id: crypto.randomUUID() }
         }, async id => {
           ctx.p_id = id;
+          ctx.confirmarPedidoMesa();
           ctx.parametros.set("pedido", id);
           history.replaceState(null, "", "?" + ctx.parametros);
           el("acompanhar").hidden = false;
@@ -78,6 +80,7 @@ export function configurarEnvio(ctx) {
         } else {
           ctx.p_id = await enviarPedido(dados);
         }
+        ctx.confirmarPedidoMesa();
         ctx.parametros.set("pedido", ctx.p_id);
         ctx.parametros.delete("mesa");
         history.replaceState(null, "", "?" + ctx.parametros);

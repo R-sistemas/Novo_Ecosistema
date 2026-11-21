@@ -1,9 +1,12 @@
 import { consultarPedido } from "../dados/pedidos.mjs";
+import { lerPedidoMesa, guardarPedidoMesa, apagarPedidoMesa } from "../dados/pedido-mesa-local.mjs";
+import { prepararPedidoPronto } from "./pedido-pronto.mjs";
 import { exibirAvisosPedido } from "./avisos-pedido.mjs";
 import { resumirPedido } from "../regras/acompanhamento.mjs";
 const el = id => document.getElementById(id);
 
 export function configurarAcompanhamento(ctx) {
+  const retirada = prepararPedidoPronto(ctx);
   async function executarComFeedback(acao) {
     if (ctx.ocupado) return;
     ctx.ocupado = true;
@@ -16,8 +19,8 @@ export function configurarAcompanhamento(ctx) {
     }
   }
 
-  async function acompanhar() {
-    const pedido = await consultarPedido({ p_slug: ctx.p_slug, p_id: ctx.p_id });
+  async function acompanhar(pedidoConfirmado) {
+    const pedido = pedidoConfirmado ?? await consultarPedido({ p_slug: ctx.p_slug, p_id: ctx.p_id });
     if (!pedido) throw new Error("Pedido indisponível.");
     el("numero-pedido").hidden = !pedido.comanda;
     if (pedido.comanda) el("numero-pedido").textContent = `${pedido.mesa ? "Comanda" : "Pedido nº"} ${pedido.comanda}`;
@@ -25,6 +28,8 @@ export function configurarAcompanhamento(ctx) {
     ctx.aguardandoPix = resumo.aguardandoPix;
     ctx.acompanhamentoAtivo = resumo.acompanhamentoAtivo;
     el("mensagem").textContent = resumo.mensagem;
+    retirada.atualizar(pedido);
+    if (ctx.p_mesa && (pedido.cancelado || !ctx.acompanhamentoAtivo)) apagarPedidoMesa(ctx.p_slug,ctx.p_mesa);
     exibirAvisosPedido(el("mensagem"),pedido.avisos ?? []);
     if (!ctx.aguardandoPix) el("pagamento-pix").hidden = true;
     const { pixConfirmado } = resumo;
@@ -41,5 +46,28 @@ export function configurarAcompanhamento(ctx) {
     return ctx.aguardandoPix;
   }
 
-  Object.assign(ctx, { executarComFeedback, acompanhar });
+  async function retomarPedidoMesa() {
+    if (ctx.p_id || !ctx.p_mesa) return null;
+    const id = lerPedidoMesa(ctx.p_slug,ctx.p_mesa);
+    if (!id) return null;
+    const pedido = await consultarPedido({p_slug:ctx.p_slug,p_id:id});
+    if (!pedido?.mesa || pedido.cancelado || !resumirPedido(pedido,ctx).acompanhamentoAtivo) {
+      apagarPedidoMesa(ctx.p_slug,ctx.p_mesa);
+      return null;
+    }
+    ctx.p_id = id;
+    ctx.parametros.set("pedido",id);
+    ctx.parametros.delete("mesa");
+    history.replaceState(null,"","?" + ctx.parametros);
+    return pedido;
+  }
+
+  function confirmarPedidoMesa() {
+    if (!ctx.p_mesa) return;
+    guardarPedidoMesa(ctx.p_slug,ctx.p_mesa,ctx.p_id);
+    retirada.confirmar();
+  }
+
+  Object.assign(ctx, { executarComFeedback, acompanhar, retomarPedidoMesa,
+    prepararSomMesa:retirada.prepararSom, confirmarPedidoMesa });
 }

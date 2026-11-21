@@ -1,5 +1,6 @@
 {
   "functions": {
+    "api/foto-cardapio.mjs": { "includeFiles": "retirada.webmanifest" },
     "api/cadastrar-operador.mjs": { "maxDuration": 45 },
     "api/checkout-pix-mercado-pago-teste.mjs": { "maxDuration": 45 }
   },

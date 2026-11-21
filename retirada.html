@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#175d2d">
+  <meta name="supabase-key" content="sb_publishable_s0oowaHaCZkMUZgNTo6upw_zljF76Na">
+  <title>Retirada de pedidos | R Sistemas</title>
+  <link rel="stylesheet" href="/retirada.css">
+  <script type="module" src="/instalar-pwa.mjs"></script>
+  <script type="module" src="/retirada.mjs"></script>
+</head>
+<body>
+  <header>
+    <div><span id="loja-retirada"></span><h1>Pedidos prontos para retirada</h1></div>
+    <div class="acoes">
+      <button id="instalar-pwa" class="secondary" type="button" hidden>Instalar tela de retirada</button>
+      <button id="expandir-retirada" class="secondary" type="button" hidden>Tela cheia</button>
+    </div>
+  </header>
+  <main>
+    <p id="status-retirada" role="status">Carregando pedidos…</p>
+    <button id="repetir-retirada" type="button" hidden>Tentar novamente</button>
+    <ol id="fila-retirada" aria-label="Comandas prontas"></ol>
+  </main>
+</body>
+</html>

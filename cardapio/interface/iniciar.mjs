@@ -34,9 +34,10 @@ export function iniciarCardapio() {
       el("contexto-cardapio").textContent = ctx.p_mesa ? "Pedido na mesa" : "Entrega";
       el("contexto-cardapio").hidden = false;
     }
+    const pedidoRetomado = await ctx.retomarPedidoMesa();
     if (ctx.p_id) {
       el("acompanhar").hidden = false;
-      if (await ctx.acompanhar() && !ctx.creditoTeste && !ctx.creditoQuiosque) await ctx.mostrarPix({ p_slug: ctx.p_slug, p_id: ctx.p_id, p_itens: [] });
+      if (await ctx.acompanhar(pedidoRetomado) && !ctx.creditoTeste && !ctx.creditoQuiosque) await ctx.mostrarPix({ p_slug: ctx.p_slug, p_id: ctx.p_id, p_itens: [] });
       return;
     }
     if (!menu.produtos.length) throw new Error("Nenhum produto disponível.");

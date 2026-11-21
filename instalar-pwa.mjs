@@ -1,9 +1,12 @@
+import { slugValido } from "./slug-loja.mjs";
+
 const botao = document.getElementById("instalar-pwa");
 const loja = new URLSearchParams(location.search).get("loja");
-if (location.pathname === "/cardapio.html" && loja && loja.length <= 100 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(loja)) {
+const retirada = location.pathname === "/retirada.html";
+if ((location.pathname === "/cardapio.html" || retirada) && slugValido(loja)) {
   const manifesto = document.createElement("link");
   manifesto.rel = "manifest";
-  manifesto.href = "/api/foto-cardapio?" + new URLSearchParams({ manifesto: "1", loja });
+  manifesto.href = "/api/foto-cardapio?" + new URLSearchParams({ manifesto: retirada ? "retirada" : "1", loja });
   document.head.append(manifesto);
 }
 
