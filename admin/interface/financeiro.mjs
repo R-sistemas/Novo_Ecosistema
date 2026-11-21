@@ -1,21 +1,11 @@
+import { prepararConciliacao } from "./financeiro-conciliacao.mjs";
+import { horario, meios, reais } from "./financeiro-formatacao.mjs";
 import { consultarFinanceiro } from "../dados/financeiro.mjs";
 import { periodo } from "../regras/periodo.mjs";
 import { periodoFinanceiroValido } from "../regras/financeiro.mjs";
 
-const moeda = new Intl.NumberFormat("pt-BR", {style:"currency",currency:"BRL"});
-const horario = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle:"short",timeStyle:"short",timeZone:"America/Sao_Paulo"
-});
-const meios = {pix:"Pix",credito:"Crédito",debito:"Débito"};
 const canais = {cardapio:"Cardápio",entrega:"Entrega",pdv:"PDV"};
 const estados = {pago:"Pago",entregue:"Entregue",recusado:"Recusado",cancelado:"Cancelado"};
-
-function reais(valor) {
-  const centavos = BigInt(valor ?? 0);
-  return moeda.formatToParts(centavos / 100n).map(parte =>
-    parte.type === "fraction" ? String(centavos % 100n).padStart(2,"0") : parte.value
-  ).join("");
-}
 
 function lista(elemento, totais, nomes = {}) {
   elemento.replaceChildren(...Object.entries(totais).flatMap(([chave,total]) => {
@@ -51,6 +41,7 @@ export function prepararFinanceiro(area) {
         <option value="hoje">Hoje</option><option value="7">7 dias</option>
         <option value="30">30 dias</option><option value="personalizado">Personalizado</option>
       </select></label>
+      <a href="#conciliacao-financeiro">Ir para Conciliação</a>
       <div class="acoes" data-datas hidden>
         <label>Início <input name="inicio" type="date"></label>
         <label>Fim <input name="fim" type="date"></label>
@@ -79,8 +70,9 @@ export function prepararFinanceiro(area) {
           <button data-proxima type="button">Próxima</button>
         </nav>
       </section>
-    </div>`;
+    </div><section id="conciliacao-financeiro" data-conciliacao aria-label="Conciliação"></section>`;
   const el = nome => area.querySelector("[data-" + nome + "]");
+  const conciliacao = prepararConciliacao(el("conciliacao"));
   const form = el("filtro");
   const {tipo,inicio,fim} = form.elements;
   let empresa, intervalo, resumo;
@@ -144,12 +136,14 @@ export function prepararFinanceiro(area) {
   function aplicar() {
     versao++;
     resumo = undefined;
+    conciliacao.limpar();
     try {
       if (tipo.value === "personalizado" && !periodoFinanceiroValido(inicio.value,fim.value)) {
         throw new Error("Informe um período válido de até 366 dias.");
       }
       const datas = periodo(tipo.value,inicio.value,fim.value);
       intervalo = {inicio:datas.inicio,fim:datas.ultimoDia};
+      void conciliacao.atualizar(empresa,intervalo);
       return carregar(1);
     } catch (erro) {
       el("status").textContent = "";
@@ -168,6 +162,6 @@ export function prepararFinanceiro(area) {
   el("proxima").onclick = () => carregar(pagina + 1);
   return {
     abrirLoja(id) { empresa = id; return aplicar(); },
-    limpar() { versao++; el("resultados").hidden = true; }
+    limpar() { versao++; conciliacao.limpar(); el("resultados").hidden = true; }
   };
 }

@@ -253,3 +253,6 @@ form.filtros-painel :is(input,select), .campos-equipe :is(input,select) { min-wi
 .financeiro-barras span { display: block; background: #397a60; border-radius: .25rem .25rem 0 0; }
 .financeiro-barras time { position: absolute; top: 100%; width: 100%; text-align: center; font-size: .75rem; }
 #area-financeiro table { min-width: 52rem; }
+
+#conciliacao-financeiro { scroll-margin-block-start: 5rem; }
+#area-financeiro #conciliacao-financeiro table { min-width: 38rem; }

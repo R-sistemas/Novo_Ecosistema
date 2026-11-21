@@ -5,6 +5,8 @@ import { createServer } from "node:http";
 import { extname, resolve, sep } from "node:path";
 import { before, after, test } from "node:test";
 import handler from "../api/cadastrar-operador.mjs";
+import { receberNotificacao } from "../api/mercado-pago-teste-webhook.mjs";
+import { createHmac } from "node:crypto";
 
 const require = createRequire(import.meta.url);
 const {PGlite} = require(process.env.PAINEL_PGLITE_MODULE || "@electric-sql/pglite");
@@ -33,7 +35,7 @@ before(async () => {
   await db.exec(`
     insert into auth.users values ('${usuarios.a}','a@teste.invalid'),
       ('${usuarios.b}','b@teste.invalid'), ('${usuarios.op}','op@teste.invalid');
-    insert into empresas(id,nome,cardapio_slug) values ('${a}','Loja A','a'),
+    insert into empresas(id,nome,cardapio_slug) values ('${a}','Loja A','quiosque-dorafa'),
       ('${b}','Loja B','b'), ('${vazia}','Vazia','vazia');
     insert into membros(empresa_id,usuario_id,papel) values
       ('${a}','${usuarios.a}','gestor'), ('${b}','${usuarios.b}','gestor'),
@@ -59,6 +61,25 @@ before(async () => {
         else '2026-11-21 02:00+00'::timestamptz end
     from generate_series(1,30) n
     join pedidos_online p on p.id=('50000000-0000-0000-0000-'||lpad(n::text,12,'0'))::uuid;
+    insert into pedidos_online(id,empresa_id,cliente,itens,total_centavos,criado_em)
+    select ('50000000-0000-0000-0000-'||lpad(n::text,12,'0'))::uuid,
+      case when n=128 then '${b}' else '${a}' end::uuid,'Cliente privado','[]',1000,
+      case when n=129 then now() - interval '2 minutes'
+        when n=130 then now() - interval '1 hour' else '2026-11-21 02:00+00'::timestamptz end
+    from generate_series(104,131) n;
+    insert into pagamentos_online(pedido_id,empresa_id,provedor,ambiente,meio,valor_centavos,cobranca_id)
+    select p.id,p.empresa_id,case when n=130 then 'mercado_pago' else 'provedor_b' end,
+      case when n=127 then 'sandbox' else 'producao' end,'pix',1000,
+      case when n=130 then 'ORDFIXTURE' when n<>131 then 'pendente-'||n end
+    from generate_series(104,131) n
+    join pedidos_online p on p.id=('50000000-0000-0000-0000-'||lpad(n::text,12,'0'))::uuid;
+    insert into pedidos_online(id,empresa_id,cliente,itens,total_centavos,criado_em)
+    select ('50000000-0000-0000-0000-'||lpad(n::text,12,'0'))::uuid,'${a}','Cliente privado','[]',1000,
+      '2026-11-21 02:00+00'::timestamptz from generate_series(132,134) n;
+    insert into pagamentos_online(pedido_id,empresa_id,provedor,ambiente,meio,valor_centavos,cobranca_id)
+    select p.id,p.empresa_id,'provedor_b','producao','debito',1000,'pendente-'||n
+    from generate_series(132,134) n join pedidos_online p
+      on p.id=('50000000-0000-0000-0000-'||lpad(n::text,12,'0'))::uuid;
   `);
 });
 after(() => db.close());
@@ -117,10 +138,112 @@ test("PGlite: isolamento, perfis, grants, limites e paginação estável sem PII
   assert.deepEqual((await extrato(3,25)).transacoes,[]);
 });
 
+const conciliar = (token,empresa,inicio=dia,fim=inicio,pagina=1,tamanho=25) =>
+  rpc(token,"painel_financeiro_conciliacao",[empresa,inicio,fim,pagina,tamanho]);
+
+test("Conciliação: fila paginada por idade, sem reserva, confirmação, sandbox ou outra loja",async () => {
+  const [primeira,segunda] = [await conciliar("a",a),await conciliar("a",a,dia,dia,2)];
+  assert.equal(primeira.confirmadas,26);
+  assert.equal(primeira.confirmadas_centavos,"35100");
+  assert.equal(primeira.pendentes_total,26);
+  assert.equal(primeira.tem_proxima,true);
+  assert.equal(segunda.tem_proxima,false);
+  assert.equal(primeira.eventos_webhook,0);
+  assert.equal(primeira.divergencias,null);
+  assert.equal(primeira.estornos_cancelamentos,null);
+  const linhas = [...primeira.pendentes,...segunda.pendentes];
+  assert.deepEqual(linhas.map(x=>x.pedido_id),[134,133,132,...Array.from({length:23},(_,i)=>126-i)].map(uid));
+  assert.deepEqual(Object.keys(linhas[0]).sort(),["meio","pedido_criado_em","pedido_id","provedor","referencia","valor_centavos"]);
+  assert.equal((await conciliar("b",b)).pendentes_total,1);
+  assert.equal((await conciliar("a",vazia)).pendentes_total,0);
+  await assert.rejects(conciliar("a",b),{code:"42501"});
+  await assert.rejects(conciliar("op",a),{code:"42501"});
+  await assert.rejects(conciliar("a",a,"2025-11-20",dia),{code:"22023"});
+  await assert.rejects(conciliar("a",a,dia,dia,1,101),{code:"22023"});
+  for (const papel of ["anon","service_role"]) {
+    await assert.rejects(rpc("a","painel_financeiro_conciliacao",[a,dia,dia],papel),{code:"42501"});
+  }
+  const datas=(await db.query(`select to_char((now() at time zone 'America/Sao_Paulo')::date,'YYYY-MM-DD') hoje,
+    to_char((now() at time zone 'America/Sao_Paulo')::date - 1,'YYYY-MM-DD') ontem`)).rows[0];
+  const recentes=await conciliar("a",a,datas.ontem,datas.hoje,1,100);
+  assert.ok(recentes.pendentes.some(p=>p.pedido_id===uid(130)));
+  assert.ok(!recentes.pendentes.some(p=>p.pedido_id===uid(129)));
+});
+
+test("Webhook de produção simulado: atualiza confirmação local; comparação exige observação persistida",async t => {
+  process.env.SUPABASE_URL="https://banco.example";
+  process.env.SUPABASE_SERVICE_ROLE_KEY="fixture";
+  const segredo="segredo-fixture", ordem="ORDFIXTURE", pedido=uid(130);
+  t.mock.method(globalThis,"fetch",async (url,init) => {
+    const u=new URL(url);
+    if(u.hostname==="api.mercadopago.com"){
+      assert.equal(u.pathname,"/v1/orders/"+ordem);
+      return Response.json({id:ordem,external_reference:pedido,status:"processed",status_detail:"accredited",
+        total_amount:"10.00",transactions:{payments:[{amount:"10.00",status:"processed",payment_method:{id:"pix",type:"bank_transfer"}}]}});
+    }
+    assert.equal(u.pathname,"/rest/v1/rpc/atualizar_pix_mercado_pago_quiosque");
+    const p=JSON.parse(init.body);
+    return Response.json(await rpc(null,"atualizar_pix_mercado_pago_quiosque",
+      [p.p_pedido,p.p_cobranca,p.p_valor,p.p_confirmado],"service_role"));
+  });
+  const ts=String(Date.now()), pedidoHttp="fixture";
+  const assinatura=createHmac("sha256",segredo).update("id:"+ordem.toLowerCase()+";request-id:"+pedidoHttp+";ts:"+ts+";").digest("hex");
+  const res={status(code){this.code=code;return this;},end(){}};
+  await receberNotificacao({method:"POST",query:{"data.id":ordem},
+    headers:{"x-request-id":pedidoHttp,"x-signature":"ts="+ts+",v1="+assinatura}},res,
+    {segredo,token:"fixture",sandbox:false});
+  assert.equal(res.code,200);
+  const {confirmado,criado}=(await db.query(`select
+    to_char(pg.confirmado_em at time zone 'America/Sao_Paulo','YYYY-MM-DD') confirmado,
+    to_char(p.criado_em at time zone 'America/Sao_Paulo','YYYY-MM-DD') criado
+    from pagamentos_online pg join pedidos_online p on p.id=pg.pedido_id where pg.pedido_id=$1`,[pedido])).rows[0];
+  assert.ok(confirmado);
+  const local=await conciliar("a",a,criado,confirmado,1,100);
+  assert.ok(!local.pendentes.some(p=>p.pedido_id===pedido));
+  assert.ok(local.confirmadas>=1);
+  assert.equal(local.conciliadas,null);
+  await db.query(`insert into painel_privado.financeiro_eventos_psp
+    select empresa_id,provedor,ambiente,cobranca_id,'fixture-confirmado',confirmado_em,'confirmado',valor_centavos
+    from pagamentos_online where pedido_id=$1`,[pedido]);
+  const observado=await conciliar("a",a,criado,confirmado);
+  assert.equal(observado.conciliadas,1);
+  assert.equal(observado.divergencias,0);
+  assert.equal(observado.estornos_cancelamentos,0);
+  await db.query("delete from painel_privado.financeiro_eventos_psp where evento_id='fixture-confirmado'");
+});
+
+test("Conciliação: última observação compara valores e status; estornos deduplicados e sandbox excluído",async () => {
+  await db.exec(`
+    insert into painel_privado.financeiro_eventos_psp values
+    ('${a}','provedor_b','producao','tx-14','rep-1','2026-11-21 01:05+00','confirmado',1400),
+    ('${a}','provedor_b','producao','tx-14','rep-2','2026-11-21 01:06+00','estorno_parcial',1400),
+    ('${a}','provedor_b','producao','tx-14','rep-3','2026-11-21 01:07+00','estornado',1400),
+    ('${a}','provedor_b','producao','tx-15','rep-4','2026-11-21 02:00+00','confirmado',1501),
+    ('${a}','provedor_b','producao','pendente-104','rep-5','2026-11-21 02:00+00','confirmado',1000),
+    ('${a}','provedor_b','producao','pendente-105','rep-8','2026-11-21 01:59+00','cancelado',1000),
+    ('${b}','provedor_b','producao','tx-29','rep-6','2026-11-21 02:00+00','confirmado',2900),
+    ('${a}','provedor_b','sandbox','pendente-127','rep-7','2026-11-21 02:00+00','estornado',1000);
+  `);
+  try {
+    const dados=await conciliar("a",a);
+    assert.equal(dados.eventos_webhook,6);
+    assert.equal(dados.divergencias,4);
+    assert.equal(dados.estornos_cancelamentos,2);
+    assert.equal(dados.conciliadas,0);
+    assert.equal(dados.divergencias_recentes.length,4);
+    assert.ok(dados.divergencias_recentes.some(d=>d.valor_local_centavos==="1500"&&d.valor_psp_centavos==="1501"));
+    assert.equal(dados.estornos_cancelamentos_recentes[1].estado_psp,"estornado");
+    assert.ok(!JSON.stringify(dados).includes("cobranca_id"));
+    assert.equal((await conciliar("b",b)).conciliadas,1);
+  } finally {
+    await db.exec("delete from painel_privado.financeiro_eventos_psp where evento_id like 'rep-%'");
+  }
+});
+
 function simular(t) {
   process.env.SUPABASE_URL = "https://banco.example";
   process.env.SUPABASE_ANON_KEY = "fixture";
-  let falhar = false;
+  let falhar = "";
   t.mock.method(globalThis,"fetch",async (url,init) => {
     const token = init.headers.Authorization?.split(" ")[1];
     if (!Object.hasOwn(usuarios,token)) return new Response(null,{status:401});
@@ -130,13 +253,13 @@ function simular(t) {
     try {
       if (nome === "painel_contexto_sessao") return Response.json(await rpc(token,nome,[p.p_empresa_id]));
       if (nome === "painel_listar_produtos") return Response.json({produtos:[]});
-      if (falhar) {
-        falhar = false;
+      if (falhar && nome.endsWith(falhar)) {
+        falhar = "";
         return new Response(null,{status:502});
       }
-      assert.match(nome,/^painel_financeiro_(resumo|extrato)$/);
+      assert.match(nome,/^painel_financeiro_(resumo|extrato|conciliacao)$/);
       const args = [p.p_empresa,p.p_inicio,p.p_fim];
-      if (nome.endsWith("extrato")) args.push(p.p_pagina,p.p_tamanho);
+      if (nome.endsWith("extrato") || nome.endsWith("conciliacao")) args.push(p.p_pagina,p.p_tamanho);
       return Response.json(await rpc(token,nome,args));
     } catch (erro) {
       const status = {42501:403,22023:400}[erro.code];
@@ -144,7 +267,7 @@ function simular(t) {
       return new Response(null,{status});
     }
   });
-  return () => { falhar = true; };
+  return (acao="resumo") => { falhar = acao; };
 }
 
 async function api(caminho, authorization, method="GET") {
@@ -175,6 +298,12 @@ test("API: rota Vercel, sessão, autorização e validação de datas/página",a
   assert.equal((await api(path,"Bearer inválido")).code,401);
   assert.equal((await api(path)).code,401);
   assert.equal((await api(path,"Bearer a","POST")).code,405);
+  const conciliacao = path.replace("acao=extrato","acao=conciliacao");
+  assert.equal((await api(conciliacao,"Bearer a")).body.pendentes.length,25);
+  assert.equal((await api(conciliacao + "&pagina=2","Bearer a")).body.pendentes.length,1);
+  assert.equal((await api(conciliacao.replace("inicio="+dia,"inicio=2025-11-20"),"Bearer a")).code,400);
+  assert.equal((await api(conciliacao,"Bearer op")).code,403);
+  assert.equal((await api(conciliacao,"Bearer b")).code,403);
 });
 
 test("Chrome: área, filtros, provedor desconhecido, paginação, vazio, retry e mobile",{
@@ -226,21 +355,32 @@ test("Chrome: área, filtros, provedor desconhecido, paginação, vazio, retry e
     const captura = async nome => {
       if (process.env.PAINEL_CAPTURAS) await pagina.screenshot({path:resolve(process.env.PAINEL_CAPTURAS,nome)});
     };
-    await area.getByText("Página 1",{exact:true}).waitFor();
-    assert.equal(await area.locator("tbody tr").count(),25);
-    await area.locator("[data-provedores]").getByText("provedor_b",{exact:true}).waitFor();
+    const recebimentos = area.locator(":scope > [data-resultados]");
+    const conciliacao = area.getByRole("region",{name:"Conciliação"});
+    await recebimentos.getByText("Página 1",{exact:true}).waitFor();
+    assert.equal(await recebimentos.locator("tbody tr").count(),25);
+    await recebimentos.locator("[data-provedores]").getByText("provedor_b",{exact:true}).waitFor();
+    await conciliacao.getByText("Página 1",{exact:true}).waitFor();
+    assert.equal(await conciliacao.locator("tbody tr").count(),25);
+    assert.equal(await conciliacao.getByText("Sem dados de webhook",{exact:true}).count(),2);
     await captura("financeiro-desktop.png");
-    await area.getByRole("button",{name:"Próxima"}).click();
-    await area.getByText("Página 2",{exact:true}).waitFor();
-    assert.equal(await area.locator("tbody tr").count(),1);
-    assert.equal(await area.getByRole("button",{name:"Próxima"}).isDisabled(),true);
+    await recebimentos.getByRole("button",{name:"Próxima"}).click();
+    await recebimentos.getByText("Página 2",{exact:true}).waitFor();
+    assert.equal(await recebimentos.locator("tbody tr").count(),1);
+    assert.equal(await recebimentos.getByRole("button",{name:"Próxima"}).isDisabled(),true);
+    await conciliacao.getByRole("button",{name:"Próxima"}).click();
+    await conciliacao.getByText("Página 2",{exact:true}).waitFor();
+    assert.equal(await conciliacao.locator("tbody tr").count(),1);
+    assert.equal(await conciliacao.getByRole("button",{name:"Próxima"}).isDisabled(),true);
+    await area.getByRole("link",{name:"Ir para Conciliação"}).click();
+    if (process.env.PAINEL_CAPTURAS) await conciliacao.screenshot({path:resolve(process.env.PAINEL_CAPTURAS,"conciliacao-desktop.png")});
 
     const filtro = area.getByLabel("Período");
     await filtro.selectOption("7");
-    await area.getByText("Página 1",{exact:true}).waitFor();
+    await recebimentos.getByText("Página 1",{exact:true}).waitFor();
     assert.equal(await area.locator("[data-grafico] li").count(),7);
     await filtro.selectOption("30");
-    await area.getByText("Página 1",{exact:true}).waitFor();
+    await recebimentos.getByText("Página 1",{exact:true}).waitFor();
     assert.equal(await area.locator("[data-grafico] li").count(),30);
     await filtro.selectOption("personalizado");
     await area.getByLabel("Início").fill("2026-11-01");
@@ -248,16 +388,26 @@ test("Chrome: área, filtros, provedor desconhecido, paginação, vazio, retry e
     await area.getByRole("button",{name:"Aplicar"}).click();
     await area.getByText("Sem recebimentos no período",{exact:true}).waitFor();
 
+    await conciliacao.getByText("Sem cobranças pendentes no período.").waitFor();
+    falhar("conciliacao");
+    await filtro.selectOption("7");
+    await conciliacao.getByRole("button",{name:"Tentar novamente"}).click();
+    await conciliacao.getByText("Página 1",{exact:true}).waitFor();
     falhar();
     await filtro.selectOption("hoje");
-    await area.getByRole("button",{name:"Tentar novamente"}).click();
-    await area.getByText("Página 1",{exact:true}).waitFor();
+    await area.locator(":scope > [data-repetir]").click();
+    await recebimentos.getByText("Página 1",{exact:true}).waitFor();
     await pagina.setViewportSize({width:390,height:844});
     await pagina.waitForFunction(() => document.querySelector("#lateral-painel").getBoundingClientRect().right <= 0);
     assert.equal(await pagina.evaluate(() => document.documentElement.scrollWidth),390);
     await captura("financeiro-mobile.png");
     await area.getByRole("heading",{name:"Extrato"}).scrollIntoViewIfNeeded();
     await captura("financeiro-mobile-extrato.png");
+    await conciliacao.getByRole("heading",{name:"Conciliação",exact:true}).scrollIntoViewIfNeeded();
+    await conciliacao.evaluate(sec => sec.scrollIntoView({block:"start"}));
+    await captura("conciliacao-mobile.png");
+    await conciliacao.getByRole("heading",{name:"Cobranças pendentes",exact:true}).evaluate(h => h.scrollIntoView({block:"center"}));
+    await captura("conciliacao-pendentes-mobile.png");
     assert.deepEqual(erros,[]);
   } finally {
     servidor.close();
