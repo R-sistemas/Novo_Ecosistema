@@ -19,6 +19,11 @@ Exceções permitidas (não são artefatos do projeto): caches de ferramentas (`
 Critério de aceite obrigatório antes de qualquer entrega: executar `git worktree list` nos dois repositórios e confirmar que todo caminho listado está dentro de `Desktop\Ecosistema`; confirmar `git status` limpo e sincronizado com `origin`; e listar qualquer arquivo do projeto referenciado por caminho absoluto externo.
 
 Violação desta regra é motivo de rejeição da entrega.
+
+## Saneamento por módulo — regra obrigatória
+
+Ao concluir um MÓDULO completo em produção (não a cada incremento), é obrigatório executar saneamento: remover worktrees e branches locais de tarefas já mergeadas, confirmar `git worktree list` limpo, `git status` sincronizado e listar o que foi preservado e por quê. O saneamento é local; branches remotas permanecem como histórico. Dúvida sobre o que remover → preservar e reportar. Evidências do saneamento ficam em `_arquivo_morto/painel-evidencia-historico/`.
+
 ## Limites de linhas e camadas — regras invioláveis
 
 | Tipo de arquivo | Limite máximo |
