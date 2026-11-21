@@ -1,3 +1,4 @@
+import { csvFinanceiro } from "../admin/regras/financeiro-csv.mjs";
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -130,7 +131,7 @@ test("PGlite: isolamento, perfis, grants, limites e paginação estável sem PII
   assert.deepEqual(linhas.map(t => t.pedido_id),Array.from({length:26},(_,i) => uid(26-i)));
   assert.deepEqual(linhas.slice(-4).map(t => t.estado),["cancelado","entregue","recusado","pago"]);
   assert.deepEqual(Object.keys(linhas[0]).sort(),[
-    "canal","confirmado_em","estado","frete_centavos","liquido_centavos","meio","pedido_id",
+    "canal","confirmado_em","estado","estado_psp","frete_centavos","liquido_centavos","meio","pedido_id",
     "provedor","referencia","taxa_centavos","valor_centavos"
   ]);
   assert.equal(linhas[0].taxa_centavos,null);
@@ -181,15 +182,15 @@ async function webhook(id,body,altera=req=>req) {
   await receberNotificacao(altera(assinaturaWebhook(id,body)),res,{segredo:"segredo-fixture",token:"fixture",sandbox:false});
   return res.code;
 }
-const argumentosEvento=["p_pedido","p_provedor","p_ambiente","p_cobranca","p_evento","p_estado","p_valor","p_ocorrido_em"];
-const gravarEvento=(p,role="service_role")=>rpc(null,"registrar_evento_financeiro_psp",argumentosEvento.map(k=>p[k]),role);
+const argumentosEvento=["p_pedido","p_provedor","p_ambiente","p_cobranca","p_evento","p_estado","p_valor","p_ocorrido_em","p_estornado"];
+const gravarEvento=(p,role="service_role")=>rpc(null,"registrar_evento_financeiro_psp",argumentosEvento.map(k=>p[k] ?? null),role);
 const limparEventos=()=>db.exec("delete from painel_privado.financeiro_eventos_psp where evento_id ~ '^(order|payment|chargeback):'");
 
 test("Webhook Orders: confirmação precede auditoria, recupera falha, deduplica e ignora metadados do corpo",async t => {
   process.env.SUPABASE_URL="https://banco.example";
   process.env.SUPABASE_SERVICE_ROLE_KEY="fixture";
   const ordem="ORDFIXTURE", pedido=uid(130);
-  let falha=true, estado="processed", detalhe="accredited";
+  let falha=true, estado="processed", detalhe="accredited", refunds;
   const data=new Date().toISOString();
   const chamadas=[];
   t.mock.method(globalThis,"fetch",async (url,init) => {
@@ -198,7 +199,7 @@ test("Webhook Orders: confirmação precede auditoria, recupera falha, deduplica
       assert.equal(u.pathname,"/v1/orders/"+ordem);
       return Response.json({id:ordem,external_reference:pedido,status:estado,status_detail:detalhe,
         last_updated_date:data,total_amount:"10.00",
-        transactions:{payments:[{amount:"10.00",status:estado,payment_method:{id:"pix",type:"bank_transfer"}}]}});
+        transactions:{refunds,payments:[{amount:"10.00",status:estado,payment_method:{id:"pix",type:"bank_transfer"}}]}});
     }
     const nome=u.pathname.split("/").at(-1), p=JSON.parse(init.body);
     chamadas.push(nome);
@@ -233,6 +234,14 @@ test("Webhook Orders: confirmação precede auditoria, recupera falha, deduplica
     estado="provedor_novo";detalhe="sem_mapeamento";
     assert.equal(await webhook(ordem,falso),200);
     assert.equal((await db.query("select count(*)::int n from painel_privado.financeiro_eventos_psp where estado='desconhecido'")).rows[0].n,1);
+    estado="processed";detalhe="partially_refunded";
+    refunds=[{id:"refund-1",status:"processed",amount:"2.01"}];
+    assert.equal(await webhook(ordem,falso),200);
+    const parcial=await db.query("select estornado_centavos::text valor from painel_privado.financeiro_eventos_psp where estado='estorno_parcial'");
+    assert.equal(parcial.rows[0].valor,"201");
+    refunds.push({id:"refund-1",status:"processed",amount:"2.01"});
+    assert.equal(await webhook(ordem,falso),200);
+    assert.equal((await db.query("select count(*)::int n from painel_privado.financeiro_eventos_psp where estado='estorno_parcial' and estornado_centavos is null")).rows[0].n,1);
     assert.equal(await webhook(ordem,{},req=>({...req,headers:{}})),401);
   } finally { await limparEventos(); }
 });
@@ -309,6 +318,67 @@ test("Conciliação: última observação compara valores e status; estornos ded
   }
 });
 
+function eventoPeriodo(n, estado, estornado, ocorridoEm, versao=1) {
+  return gravarEvento({p_pedido:uid(n),p_provedor:n<=13?"mercado_pago":"provedor_b",
+    p_ambiente:n===27?"sandbox":"producao",p_cobranca:"tx-"+n,p_evento:"reversao-"+n+"-"+versao,
+    p_estado:estado,p_valor:String(n*100),p_ocorrido_em:ocorridoEm,p_estornado:estornado});
+}
+
+test("Consolidação: estorno incremental, cancelamento e disputa distintos; monta extrato/CSV sem PII",async () => {
+  try {
+    await eventoPeriodo(14,"estorno_parcial","100","2026-11-20T02:55:00Z");
+    await eventoPeriodo(14,"estorno_parcial","300","2026-11-21T01:10:00Z",2);
+    await eventoPeriodo(14,"estornado","1400","2026-11-21T02:00:00Z",3);
+    await eventoPeriodo(14,"estornado","1400","2026-11-21T02:05:00Z",4);
+    await eventoPeriodo(15,"contestacao",null,"2026-11-21T02:06:00Z");
+    await eventoPeriodo(1,"confirmado","0","2026-11-21T01:00:00Z");
+    await eventoPeriodo(1,"estorno_parcial","40","2026-11-21T02:05:00Z",2);
+    await eventoPeriodo(2,"cancelado",null,"2026-11-21T02:06:00Z");
+    await eventoPeriodo(27,"estornado","2700","2026-11-21T02:06:00Z");
+    await eventoPeriodo(29,"contestacao",null,"2026-11-21T02:06:00Z");
+    await eventoPeriodo(15,"estornado","1500","2026-11-21T03:01:00Z",2);
+    const r=await resumo("a",a);
+    assert.equal(r.total_centavos,"35100");
+    assert.equal(r.taxa_centavos,null);
+    assert.equal(r.liquido_centavos,null);
+    assert.equal(r.reversoes.estornado_centavos,"1340");
+    assert.equal(r.reversoes.estornos,2);
+    assert.equal(r.reversoes.contestacoes,1);
+    assert.equal(r.reversoes.cancelamentos,1);
+    assert.equal(r.reversoes.provedores.provedor_b.estornado_centavos,"1300");
+    assert.equal(r.reversoes.provedores.mercado_pago.estornado_centavos,"40");
+    assert.equal((await resumo("b",b)).reversoes.contestacoes,1);
+    assert.equal((await resumo("a",vazia)).reversoes.estornado_centavos,null);
+    const {transacoes}=await rpc("a","painel_financeiro_exportar",[a,dia,dia]);
+    assert.equal(transacoes.length,26);
+    const estado=n=>transacoes.find(t=>t.pedido_id===uid(n))?.estado_psp;
+    assert.deepEqual([estado(1),estado(2),estado(14),estado(15),estado(26)],
+      ["estorno_parcial","cancelado","estornado","contestacao",null]);
+    assert.deepEqual((await extrato(1,25)).transacoes,transacoes.slice(0,25));
+    assert.ok(!JSON.stringify(transacoes).includes("cobranca_id"));
+    await assert.rejects(rpc("b","painel_financeiro_exportar",[a,dia,dia]),{code:"42501"});
+    await assert.rejects(rpc("a","painel_financeiro_exportar",[a,dia,dia],"anon"),{code:"42501"});
+    await eventoPeriodo(16,"estorno_parcial","20","2026-11-21T02:06:00Z");
+    assert.equal((await resumo("a",a)).reversoes.estornado_centavos,null);
+    assert.equal((await resumo("a",a)).reversoes.sem_valor,1);
+    await eventoPeriodo(14,"contestacao",null,"2026-11-21T02:07:00Z",5);
+    await eventoPeriodo(14,"estorno_parcial","600","2026-11-21T02:08:00Z",6);
+    assert.equal((await resumo("a",a)).reversoes.sem_valor,2);
+  } finally {
+    await db.exec("delete from painel_privado.financeiro_eventos_psp where evento_id like 'reversao-%'");
+  }
+});
+
+test("CSV: UTF-8, vírgula, aspas, acentos, ausência nula e fórmula neutralizada",() => {
+  const csv=csvFinanceiro([{referencia:'Mesa, "Ação"',provedor:"=1+1",valor_centavos:"9007199254740993"}]);
+  assert.ok(csv.startsWith("\uFEFF"));
+  assert.ok(csv.includes('"Mesa, ""Ação"""'));
+  assert.ok(csv.includes('"\'=1+1"'));
+  assert.ok(csv.includes('"9007199254740993"'));
+  assert.equal(csv.split("\r\n").length,3);
+  assert.ok(!csv.includes("null")&&!csv.includes("undefined"));
+});
+
 function simular(t) {
   process.env.SUPABASE_URL = "https://banco.example";
   process.env.SUPABASE_ANON_KEY = "fixture";
@@ -326,7 +396,7 @@ function simular(t) {
         falhar = "";
         return new Response(null,{status:502});
       }
-      assert.match(nome,/^painel_financeiro_(resumo|extrato|conciliacao)$/);
+      assert.match(nome,/^painel_financeiro_(resumo|extrato|conciliacao|exportar)$/);
       const args = [p.p_empresa,p.p_inicio,p.p_fim];
       if (nome.endsWith("extrato") || nome.endsWith("conciliacao")) args.push(p.p_pagina,p.p_tamanho);
       return Response.json(await rpc(token,nome,args));
@@ -373,6 +443,10 @@ test("API: rota Vercel, sessão, autorização e validação de datas/página",a
   assert.equal((await api(conciliacao.replace("inicio="+dia,"inicio=2025-11-20"),"Bearer a")).code,400);
   assert.equal((await api(conciliacao,"Bearer op")).code,403);
   assert.equal((await api(conciliacao,"Bearer b")).code,403);
+  const exportar=path.replace("acao=extrato","acao=exportar");
+  assert.equal((await api(exportar,"Bearer a")).body.transacoes.length,26);
+  assert.equal((await api(exportar,"Bearer b")).code,403);
+  assert.equal((await api(exportar)).code,401);
 });
 
 test("Chrome: área, filtros, provedor desconhecido, paginação, vazio, retry e mobile",{
@@ -477,19 +551,40 @@ test("Chrome: área, filtros, provedor desconhecido, paginação, vazio, retry e
     await captura("conciliacao-mobile.png");
     await conciliacao.getByRole("heading",{name:"Cobranças pendentes",exact:true}).evaluate(h => h.scrollIntoView({block:"center"}));
     await captura("conciliacao-pendentes-mobile.png");
-    await gravarEvento({p_pedido:uid(14),p_provedor:"provedor_b",p_ambiente:"producao",p_cobranca:"tx-14",
-      p_evento:"fixture-chrome",p_estado:"estornado",p_valor:"1400",p_ocorrido_em:"2026-11-21T01:05:00Z"});
+    const estados=[["pendente","Pendente"],["confirmado","Confirmado"],["recusado","Recusado"],["cancelado","Cancelado"],
+      ["estorno_parcial","Estorno parcial"],["estornado","Estornado"],["contestacao","Contestação"],["desconhecido","Desconhecido"]];
+    for(const [i,[estado]] of estados.entries()){
+      const n=14+i;
+      await eventoPeriodo(n,estado,estado==="estornado"?String(n*100):estado==="estorno_parcial"?"300":null,
+        "2026-11-21T01:05:00Z");
+    }
     try {
       await filtro.selectOption("7");
-      await conciliacao.locator("[data-divergencias]").getByText("1",{exact:true}).waitFor();
-      await conciliacao.locator("[data-estornos]").getByText("1",{exact:true}).waitFor();
+      for (const [,label] of estados) await recebimentos.locator("tbody td:nth-child(9)").getByText(label,{exact:true}).waitFor();
+      await pagina.getByText(/Valor estornado indisponível/).waitFor();
+      await conciliacao.locator("[data-divergencias]").getByText(/^[1-9]\d*$/).waitFor();
+      assert.ok(Number(await conciliacao.locator("[data-divergencias]").textContent())>0);
+      assert.equal(await recebimentos.getByRole("columnheader",{name:"Taxa",exact:true}).count(),0);
+      const download=pagina.waitForEvent("download");
+      await area.getByRole("button",{name:"Exportar CSV"}).click();
+      const arquivo=await download;
+      assert.equal(arquivo.suggestedFilename(),"extrato-2026-11-14-2026-11-20.csv");
+      if (process.env.PAINEL_CAPTURAS) await arquivo.saveAs(resolve(process.env.PAINEL_CAPTURAS,"extrato-fixture.csv"));
+      const csv=await readFile(await arquivo.path(),"utf8");
+      assert.ok(csv.includes('"estorno_parcial"')&&csv.includes('"contestacao"'));
+      assert.equal(csv.split("\r\n").length,28);
+      const rolagem=recebimentos.locator('[aria-label="Tabela de extrato"]');
+      await rolagem.evaluate(el=>{el.scrollLeft=el.scrollWidth;});
+      await recebimentos.getByRole("columnheader",{name:"Estado PSP",exact:true}).scrollIntoViewIfNeeded();
+      await captura("extrato-psp-mobile.png");
       await pagina.setViewportSize({width:1366,height:950});
       if (process.env.PAINEL_CAPTURAS) {
-        await conciliacao.locator(".financeiro-cards").screenshot({path:resolve(process.env.PAINEL_CAPTURAS,"conciliacao-com-eventos.png")});
+        await area.locator("[data-reversoes]").screenshot({path:resolve(process.env.PAINEL_CAPTURAS,"reversoes-periodo.png")});
       }
     } finally {
-      await db.exec("delete from painel_privado.financeiro_eventos_psp where evento_id='fixture-chrome'");
+      await db.exec("delete from painel_privado.financeiro_eventos_psp where evento_id like 'reversao-%'");
     }
+
     assert.deepEqual(erros,[]);
   } finally {
     servidor.close();

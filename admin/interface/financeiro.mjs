@@ -1,3 +1,4 @@
+import { prepararFinanceiroPeriodo } from "./financeiro-periodo.mjs";
 import { prepararConciliacao } from "./financeiro-conciliacao.mjs";
 import { horario, meios, reais } from "./financeiro-formatacao.mjs";
 import { consultarFinanceiro } from "../dados/financeiro.mjs";
@@ -5,7 +6,9 @@ import { periodo } from "../regras/periodo.mjs";
 import { periodoFinanceiroValido } from "../regras/financeiro.mjs";
 
 const canais = {cardapio:"Cardápio",entrega:"Entrega",pdv:"PDV"};
-const estados = {pago:"Pago",entregue:"Entregue",recusado:"Recusado",cancelado:"Cancelado"};
+const estados = {novo:"Novo",preparo:"Em preparo",pronto:"Pronto",pago:"Pago",entregue:"Entregue",recusado:"Recusado",cancelado:"Cancelado"};
+const estadosPSP = {confirmado:"Confirmado",pendente:"Pendente",recusado:"Recusado",cancelado:"Cancelado",
+  estornado:"Estornado",estorno_parcial:"Estorno parcial",contestacao:"Contestação",desconhecido:"Desconhecido"};
 
 function lista(elemento, totais, nomes = {}) {
   elemento.replaceChildren(...Object.entries(totais).flatMap(([chave,total]) => {
@@ -48,6 +51,12 @@ export function prepararFinanceiro(area) {
         <button type="submit">Aplicar</button>
       </div>
     </form>
+    <div class="acoes"><button type="button" data-exportar disabled>Exportar CSV</button>
+      <span data-exportacao-status role="status"></span></div>
+    <section class="cartao" data-reversoes hidden><h2>Reversões no período</h2>
+      <p data-reversoes-total></p><p data-reversoes-valor></p><ul data-reversoes-provedores></ul>
+      <p>O impacto no líquido depende dos dados de liquidação do PSP.</p>
+    </section>
     <p data-status role="status"></p><p data-erro class="erro" role="alert"></p>
     <button data-repetir type="button" hidden>Tentar novamente</button>
     <div data-resultados hidden>
@@ -63,7 +72,8 @@ export function prepararFinanceiro(area) {
       <section class="cartao"><h2>Extrato</h2>
         <div class="rolagem" tabindex="0" aria-label="Tabela de extrato">
           <table><thead><tr><th>Confirmado em</th><th>Referência</th><th>Canal</th><th>Meio</th>
-            <th>Provedor</th><th>Valor</th><th>Frete</th><th>Estado</th></tr></thead><tbody data-extrato></tbody></table>
+            <th>Provedor</th><th>Valor</th><th>Frete</th><th>Estado do pedido</th><th>Estado PSP</th>
+            <th data-coluna-taxa hidden>Taxa</th><th data-coluna-liquido hidden>Líquido</th></tr></thead><tbody data-extrato></tbody></table>
         </div>
         <nav class="acoes" aria-label="Paginação do extrato">
           <button data-anterior type="button">Anterior</button><span data-pagina aria-live="polite"></span>
@@ -73,6 +83,7 @@ export function prepararFinanceiro(area) {
     </div><section id="conciliacao-financeiro" data-conciliacao aria-label="Conciliação"></section>`;
   const el = nome => area.querySelector("[data-" + nome + "]");
   const conciliacao = prepararConciliacao(el("conciliacao"));
+  const fechamento = prepararFinanceiroPeriodo(area);
   const form = el("filtro");
   const {tipo,inicio,fim} = form.elements;
   let empresa, intervalo, resumo;
@@ -81,7 +92,10 @@ export function prepararFinanceiro(area) {
 
   function mostrarResumo(dados) {
     const total = el("total");
-    lista(total,{Total:dados.total_centavos,Frete:dados.frete_centavos});
+    const valores = {Total:dados.total_centavos,Frete:dados.frete_centavos};
+    if (dados.taxa_centavos != null) valores.Taxa = dados.taxa_centavos;
+    if (dados.liquido_centavos != null) valores["Líquido"] = dados.liquido_centavos;
+    lista(total,valores);
     const quantidade = document.createElement("dt");
     const valor = document.createElement("dd");
     quantidade.textContent = "Transações";
@@ -94,12 +108,18 @@ export function prepararFinanceiro(area) {
   }
 
   function mostrarExtrato(dados) {
+    const taxa = dados.transacoes.some(t => t.taxa_centavos != null);
+    const liquido = dados.transacoes.some(t => t.liquido_centavos != null);
+    el("coluna-taxa").hidden = !taxa;
+    el("coluna-liquido").hidden = !liquido;
     el("extrato").replaceChildren(...dados.transacoes.map(t => {
       const linha = document.createElement("tr");
-      for (const texto of [horario.format(new Date(t.confirmado_em)),t.referencia,canais[t.canal],
-        meios[t.meio],t.provedor,reais(t.valor_centavos),reais(t.frete_centavos),estados[t.estado] ?? t.estado]) {
-        linha.insertCell().textContent = texto;
-      }
+      const valores = [horario.format(new Date(t.confirmado_em)),t.referencia,canais[t.canal] ?? t.canal,
+        meios[t.meio] ?? t.meio,t.provedor,reais(t.valor_centavos),reais(t.frete_centavos),
+        estados[t.estado] ?? t.estado,t.estado_psp == null ? "Sem observação" : (estadosPSP[t.estado_psp] ?? t.estado_psp)];
+      if (taxa) valores.push(t.taxa_centavos == null ? "—" : reais(t.taxa_centavos));
+      if (liquido) valores.push(t.liquido_centavos == null ? "—" : reais(t.liquido_centavos));
+      for (const texto of valores) linha.insertCell().textContent = texto;
       return linha;
     }));
     el("pagina").textContent = "Página " + dados.pagina;
@@ -120,6 +140,7 @@ export function prepararFinanceiro(area) {
       ]);
       if (atual !== versao) return;
       resumo = dados;
+      if (destino === 1) fechamento.mostrar(dados,empresa,intervalo);
       mostrarResumo(dados);
       mostrarExtrato(extrato);
       el("status").textContent = dados.quantidade ? (extrato.transacoes.length ? "" : "Página sem transações.")
@@ -137,6 +158,7 @@ export function prepararFinanceiro(area) {
     versao++;
     resumo = undefined;
     conciliacao.limpar();
+    fechamento.limpar();
     try {
       if (tipo.value === "personalizado" && !periodoFinanceiroValido(inicio.value,fim.value)) {
         throw new Error("Informe um período válido de até 366 dias.");
@@ -162,6 +184,6 @@ export function prepararFinanceiro(area) {
   el("proxima").onclick = () => carregar(pagina + 1);
   return {
     abrirLoja(id) { empresa = id; return aplicar(); },
-    limpar() { versao++; conciliacao.limpar(); el("resultados").hidden = true; }
+    limpar() { versao++; conciliacao.limpar(); fechamento.limpar(); el("resultados").hidden = true; }
   };
 }
