@@ -2,6 +2,8 @@
 
 Estas regras se aplicam a todo o código deste projeto. O PLANO.md define o escopo e a ordem das entregas.
 
+> **Governança de IAs**: antes de editar qualquer coisa, leia `_arquivo_morto/GOVERNANCA_IAs/CONTEXTO_INICIAL_CODEX.md` e `PAPEIS_E_QUADRO_DE_ATRIBUICOES.md` (mesma pasta). Definem papéis (proprietário/executor/auditor), fluxo de aprovação e pacote de evidência obrigatórios.
+
 - Organize o código por responsabilidade e domínio. Mantenha interfaces explícitas entre PDV, catálogo, Cardápio, KDS, REMO e pagamentos. Preserve a independência operacional da REMO e use sua API na integração.
 - Separe interface, regras de negócio e acesso a dados ou serviços externos. Mantenha dependências previsíveis e evite dependências circulares.
 - Mantenha uma implementação por regra de negócio. Antes de escrever uma função, procure uma equivalente. Compartilhe validações e cálculos quando tiverem o mesmo significado. Evite abstrações prematuras e dependências compartilhadas sem necessidade.
