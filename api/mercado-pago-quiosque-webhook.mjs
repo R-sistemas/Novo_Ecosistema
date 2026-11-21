@@ -1,4 +1,4 @@
-import { receberNotificacao } from "./mercado-pago-teste-webhook.mjs";
+import { receberNotificacao } from "../lib/mercado-pago-webhook.mjs";
 
 export default function handler(req, res) {
   return receberNotificacao(req, res, {

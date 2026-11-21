@@ -170,46 +170,115 @@ test("Conciliação: fila paginada por idade, sem reserva, confirmação, sandbo
   assert.ok(!recentes.pendentes.some(p=>p.pedido_id===uid(129)));
 });
 
-test("Webhook de produção simulado: atualiza confirmação local; comparação exige observação persistida",async t => {
+function assinaturaWebhook(id,body) {
+  const segredo="segredo-fixture", ts=String(Date.now()), requestId="fixture";
+  const assinatura=createHmac("sha256",segredo).update("id:"+id.toLowerCase()+";request-id:"+requestId+";ts:"+ts+";").digest("hex");
+  return {method:"POST",query:{"data.id":id},body,
+    headers:{"x-request-id":requestId,"x-signature":"ts="+ts+",v1="+assinatura}};
+}
+async function webhook(id,body,altera=req=>req) {
+  const res={status(code){this.code=code;return this;},end(){}};
+  await receberNotificacao(altera(assinaturaWebhook(id,body)),res,{segredo:"segredo-fixture",token:"fixture",sandbox:false});
+  return res.code;
+}
+const argumentosEvento=["p_pedido","p_provedor","p_ambiente","p_cobranca","p_evento","p_estado","p_valor","p_ocorrido_em"];
+const gravarEvento=(p,role="service_role")=>rpc(null,"registrar_evento_financeiro_psp",argumentosEvento.map(k=>p[k]),role);
+const limparEventos=()=>db.exec("delete from painel_privado.financeiro_eventos_psp where evento_id ~ '^(order|payment|chargeback):'");
+
+test("Webhook Orders: confirmação precede auditoria, recupera falha, deduplica e ignora metadados do corpo",async t => {
   process.env.SUPABASE_URL="https://banco.example";
   process.env.SUPABASE_SERVICE_ROLE_KEY="fixture";
-  const segredo="segredo-fixture", ordem="ORDFIXTURE", pedido=uid(130);
+  const ordem="ORDFIXTURE", pedido=uid(130);
+  let falha=true, estado="processed", detalhe="accredited";
+  const data=new Date().toISOString();
+  const chamadas=[];
   t.mock.method(globalThis,"fetch",async (url,init) => {
     const u=new URL(url);
     if(u.hostname==="api.mercadopago.com"){
       assert.equal(u.pathname,"/v1/orders/"+ordem);
-      return Response.json({id:ordem,external_reference:pedido,status:"processed",status_detail:"accredited",
-        total_amount:"10.00",transactions:{payments:[{amount:"10.00",status:"processed",payment_method:{id:"pix",type:"bank_transfer"}}]}});
+      return Response.json({id:ordem,external_reference:pedido,status:estado,status_detail:detalhe,
+        last_updated_date:data,total_amount:"10.00",
+        transactions:{payments:[{amount:"10.00",status:estado,payment_method:{id:"pix",type:"bank_transfer"}}]}});
     }
-    assert.equal(u.pathname,"/rest/v1/rpc/atualizar_pix_mercado_pago_quiosque");
-    const p=JSON.parse(init.body);
-    return Response.json(await rpc(null,"atualizar_pix_mercado_pago_quiosque",
-      [p.p_pedido,p.p_cobranca,p.p_valor,p.p_confirmado],"service_role"));
+    const nome=u.pathname.split("/").at(-1), p=JSON.parse(init.body);
+    chamadas.push(nome);
+    if(nome==="registrar_evento_financeiro_psp"){
+      if(falha)return new Response(null,{status:503});
+      assert.equal(p.p_pedido,pedido);
+      return Response.json(await gravarEvento(p));
+    }
+    assert.equal(nome,"atualizar_pix_mercado_pago_quiosque");
+    return Response.json(await rpc(null,nome,[p.p_pedido,p.p_cobranca,p.p_valor,p.p_confirmado],"service_role"));
   });
-  const ts=String(Date.now()), pedidoHttp="fixture";
-  const assinatura=createHmac("sha256",segredo).update("id:"+ordem.toLowerCase()+";request-id:"+pedidoHttp+";ts:"+ts+";").digest("hex");
-  const res={status(code){this.code=code;return this;},end(){}};
-  await receberNotificacao({method:"POST",query:{"data.id":ordem},
-    headers:{"x-request-id":pedidoHttp,"x-signature":"ts="+ts+",v1="+assinatura}},res,
-    {segredo,token:"fixture",sandbox:false});
-  assert.equal(res.code,200);
-  const {confirmado,criado}=(await db.query(`select
-    to_char(pg.confirmado_em at time zone 'America/Sao_Paulo','YYYY-MM-DD') confirmado,
-    to_char(p.criado_em at time zone 'America/Sao_Paulo','YYYY-MM-DD') criado
-    from pagamentos_online pg join pedidos_online p on p.id=pg.pedido_id where pg.pedido_id=$1`,[pedido])).rows[0];
-  assert.ok(confirmado);
-  const local=await conciliar("a",a,criado,confirmado,1,100);
-  assert.ok(!local.pendentes.some(p=>p.pedido_id===pedido));
-  assert.ok(local.confirmadas>=1);
-  assert.equal(local.conciliadas,null);
-  await db.query(`insert into painel_privado.financeiro_eventos_psp
-    select empresa_id,provedor,ambiente,cobranca_id,'fixture-confirmado',confirmado_em,'confirmado',valor_centavos
-    from pagamentos_online where pedido_id=$1`,[pedido]);
-  const observado=await conciliar("a",a,criado,confirmado);
-  assert.equal(observado.conciliadas,1);
-  assert.equal(observado.divergencias,0);
-  assert.equal(observado.estornos_cancelamentos,0);
-  await db.query("delete from painel_privado.financeiro_eventos_psp where evento_id='fixture-confirmado'");
+  const falso={id:"corpo-fixture",date_created:"1990-01-01T12:00:00Z",data:{external_reference:uid(999),status:"refunded"}};
+  try {
+    assert.equal(await webhook(ordem,falso),200);
+    assert.deepEqual(chamadas.slice(0,2),["atualizar_pix_mercado_pago_quiosque","registrar_evento_financeiro_psp"]);
+    const {confirmado,criado}=(await db.query(`select
+      to_char(pg.confirmado_em at time zone 'America/Sao_Paulo','YYYY-MM-DD') confirmado,
+      to_char(p.criado_em at time zone 'America/Sao_Paulo','YYYY-MM-DD') criado
+      from pagamentos_online pg join pedidos_online p on p.id=pg.pedido_id where pg.pedido_id=$1`,[pedido])).rows[0];
+    assert.ok(confirmado);
+    const local=await conciliar("a",a,criado,confirmado,1,100);
+    assert.ok(!local.pendentes.some(p=>p.pedido_id===pedido));
+    assert.ok(local.confirmadas>=1);
+    assert.equal(local.conciliadas,null);
+    falha=false;
+    assert.equal(await webhook(ordem,falso),200);
+    assert.equal(await webhook(ordem,{...falso,id:"outra-entrega"}),200);
+    const observado=await conciliar("a",a,criado,confirmado);
+    assert.equal(observado.eventos_webhook,1);
+    assert.equal(observado.conciliadas,1);
+    assert.equal((await conciliar("b",b,criado,confirmado)).eventos_webhook,0);
+    estado="provedor_novo";detalhe="sem_mapeamento";
+    assert.equal(await webhook(ordem,falso),200);
+    assert.equal((await db.query("select count(*)::int n from painel_privado.financeiro_eventos_psp where estado='desconhecido'")).rows[0].n,1);
+    assert.equal(await webhook(ordem,{},req=>({...req,headers:{}})),401);
+  } finally { await limparEventos(); }
+});
+
+test("Payments e contestações: consulta autenticada e vínculo estrito, sem confirmar fluxo legado",async t => {
+  process.env.SUPABASE_URL="https://banco.example";
+  process.env.SUPABASE_SERVICE_ROLE_KEY="fixture";
+  const id="123456", caso="456789", pedido=uid(9);
+  const data="2026-11-21T01:10:00Z";
+  const recebido=[];
+  await db.query("update pagamentos_online set cobranca_id=$1 where pedido_id=$2",[id,pedido]);
+  t.mock.method(globalThis,"fetch",async (url,init) => {
+    const path=new URL(url).pathname;
+    if(path==="/v1/payments/"+id)return Response.json({
+      id:Number(id),live_mode:true,currency_id:"BRL",external_reference:pedido,
+      transaction_amount:9,transaction_amount_refunded:2.01,status:"approved",date_last_updated:data
+    });
+    if(path==="/users/me")return Response.json({id:42});
+    if(path==="/v1/chargebacks/"+caso){
+      assert.equal(init.headers["X-Caller-Id"],"42");
+      return Response.json({id:caso,payments:[Number(id)],currency:"BRL",amount:"2.01",date_last_updated:data});
+    }
+    assert.equal(path,"/rest/v1/rpc/registrar_evento_financeiro_psp");
+    const p=JSON.parse(init.body);
+    recebido.push(p);
+    return Response.json(await gravarEvento(p));
+  });
+  try {
+    assert.equal(await webhook(id,{type:"payment",action:"payment.updated"}),200);
+    assert.equal(await webhook(caso,{type:"chargebacks",action:"order.charged_back"}),200);
+    assert.equal(await webhook("80",{type:"unknown"}),200);
+    assert.deepEqual(recebido.map(e=>[e.p_estado,e.p_valor,e.p_cobranca]),[
+      ["estorno_parcial","900",id],["contestacao","900",id]
+    ]);
+    assert.equal((await conciliar("a",a)).eventos_webhook,2);
+    assert.equal((await conciliar("b",b)).eventos_webhook,0);
+    const [e]=recebido;
+    assert.equal(await gravarEvento({...e,p_ambiente:"sandbox",p_evento:"fixture-errado"}),false);
+    assert.equal(await gravarEvento({...e,p_pedido:uid(29),p_evento:"fixture-errado"}),false);
+    for(const role of ["anon","authenticated"]){
+      await assert.rejects(gravarEvento(e,role),{code:"42501"});
+    }
+  } finally {
+    await limparEventos();
+    await db.query("update pagamentos_online set cobranca_id='tx-9' where pedido_id=$1",[pedido]);
+  }
 });
 
 test("Conciliação: última observação compara valores e status; estornos deduplicados e sandbox excluído",async () => {
@@ -408,6 +477,19 @@ test("Chrome: área, filtros, provedor desconhecido, paginação, vazio, retry e
     await captura("conciliacao-mobile.png");
     await conciliacao.getByRole("heading",{name:"Cobranças pendentes",exact:true}).evaluate(h => h.scrollIntoView({block:"center"}));
     await captura("conciliacao-pendentes-mobile.png");
+    await gravarEvento({p_pedido:uid(14),p_provedor:"provedor_b",p_ambiente:"producao",p_cobranca:"tx-14",
+      p_evento:"fixture-chrome",p_estado:"estornado",p_valor:"1400",p_ocorrido_em:"2026-11-21T01:05:00Z"});
+    try {
+      await filtro.selectOption("7");
+      await conciliacao.locator("[data-divergencias]").getByText("1",{exact:true}).waitFor();
+      await conciliacao.locator("[data-estornos]").getByText("1",{exact:true}).waitFor();
+      await pagina.setViewportSize({width:1366,height:950});
+      if (process.env.PAINEL_CAPTURAS) {
+        await conciliacao.locator(".financeiro-cards").screenshot({path:resolve(process.env.PAINEL_CAPTURAS,"conciliacao-com-eventos.png")});
+      }
+    } finally {
+      await db.exec("delete from painel_privado.financeiro_eventos_psp where evento_id='fixture-chrome'");
+    }
     assert.deepEqual(erros,[]);
   } finally {
     servidor.close();
