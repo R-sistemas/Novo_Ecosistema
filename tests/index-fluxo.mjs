@@ -46,7 +46,8 @@ try {
   testes++;
   await dom.close();
 
-  for (const area of ["vendas", "administracao"]) {
+  for (const caso of ["vendas", "administracao", "em_debito", "bloqueada_total"]) {
+    const area = caso === "administracao" ? caso : "vendas";
     const page = await browser.newPage();
     const errors = [], chamadas = [];
     let aberto = false;
@@ -60,6 +61,7 @@ try {
       else if (url.pathname.includes("/rpc/")) {
         if (nome === "abrir_caixa") { aberto = true; json = "caixa-teste"; }
         else if (nome === "registrar_venda_com_desconto") json = 1250;
+        else if (nome === "licenca_pdv") json = caso;
         else if (nome === "pix_frente_disponivel") json = false;
         else if (nome === "listar_terminais_gestor") json = [{ id: "terminal-teste", nome: "Caixa teste", email: "teste@example.com" }];
         else if (nome === "configurar_mesa_cardapio") json = { loja: "loja-teste", mesa: 7 };
@@ -83,7 +85,17 @@ try {
     await page.locator("#entrada").selectOption(area);
     await page.locator("#login button").click();
     await page.locator("#area-" + area).waitFor();
-    if (area === "vendas") {
+    if (caso === "em_debito" || caso === "bloqueada_total") {
+      const aviso = page.locator("#licenca-pdv");
+      await aviso.waitFor();
+      assert.match(await aviso.textContent(), caso === "em_debito" ? /Mensalidade em débito/ : /Operação suspensa/);
+      assert.equal(await page.getByRole("button", { name: "Abrir caixa", exact: true }).count(), caso === "em_debito" ? 1 : 0);
+      if (process.env.CENTRAL_1B_CAPTURAS) {
+        await page.screenshot({ path: path.join(process.env.CENTRAL_1B_CAPTURAS, "pdv-" + caso + "-desktop.png") });
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.screenshot({ path: path.join(process.env.CENTRAL_1B_CAPTURAS, "pdv-" + caso + "-mobile.png") });
+      }
+    } else if (area === "vendas") {
       await page.locator("#amount").fill("10");
       await page.getByRole("button", { name: "Abrir caixa", exact: true }).click();
       await page.locator("#status").filter({ hasText: "Caixa aberto" }).waitFor();
@@ -109,7 +121,7 @@ try {
       assert.equal(await page.locator("#novo-operador-terminal").isVisible(), false);
     }
     assert.deepEqual(errors, []);
-    console.log("PASS", area, "login e operação com serviços simulados");
+    console.log("PASS", caso, "login e operação com serviços simulados");
     testes++;
     await page.close();
   }

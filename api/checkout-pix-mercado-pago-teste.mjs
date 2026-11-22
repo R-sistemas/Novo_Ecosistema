@@ -1,3 +1,4 @@
+import { codigoSuspensao, responderLojaFechada } from "../lib/suspensao-checkout.mjs";
 import { emailPixMercadoPago, mercadoPago } from "../lib/mercado-pago.mjs";
 import { bancoMercadoPagoTeste as banco } from "../lib/banco-mercado-pago-teste.mjs";
 import { cotarFreteRemo, enderecoValido, enderecoLegadoValido } from "../lib/frete-remo.mjs";
@@ -69,6 +70,7 @@ export async function checkout(req, res, { sandbox, token }) {
     }
     return res.status(200).json({ imagem: metodo.qr_code_base64, copiaECola: metodo.qr_code });
   } catch (erro) {
+    if (erro.codigo === codigoSuspensao) return responderLojaFechada(res);
     console.error("Checkout Mercado Pago", erro.message, erro.codigo || "", erro.diagnostico || "");
     return res.status(502).json({ erro: "Não foi possível preparar o Pix." });
   }

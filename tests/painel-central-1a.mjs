@@ -45,7 +45,7 @@ before(async () => {
     $$;
   `);
   for (const nome of ["202611050001_base_pdv", "202611180047_painel_autorizacao",
-    "202611180048_painel_auditoria", "202611210073_central_inventario_licenca"]) {
+    "202611180048_painel_auditoria", "202611210073_central_inventario_licenca", "202611210074_politica_suspensao_central"]) {
     if (nome.endsWith("047_painel_autorizacao")) await db.exec("alter table public.empresas add column cardapio_slug text unique");
     await db.exec(await ler("../supabase/migrations/" + nome + ".sql"));
   }
@@ -88,7 +88,7 @@ test("SQL lista, pagina, busca, calcula atraso e audita edição idempotente", a
   assert.equal(primeira.tem_proxima, true);
   assert.deepEqual(primeira.empresas[0], {
     id: alvo, nome: "Empresa 01", cardapio_slug: "loja-01", estado: "sem_classificacao",
-    plano: null, preco_centavos: null, vencimento: null, pagamento: "pendente", dias_em_atraso: null, revisao: 0
+    plano: null, preco_centavos: null, vencimento: null, pagamento: "pendente", dias_em_atraso: null, revisao: 0, situacao: "em_dia", situacao_automatica: "em_dia", modo_suspensao: "automatico", revisao_suspensao: 0
   });
   assert.deepEqual((await listar("", 2)).empresas.map(e => e.id), [id(21)]);
   assert.deepEqual((await listar(" LOJA-02 ", 1)).empresas.map(e => e.id), [id(2)]);
@@ -147,7 +147,9 @@ test("Chrome passa pelo login, MFA, inventário, busca, paginação, edição e 
       const rpc = url.pathname.split("/").pop();
       const sql = {
         painel_contexto_sessao: "select public.painel_contexto_sessao($1) as dados",
-        central_empresas: consulta, central_editar_licenca: alteracao
+        central_empresas: consulta, central_editar_licenca: alteracao,
+        central_empresas_atencao: "select public.central_empresas_atencao($1,$2,$3) as dados",
+        central_alterar_suspensao: "select public.central_alterar_suspensao($1,$2,$3,$4,$5) as dados"
       }[rpc];
       assert.ok(sql);
       const resultado = await como(identidade, sql, Object.values(dados));
@@ -250,7 +252,7 @@ test("Chrome passa pelo login, MFA, inventário, busca, paginação, edição e 
     await capturar("inventario-erro");
     await page.getByRole("button", { name: "Tentar novamente" }).click();
     await page.getByRole("button", { name: "Abrir Empresa 01", exact: true }).waitFor();
-    await page.getByRole("cell", { name: "Em débito", exact: true }).waitFor();
+    await page.getByRole("cell", { name: "Em débito", exact: true }).first().waitFor();
     await capturar("inventario");
     await page.getByRole("button", { name: "Próxima" }).click();
     await page.getByText("Página 2").waitFor();
@@ -269,6 +271,22 @@ test("Chrome passa pelo login, MFA, inventário, busca, paginação, edição e 
     await page.getByRole("button", { name: "Salvar licença" }).click();
     await page.getByRole("cell", { name: "Básico", exact: true }).waitFor();
     await capturar("inventario-filtrado");
+    const abrirEmpresa = page.getByRole("button", { name: "Abrir Empresa 02", exact: true });
+    await abrirEmpresa.click();
+    await page.getByLabel("Motivo da decisão operacional").fill("Suspensão de homologação");
+    await page.getByRole("button", { name: "Suspender", exact: true }).click();
+    await page.getByRole("cell", { name: "Bloqueada total", exact: true }).waitFor();
+    await page.getByLabel("Somente lojas que precisam de atenção").check();
+    await abrirEmpresa.waitFor();
+    await capturar("atencao");
+    await abrirEmpresa.click();
+    await page.getByText("Suspensa manualmente", { exact: true }).waitFor();
+    await capturar("suspensao");
+    await page.getByLabel("Motivo da decisão operacional").fill("Liberação de homologação");
+    await page.getByRole("button", { name: "Liberar manualmente", exact: true }).click();
+    await page.getByText("Nenhuma empresa encontrada.").waitFor();
+    await page.getByLabel("Somente lojas que precisam de atenção").uncheck();
+    await abrirEmpresa.waitFor();
     await page.getByLabel("Buscar empresa").fill("empresa inexistente");
     await page.getByRole("button", { name: "Buscar" }).click();
     await page.getByText("Nenhuma empresa encontrada.").waitFor();

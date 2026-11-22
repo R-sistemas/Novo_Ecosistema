@@ -1,3 +1,5 @@
+import { codigoSuspensao, responderLojaFechada } from "../lib/suspensao-checkout.mjs";
+
 const sandbox = "https://api-sandbox.asaas.com/v3";
 
 export default async function handler(req, res) {
@@ -23,7 +25,10 @@ export default async function handler(req, res) {
       body: dados === undefined ? undefined : JSON.stringify(dados),
       signal: AbortSignal.timeout(8000)
     });
-    if (!resposta.ok) throw new Error("Integração retornou HTTP " + resposta.status);
+    if (!resposta.ok) {
+      const erro = await resposta.json().catch(() => null);
+      throw Object.assign(new Error("Integração retornou HTTP " + resposta.status), { codigo: erro?.code });
+    }
     const corpo = await resposta.text();
     return corpo ? JSON.parse(corpo) : null;
   }
@@ -76,6 +81,7 @@ export default async function handler(req, res) {
     const pix = await asaas(rota + "/pixQrCode");
     return res.status(200).json({ imagem: pix.encodedImage, copiaECola: pix.payload, expiraEm: pix.expirationDate });
   } catch (erro) {
+    if (erro.codigo === codigoSuspensao) return responderLojaFechada(res);
     console.error("Checkout Pix Sandbox", erro.message);
     return res.status(502).json({ erro: "Não foi possível preparar o Pix. Tente novamente neste pedido." });
   }

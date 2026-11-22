@@ -1,3 +1,4 @@
+import { codigoSuspensao, responderLojaFechada } from "../lib/suspensao-checkout.mjs";
 import { mercadoPago } from "../lib/mercado-pago.mjs";
 import { bancoMercadoPagoTeste as banco } from "../lib/banco-mercado-pago-teste.mjs";
 import { cotarFreteRemo, enderecoValido } from "../lib/frete-remo.mjs";
@@ -55,6 +56,7 @@ export async function checkoutCredito(req, res, { sandbox, accessToken }) {
     })) throw new Error("Vínculo da ordem recusado.");
     return res.status(200).json({ estado: ordem.status });
   } catch (erro) {
+    if (erro.codigo === codigoSuspensao) return responderLojaFechada(res);
     if (erro.message.startsWith("Mercado Pago retornou HTTP 402")) {
       try {
         if (await banco("recusar_credito_mercado_pago_" + ambiente, { p_pedido: p_id })) {

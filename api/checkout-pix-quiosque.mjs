@@ -1,3 +1,4 @@
+import { codigoSuspensao, responderLojaFechada } from "../lib/suspensao-checkout.mjs";
 import { integracaoQuiosque, pedidoValido } from "../lib/asaas-quiosque.mjs";
 
 export default async function handler(req, res) {
@@ -62,6 +63,7 @@ export default async function handler(req, res) {
     const pix = await asaas("/payments/" + encodeURIComponent(cobranca.id) + "/pixQrCode");
     return res.status(200).json({ imagem: pix.encodedImage, copiaECola: pix.payload, expiraEm: pix.expirationDate });
   } catch (erro) {
+    if (erro.codigo === codigoSuspensao) return responderLojaFechada(res);
     console.error("Checkout Pix Quiosque", etapa, erro.message, erro.codigo, erro.minimo);
     if (etapa === "criação da cobrança" && erro.minimo) {
       return res.status(422).json({ erro: "O Asaas exige um valor mínimo de " + erro.minimo + " para esta cobrança." });

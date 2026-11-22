@@ -21,7 +21,7 @@ const base = "http://127.0.0.1:" + server.address().port;
 const browser = await chromium.launch({ headless: true, channel: "chrome" });
 let testes = 0;
 try {
-  for (const caso of ["retirada", "mesa", "pix", "retomar", "entrega", "vazio", "credito", "retomar-pix", "pix-repetir", "quiosque"]) {
+  for (const caso of ["retirada", "mesa", "pix", "retomar", "entrega", "vazio", "credito", "retomar-pix", "pix-repetir", "quiosque", "fechado", "retomar-fechado"]) {
     const page = await browser.newPage();
     const errors = [];
     const chamadas = [];
@@ -33,7 +33,7 @@ try {
       chamadas.push({ nome, dados });
       let json;
       if (nome === "ver_cardapio") json = {
-        nome: "Loja de teste", produtos: caso === "vazio" ? [] : [
+        nome: "Loja de teste", fechado: caso.endsWith("fechado"), produtos: (caso === "vazio" || caso.endsWith("fechado")) ? [] : [
           { id: "produto-teste", nome: "Produto de teste", preco_centavos: 1250, categoria: "Lanches" }
         ]
       };
@@ -68,10 +68,18 @@ try {
       caso === "retomar-pix" ? "?loja=loja-teste&pedido=pedido-teste" :
       caso.startsWith("pix") ? "?loja=loja-teste" :
       caso === "mesa" ? "?loja=loja-teste&mesa=7" :
-      caso === "retomar" ? "?loja=loja-teste&pedido=pedido-teste" : "?loja=loja-teste";
+      caso === "retomar" || caso === "retomar-fechado" ? "?loja=loja-teste&pedido=pedido-teste" : "?loja=loja-teste";
     await page.goto(base + "/cardapio.html" + consulta);
     await page.getByText("Loja de teste", { exact: true }).first().waitFor();
-    if (caso === "vazio") {
+    if (caso === "fechado") {
+      await page.getByText("Loja fechada para novos pedidos.", { exact: true }).waitFor();
+      assert.equal(chamadas.filter(c => c.nome === "enviar_pedido").length, 0);
+      if (process.env.CENTRAL_1B_CAPTURAS) {
+        await page.screenshot({ path: path.join(process.env.CENTRAL_1B_CAPTURAS, "cardapio-fechado-desktop.png") });
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.screenshot({ path: path.join(process.env.CENTRAL_1B_CAPTURAS, "cardapio-fechado-mobile.png") });
+      }
+    } else if (caso === "vazio") {
       await page.getByText("Nenhum produto disponível.", { exact: true }).waitFor();
     } else if (caso.startsWith("retomar") || caso === "quiosque") {
       await page.locator("#mensagem").filter({ hasText: /Recebido|Aguardando/ }).waitFor();

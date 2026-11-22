@@ -1,5 +1,6 @@
 import { editar } from "../dados/central.mjs";
-import { dadosLicenca, resumoLicenca } from "../regras/licenca.mjs";
+import { dadosLicenca, resumoLicenca, situacaoLicenca, rotuloSuspensao } from "../regras/licenca.mjs";
+import { controlesSuspensao } from "./suspensao.mjs";
 import { selo } from "./selo.mjs";
 
 const el = id => document.getElementById(id);
@@ -18,8 +19,11 @@ export function editor(painel, atualizar, sair) {
   let acionador;
 
   function bloquear(ativo) {
+    document.getElementById("suspensao").inert = ativo;
     [salvar, cancelar, voltar, nav].forEach(botao => { botao.disabled = ativo; });
   }
+
+  const mostrarSuspensao = controlesSuspensao(() => retornar(true), sair, bloquear);
 
   function mensagem(texto = "") {
     erro.textContent = texto;
@@ -41,7 +45,11 @@ export function editor(painel, atualizar, sair) {
     el("estado-editor").textContent = resumo.estado;
     el("vencimento-editor").textContent = resumo.vencimento;
     el("atraso-editor").textContent = resumo.atraso;
-    el("pagamento-editor").replaceChildren(selo(resumo.pagamento));
+    const selos = [selo(resumo.pagamento)];
+    if (empresa.situacao) selos.push(selo(situacaoLicenca(empresa)));
+    el("pagamento-editor").replaceChildren(...selos);
+    el("modo-suspensao").textContent = rotuloSuspensao[empresa.modo_suspensao] ?? "";
+    mostrarSuspensao(empresa);
     mensagem();
     painel.hidden = true;
     detalhe.hidden = false;
@@ -58,6 +66,7 @@ export function editor(painel, atualizar, sair) {
     el("empresa-editor").textContent = "";
     el("slug-editor").textContent = "";
     el("pagamento-editor").replaceChildren();
+    mostrarSuspensao();
     mensagem();
     bloquear(false);
   }

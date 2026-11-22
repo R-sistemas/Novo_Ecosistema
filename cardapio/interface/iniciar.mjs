@@ -40,6 +40,10 @@ export function iniciarCardapio() {
       if (await ctx.acompanhar(pedidoRetomado) && !ctx.creditoTeste && !ctx.creditoQuiosque) await ctx.mostrarPix({ p_slug: ctx.p_slug, p_id: ctx.p_id, p_itens: [] });
       return;
     }
+    if (menu.fechado) {
+      el("vitrine").hidden = true;
+      throw new Error("Loja fechada para novos pedidos.");
+    }
     if (!menu.produtos.length) throw new Error("Nenhum produto disponível.");
     ctx.carrinho = montarVitrine(menu.produtos);
     if (ctx.p_slug === "quiosque-dorafa" && !ctx.p_mesa) {

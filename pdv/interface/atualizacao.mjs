@@ -1,3 +1,4 @@
+import { configurarLicencaPdv } from "./licenca.mjs";
 import { carregarDadosPdv } from "../dados/atualizar.mjs";
 import { mapearMovimentos } from "../regras/movimentos.mjs";
 import { saldo } from "../../caixa.mjs";
@@ -6,7 +7,10 @@ export function configurarAtualizacao(ctx) {
   const { el, estado, pixFrente, renderizar, renderizarCatalogoAdmin, carregarAparencia, carregarRecebimentosOnline } =
     ctx;
 
+  const atualizarLicenca = configurarLicencaPdv({ el, estado, area: ctx.area, renderizar });
+
   async function atualizar() {
+    void atualizarLicenca();
     const empresa = el("empresa").value;
     const administracao = ctx.area() === "administracao";
     const terminalAnterior = el("terminal-pdv").value;

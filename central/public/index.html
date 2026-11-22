@@ -60,6 +60,7 @@
           <h2 id="titulo-lista">Empresas cadastradas</h2>
           <form id="busca" class="filtro" role="search">
             <label for="termo">Buscar empresa</label>
+            <label class="filtro-atencao"><input type="checkbox" name="atencao"> Somente lojas que precisam de atenção</label>
             <div class="busca"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><input id="termo" name="termo" type="search" maxlength="120" placeholder="Nome ou slug"><button>Buscar</button></div>
           </form>
         </div>
@@ -82,7 +83,7 @@
             <thead role="rowgroup"><tr role="row">
               <th scope="col" role="columnheader">Empresa e slug</th><th scope="col" role="columnheader">Plano</th>
               <th scope="col" role="columnheader">Vencimento</th><th scope="col" role="columnheader">Pagamento</th>
-              <th scope="col" role="columnheader">Dias em atraso</th><th scope="col" role="columnheader">Ações</th>
+              <th scope="col" role="columnheader">Dias em atraso</th><th scope="col" role="columnheader">Situação</th><th scope="col" role="columnheader">Ações</th>
             </tr></thead>
             <tbody id="empresas" role="rowgroup"></tbody>
           </table>
@@ -126,6 +127,16 @@
             <div><dt>Vencimento</dt><dd id="vencimento-editor"></dd></div>
             <div><dt>Dias em atraso</dt><dd id="atraso-editor"></dd></div>
           </dl>
+          <p id="modo-suspensao" class="suave"></p>
+          <form id="suspensao" class="campos" hidden>
+            <label>Motivo da decisão operacional<textarea name="motivo" rows="2" required maxlength="240"></textarea></label>
+            <p id="erro-suspensao" role="alert"></p>
+            <div class="acoes-suspensao">
+              <button type="submit" value="liberada" class="neutro">Liberar manualmente</button>
+              <button type="submit" value="suspensa" class="neutro">Suspender</button>
+              <button type="submit" value="automatico" class="neutro">Voltar ao automático</button>
+            </div>
+          </form>
         </aside>
       </div>
     </section>

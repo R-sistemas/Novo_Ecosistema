@@ -28,7 +28,7 @@ export function configurarRenderizacao(ctx) {
       : "Abra o caixa para registrar vendas.";
     el("amount-label").textContent = sessao ? "Valor da movimentação ou dinheiro contado" : "Saldo inicial em dinheiro";
     el("cash-actions").replaceChildren(
-      ...(sessao ? ["Suprimento", "Sangria", "Fechar caixa"] : ["Abrir caixa"]).map((acao) =>
+      ...(sessao ? ["Suprimento", "Sangria", "Fechar caixa"] : estado.licencaBloqueada ? [] : ["Abrir caixa"]).map((acao) =>
         botao(acao, () => ctx.operarCaixa(acao), acao !== "Abrir caixa"),
       ),
     );
@@ -163,6 +163,7 @@ export function configurarRenderizacao(ctx) {
     const podeReceber =
       estado.sessao &&
       !comandaBloqueada &&
+      (!estado.licencaBloqueada || Boolean(ctx.comandaAberta())) &&
       !ctx.adicionalPendente() &&
       !pixAtivo &&
       temItens() &&

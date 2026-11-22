@@ -1,5 +1,5 @@
 import { listar } from "../dados/central.mjs";
-import { resumoLicenca } from "../regras/licenca.mjs";
+import { resumoLicenca, situacaoLicenca } from "../regras/licenca.mjs";
 import { editor } from "./editor.mjs";
 import { selo } from "./selo.mjs";
 
@@ -15,6 +15,7 @@ export function inventario(sair) {
   const busca = el("busca");
   const paineis = ["carregando", "rolagem", "vazio", "falha"].map(el);
   const edicao = editor(painel, () => carregar(pagina), sair);
+  let carregando = false;
   let pagina = 1;
   let destinoAtual = 1;
   let termo = "";
@@ -40,7 +41,7 @@ export function inventario(sair) {
     const atraso = document.createElement("span");
     atraso.className = resumo.emAtraso ? "numero atencao" : "numero";
     atraso.textContent = resumo.atraso;
-    const valores = [selo(resumo.plano), resumo.vencimento, selo(resumo.pagamento), atraso];
+    const valores = [selo(resumo.plano), resumo.vencimento, selo(resumo.pagamento), atraso, selo(situacaoLicenca(empresa))];
     for (const [indice, valor] of valores.entries()) {
       const celula = tr.insertCell();
       celula.setAttribute("role", "cell");
@@ -64,12 +65,13 @@ export function inventario(sair) {
 
   async function carregar(destino) {
     const atual = ++versao;
+    carregando = true;
     destinoAtual = destino;
     anterior.disabled = proxima.disabled = true;
     el("total").hidden = true;
     mostrar("carregando");
     try {
-      const { empresas, tem_proxima } = await listar(termo, destino);
+      const { empresas, tem_proxima } = await listar(termo, destino, busca.elements.atencao.checked);
       if (atual !== versao) return;
       pagina = destino;
       el("pagina").textContent = "Página " + pagina;
@@ -88,8 +90,16 @@ export function inventario(sair) {
         erro.textContent = e.message;
         mostrar("falha");
       }
+    } finally {
+      if (atual === versao) carregando = false;
     }
   }
+
+  busca.elements.atencao.onchange = () => busca.requestSubmit();
+  setInterval(() => {
+    if (!painel.hidden && !document.hidden && busca.elements.atencao.checked && !carregando &&
+        !el("rolagem").contains(document.activeElement) && !document.activeElement?.closest(".paginacao")) void carregar(pagina);
+  }, 60000);
 
   busca.onsubmit = evento => {
     evento.preventDefault();
@@ -114,6 +124,7 @@ export function inventario(sair) {
     },
     fechar() {
       versao++;
+      carregando = false;
       termo = "";
       busca.reset();
       painel.hidden = true;

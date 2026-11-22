@@ -1,6 +1,23 @@
 const status = { sem_classificacao: "Sem classificação", ativa: "Ativa" };
 const planos = { basico: "Básico", pro: "Pró" };
 
+const situacoes = {
+  em_dia: { texto: "Em dia", cor: "verde" },
+  em_debito: { texto: "Em débito", cor: "atencao" },
+  bloqueada_parcial: { texto: "Bloqueada parcial", cor: "atencao" },
+  bloqueada_total: { texto: "Bloqueada total", cor: "critico" }
+};
+
+export function situacaoLicenca(empresa) {
+  return situacoes[empresa.situacao] ?? { texto: "—", cor: "cinza" };
+}
+
+export const rotuloSuspensao = {
+  automatico: "Política automática",
+  liberada: "Liberada manualmente",
+  suspensa: "Suspensa manualmente"
+};
+
 export function resumoLicenca(empresa) {
   const emAtraso = empresa.dias_em_atraso > 0;
   const pagamento = empresa.pagamento === "pago"

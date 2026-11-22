@@ -28,8 +28,12 @@ export function sair() {
   return pedido;
 }
 
-export function listar(termo, pagina) {
-  return chamar("empresas?" + new URLSearchParams({ busca: termo, pagina }), "GET");
+export function listar(termo, pagina, atencao) {
+  const consulta = new URLSearchParams({ busca: termo, pagina });
+  if (atencao) consulta.set("atencao", "1");
+  return chamar("empresas?" + consulta, "GET");
 }
 
 export const editar = dados => chamar("empresas", "POST", dados);
+
+export const alterarSuspensao = dados => chamar("empresas", "POST", { ...dados, acao: "suspensao" });
