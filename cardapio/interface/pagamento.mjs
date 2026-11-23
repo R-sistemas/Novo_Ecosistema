@@ -2,7 +2,7 @@ import { consultarDisponibilidadePix, consultarPagamentoNaEntrega } from "../dad
 const el = id => document.getElementById(id);
 
 export async function configurarPagamento(ctx) {
-  if (ctx.p_slug === "quiosque-dorafa") {
+  if (ctx.p_slug === "quiosque-dorafa" && !ctx.opcoesMP) {
     ctx.pixDisponivel = await consultarDisponibilidadePix({ p_slug: ctx.p_slug }).catch(() => false);
   }
   el("tipo-entrega").hidden = !ctx.escolhaPublicaEntrega || ctx.entrega;
@@ -23,6 +23,18 @@ export async function configurarPagamento(ctx) {
       botao.setAttribute("aria-pressed", String(selecionado));
     });
     atualizarPagamento();
+  }
+  if (ctx.opcoesMP?.credito) {
+    for (const id of ["pagamento-padrao", "pagamento-mesa"]) {
+      const grupo = el(id).querySelector(".opcoes-escolha") ?? el(id);
+      const botao = document.createElement("button");
+      botao.type = "button";
+      botao.className = "opcao-escolha";
+      botao.dataset.pagamento = "credito-mp";
+      botao.setAttribute("aria-pressed", "false");
+      botao.textContent = "Pagar com cartão";
+      grupo.append(botao);
+    }
   }
   document.querySelectorAll("#pagamento-padrao [data-pagamento], #pagamento-mesa [data-pagamento]").forEach(botao => {
     botao.addEventListener("click", () => selecionarPagamento(botao.dataset.pagamento, botao.closest(".opcoes-escolha")));
@@ -65,7 +77,7 @@ export async function configurarPagamento(ctx) {
   if (ctx.entrega || ctx.escolhaPublicaEntrega) {
     el("entrega-teste").hidden = false;
     el("entrega-teste").disabled = false;
-    if (ctx.p_slug === "quiosque-dorafa") {
+    if (ctx.p_slug === "quiosque-dorafa" && !ctx.opcoesMP) {
       el("legenda-entrega").textContent = "Endereço da entrega";
       el("pagamento-entrega").querySelector('[data-pagamento="online"]').textContent = ctx.entregaTeste
         ? "Pix Mercado Pago de teste" : "Pix Mercado Pago";

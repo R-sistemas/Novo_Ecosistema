@@ -88,7 +88,7 @@ test("manifesto de Retirada e Cardápio conserva a identidade da loja",async()=>
 });
 
 const rpcs={
-  ver_cardapio:["p_slug"],enviar_pedido:["p_slug","p_id","p_cliente","p_mesa","p_itens"],
+  ver_cardapio:["p_slug"],opcoes_mp_cardapio:["p_slug"],enviar_pedido:["p_slug","p_id","p_cliente","p_mesa","p_itens"],
   acompanhar_pedido:["p_slug","p_id"],lojas_kds:[],fila_cozinha:["p_empresa"],pode_editar_comanda_kds:["p_empresa"],
   cancelamentos_recentes_kds:["p_empresa"],avancar_pedido:["p_id","p_estado"],pedidos_prontos_retirada:["p_slug"]
 };

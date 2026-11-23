@@ -40,6 +40,7 @@ try {
       } : nome === "metodos_checkout_publico" ? { pix: caso !== "metodos", credito: caso !== "metodos", debito: false } :
         nome === "pagamento_na_entrega_disponivel" ? caso !== "metodos" :
           nome === "acompanhar_pedido" ? { estado: "novo", comanda: 42, total_centavos: 1750 } : null;
+      if (nome === "opcoes_mp_cardapio") { await route.fulfill({json:null}); return; }
       assert.notEqual(json, null, nome);
       await route.fulfill({ json });
     });

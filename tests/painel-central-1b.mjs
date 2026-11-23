@@ -142,3 +142,60 @@ test("checkout traduz a negativa do banco sem criar cobrança externa", async t 
     else process.env.SUPABASE_SERVICE_ROLE_KEY=anteriorChave;
   }
 });
+
+test("MP fixa o recebedor de cada loja em Pix e cartão e recusa conciliação cruzada", async () => {
+  const segredos = "v1." + "a".repeat(70);
+  const firmas = [id(81),id(82)];
+  const contas = [id(83),id(84)];
+  const produtos = [id(85),id(86)];
+  const pedidos = [id(87),id(88)];
+  for (const [i,empresa] of firmas.entries()) {
+    await db.query("insert into public.empresas(id,nome,cardapio_slug) values($1,$2,$3)",[empresa,"MP Fixture","recebedor-"+i]);
+    await db.query("insert into public.produtos(id,empresa_id,codigo,nome,preco_centavos,ativo,visivel_cardapio) values($1,$2,'mp','Item',100,true,true)",[produtos[i],empresa]);
+    await db.query("insert into painel_privado.credenciais_mp(id,empresa_id,ambiente,recebedor,envelope,chave_publica,estado,revisao) values($1,$2,'producao',$3,$4,'publica','ativa',1)",[contas[i],empresa,String(900+i),segredos]);
+    const opcao = await rpc("opcoes_mp_cardapio",["recebedor-"+i],null,"anon");
+    assert.deepEqual(opcao,{ pix:true, credito:true, chave_publica:"publica" });
+  }
+  const reservar = (i) => rpc("servico_mp_reserva_pedido",["recebedor-"+i,pedidos[i],"Fixture",null,
+    JSON.stringify([{produto_id:produtos[i],quantidade:1}]),i ? "credito" : "pix","producao"],null,"service_role");
+  for (const i of [0,1]) {
+    const reserva = await reservar(i);
+    assert.equal(reserva.integracao,contas[i]);
+    assert.equal(reserva.empresa,firmas[i]);
+    assert.equal(reserva.recebedor,String(900+i));
+  }
+  const vincular = (conta,pedido,meio,ordem) => rpc("servico_mp_vincular_ordem",[conta,pedido,ordem,100,meio,true],null,"service_role");
+  assert.equal(await vincular(contas[0],pedidos[1],"credito","ORD2"),false);
+  assert.equal(await rpc("servico_mp_vincular_ordem",[contas[0],pedidos[0],"ORD1",99,"pix",true],null,"service_role"),false);
+  assert.equal(await vincular(contas[0],pedidos[0],"pix","ORD1"),true);
+  assert.equal(await vincular(contas[1],pedidos[1],"credito","ORD2"),true);
+  await db.query("update painel_privado.credenciais_mp set estado='historica' where id=$1",[contas[0]]);
+  await db.query("insert into painel_privado.credenciais_mp(id,empresa_id,ambiente,recebedor,envelope,chave_publica,estado,revisao) values($1,$2,'producao','990',$3,'publica','ativa',2)",[id(89),firmas[0],segredos]);
+  assert.equal((await reservar(0)).integracao,contas[0]);
+  assert.equal(await vincular(id(89),pedidos[0],"pix","ORD1"),false);
+  assert.equal(await vincular(contas[0],pedidos[0],"pix","ORD1"),true);
+  await assert.rejects(rpc("servico_integracao_mp_webhook",[contas[0]],null,"anon"),{code:"42501"});
+});
+
+test("fallback legado é fixado ao UUID e ao ambiente; Pix do caixa fixa a conta", async () => {
+  const legado=id(91), produtoLegado=id(92), gestorLegado=id(93), caixaLegado=id(94);
+  const empresaMP=id(81), contaMP=id(89), caixaMP=id(95), tentativa=id(96);
+  await db.query("insert into auth.users(id,email) values($1,'legado@example.test')",[gestorLegado]);
+  await db.query("insert into public.empresas(id,nome,cardapio_slug) values($1,'Legado','quiosque-dorafa')",[legado]);
+  await db.query("insert into public.membros values($1,$2,'gestor'),($3,$2,'gestor')",[legado,gestorLegado,empresaMP]);
+  await db.query("insert into public.provedores_pagamento(empresa_id,provedor,ambiente,pix_habilitado) values($1,'mercado_pago','producao',true)",[legado]);
+  await db.query("insert into painel_privado.mp_legado_empresa values($1,'producao','quiosque-dorafa')",[legado]);
+  await db.query("insert into public.produtos(id,empresa_id,codigo,nome,preco_centavos,ativo,visivel_cardapio) values($1,$2,'legado','Item',150,true,true)",[produtoLegado,legado]);
+  await db.query("insert into public.caixas(id,empresa_id,operador_id,abertura_centavos) values($1,$2,$3,0),($4,$5,$3,0)",[caixaLegado,legado,gestorLegado,caixaMP,empresaMP]);
+  const reservarLegado = (slug, ambiente) => rpc("servico_mp_reserva_pedido",[slug,id(97),"Fixture",null,
+    JSON.stringify([{produto_id:produtoLegado,quantidade:1}]),"pix",ambiente,null,null,true],null,"service_role");
+  assert.deepEqual(await reservarLegado("quiosque-dorafa","producao"),{ legado:true,pedido:{total_centavos:150,cobranca:null} });
+  await assert.rejects(reservarLegado("quiosque-dorafa","sandbox"),{code:"23505"});
+  assert.deepEqual(await reservarLegado("nao-e-legado","producao"),{ bloqueada:true });
+  await db.query("insert into public.pix_frente_caixa(id,caixa_id,venda_id,ambiente,itens,valor_centavos,desconto_centavos) values($1,$2,$1,'producao','[]',100,0)",[tentativa,caixaMP]);
+  const rota = await rpc("servico_mp_reserva_pdv",[tentativa],null,"service_role");
+  assert.equal(rota.integracao,contaMP);
+  await assert.rejects(rpc("conciliar_pix_frente",[tentativa,"ORD9",100,"producao","aguardando"],null,"service_role"),{code:"42501"});
+  await assert.rejects(rpc("servico_mp_conciliar_pdv",[id(84),tentativa,"ORD9",100,"producao","aguardando"],null,"service_role"),{code:"42501"});
+  assert.equal(await rpc("servico_mp_conciliar_pdv",[contaMP,tentativa,"ORD9",100,"producao","aguardando"],null,"service_role"),"aguardando");
+});

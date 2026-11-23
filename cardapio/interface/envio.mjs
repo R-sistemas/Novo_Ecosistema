@@ -21,23 +21,24 @@ export function configurarEnvio(ctx) {
       const p_itens = ctx.carrinho.itens();
       if (!p_itens.length) throw new Error("Escolha pelo menos um produto.");
       const p_cliente = el("cliente").value.trim();
-      if (ctx.creditoTeste || ctx.creditoQuiosque) {
-        if (ctx.creditoQuiosque) {
+      if (ctx.creditoTeste || ctx.creditoQuiosque || ctx.formaPagamento === "credito-mp") {
+        if (!ctx.creditoTeste) {
           el("titulo-credito").textContent = "Cartão de crédito";
-          el("aviso-credito").textContent = "Piloto do Quiosque Do’Rafa";
+          el("aviso-credito").textContent = ctx.opcoesMP ? "Pagamento Mercado Pago" : "Piloto do Quiosque";
         }
         const totalCentavos = ctx.carrinho.total();
         const { abrirCreditoTeste } = await import("../../credito-teste.mjs");
         await abrirCreditoTeste({
-          totalCentavos, pedido: { p_slug: ctx.p_slug, p_mesa: ctx.p_mesa, p_itens, p_cliente, p_id: crypto.randomUUID() }
+          totalCentavos, chavePublica: ctx.opcoesMP?.chave_publica, pedido: { p_slug: ctx.p_slug, p_mesa: ctx.p_mesa, p_itens, p_cliente, p_id: crypto.randomUUID() }
         }, async id => {
           ctx.p_id = id;
           ctx.confirmarPedidoMesa();
           ctx.parametros.set("pedido", id);
+          if (!ctx.creditoTeste) { ctx.creditoQuiosque = true; ctx.parametros.set("cartao", "credito"); }
           history.replaceState(null, "", "?" + ctx.parametros);
           el("acompanhar").hidden = false;
           await ctx.acompanhar();
-        }, ctx.creditoQuiosque);
+        }, !ctx.creditoTeste);
         el("pedido").hidden = true;
         fecharCompra();
         return;

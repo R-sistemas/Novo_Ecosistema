@@ -4,7 +4,7 @@ export function prepararCredencialMP(area) {
   const bloco = document.createElement("details");
   bloco.className = "cartao";
   bloco.innerHTML = `<summary>Conta Mercado Pago para pedidos</summary>
-    <p role="status"></p>
+    <p role="status"></p><p data-webhook hidden></p>
     <form autocomplete="off" hidden>
       <label>Access Token <input type="password" name="access_token" autocomplete="new-password" maxlength="512" required></label>
       <label>Segredo do webhook <input type="password" name="webhook_secret" autocomplete="new-password" maxlength="512" required></label>
@@ -14,12 +14,14 @@ export function prepararCredencialMP(area) {
   area.append(bloco);
   const status = bloco.querySelector("p");
   const form = bloco.querySelector("form");
+  const webhook = bloco.querySelector("[data-webhook]");
   const botao = form.querySelector("button[type=submit]");
   const revogar = form.querySelector("[data-revogar]");
   let empresa, revisao, versao = 0;
 
   async function consultar() {
     const atual = ++versao;
+    webhook.hidden = true;
     form.reset();
     form.hidden = true;
     status.textContent = "Consultando configuração…";
@@ -27,6 +29,9 @@ export function prepararCredencialMP(area) {
       const dados = await lerCredencialMP(empresa);
       if (atual !== versao) return;
       revisao = dados.revisao;
+      webhook.hidden = !dados.rota_webhook;
+      webhook.textContent = dados.rota_webhook ? "URL de notificações MP: " + location.origin +
+        "/api/mercado-pago-empresa-webhook?integracao=" + dados.rota_webhook : "";
       status.textContent = dados.troca_pendente ? "Troca aguardando verificação da Central."
         : dados.configurado ? "Conta configurada." : "Conta ainda não configurada.";
       form.hidden = false;
@@ -40,7 +45,8 @@ export function prepararCredencialMP(area) {
     if (bloco.open && empresa) void consultar();
     else {
       versao++;
-      form.reset();
+      webhook.hidden = true;
+    form.reset();
       form.hidden = true;
     }
   };
@@ -50,6 +56,7 @@ export function prepararCredencialMP(area) {
     const atual = versao;
     const dados = Object.fromEntries(new FormData(form));
     botao.disabled = true;
+    webhook.hidden = true;
     form.reset();
     try {
       await gravarCredencialMP(empresa, { ...dados, revisao });
@@ -81,6 +88,7 @@ export function prepararCredencialMP(area) {
     versao++;
     empresa = novaEmpresa;
     bloco.open = false;
+    webhook.hidden = true;
     form.reset();
     form.hidden = true;
   };

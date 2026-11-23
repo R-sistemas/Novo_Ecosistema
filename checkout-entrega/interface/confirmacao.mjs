@@ -55,6 +55,7 @@ export function configurarConfirmacao(ctx) {
         el("barra-cardapio").hidden = true;
         await abrirCreditoTeste({
           totalCentavos: ctx.subtotal() + ctx.estado.frete,
+          chavePublica: ctx.metodosOnline.chave_publica,
           pedido: { ...dados }, aoFreteAlterado(novoFrete) {
             el("painel-credito-teste").hidden = true;
             ctx.estado.etapa = 1;

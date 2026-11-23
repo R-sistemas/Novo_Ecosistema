@@ -1,15 +1,17 @@
+import { reservarPedidoMP, vincularOrdemMP } from "../lib/reserva-pedido-mp.mjs";
 import { codigoSuspensao, responderLojaFechada } from "../lib/suspensao-checkout.mjs";
 import { mercadoPago } from "../lib/mercado-pago.mjs";
 import { bancoMercadoPagoTeste as banco } from "../lib/banco-mercado-pago-teste.mjs";
 import { cotarFreteRemo, enderecoValido } from "../lib/frete-remo.mjs";
 
-export async function checkoutCredito(req, res, { sandbox, accessToken }) {
+export async function checkoutCredito(req, res, { sandbox, accessToken, porEmpresa = false }) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") return res.status(405).end();
-  if (!accessToken) return res.status(503).json({ erro: "Crédito online indisponível." });
+  if (!accessToken && !porEmpresa) return res.status(503).json({ erro: "Crédito online indisponível." });
   const ambiente = sandbox ? "teste" : "quiosque";
   const { p_slug, p_id, p_cliente, p_mesa = null, p_itens, cartao, endereco, pagamento, frete_centavos: freteInformado } = req.body ?? {};
-  if (p_slug !== (sandbox ? "loja-teste" : "quiosque-dorafa") || typeof p_id !== "string" ||
+  if (typeof p_slug !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(p_slug) || p_slug.length > 100 ||
+      (!porEmpresa && p_slug !== (sandbox ? "loja-teste" : "quiosque-dorafa")) || typeof p_id !== "string" ||
       !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(p_id) ||
       !Array.isArray(p_itens) || !p_itens.length || p_itens.length > 30 ||
       typeof cartao?.token !== "string" || !/^[a-z0-9_-]{10,256}$/i.test(cartao.token) ||
@@ -26,6 +28,7 @@ export async function checkoutCredito(req, res, { sandbox, accessToken }) {
       endereco.metodo_pagamento !== "credito")) {
     return res.status(400).json({ erro: "Confira o contato e a forma de pagamento." });
   }
+  let integracao;
   try {
     let freteCentavos = 0;
     if (pagamento === "online") {
@@ -34,12 +37,18 @@ export async function checkoutCredito(req, res, { sandbox, accessToken }) {
         erro: "O frete foi atualizado. Confira o novo total antes de pagar.", frete_centavos: freteCentavos
       });
     }
-    const pedido = pagamento === "online"
+    const legado = async () => pagamento === "online"
       ? await banco("reservar_credito_entrega_frete_quiosque", {
         p_id, p_cliente, p_itens, p_endereco: endereco, p_frete_centavos: freteCentavos
       })
       : await banco("reservar_credito_mercado_pago_" + ambiente, { p_id, p_cliente, p_mesa, p_itens });
-    const cliente = mercadoPago(accessToken);
+    const reserva = await reservarPedidoMP({ p_slug, p_id, p_cliente, p_mesa, p_itens,
+      ...(pagamento === "online" && { p_endereco: endereco, p_frete: freteCentavos }) },
+      { sandbox, meio: "credito", legado, token: accessToken, porEmpresa });
+    if (!reserva) return res.status(503).json({ erro: "Crédito online indisponível." });
+    const { pedido } = reserva;
+    integracao = reserva.integracao;
+    const cliente = mercadoPago(reserva.token);
     const ordem = pedido.cobranca ? await cliente.consultarOrdem(pedido.cobranca)
       : await cliente.criarCartao({
         pedidoId: p_id, totalCentavos: pedido.total_centavos,
@@ -51,15 +60,16 @@ export async function checkoutCredito(req, res, { sandbox, accessToken }) {
         ordem.transactions?.payments?.[0]?.payment_method?.type !== "credit_card") {
       throw new Error("Ordem de teste divergente.");
     }
-    if (!pedido.cobranca && !await banco("atualizar_credito_mercado_pago_" + ambiente, {
-      p_pedido: p_id, p_cobranca: ordem.id, p_valor: pedido.total_centavos, p_confirmado: false
-    })) throw new Error("Vínculo da ordem recusado.");
+    if (!pedido.cobranca && !await vincularOrdemMP(integracao, ambiente, "credito", p_id, ordem.id, pedido.total_centavos)) throw new Error("Vínculo da ordem recusado.");
     return res.status(200).json({ estado: ordem.status });
   } catch (erro) {
     if (erro.codigo === codigoSuspensao) return responderLojaFechada(res);
     if (erro.message.startsWith("Mercado Pago retornou HTTP 402")) {
       try {
-        if (await banco("recusar_credito_mercado_pago_" + ambiente, { p_pedido: p_id })) {
+        const recusado = integracao
+          ? await banco("servico_mp_recusar_credito", { p_integracao: integracao, p_pedido: p_id })
+          : await banco("recusar_credito_mercado_pago_" + ambiente, { p_pedido: p_id });
+        if (recusado) {
           return res.status(402).json({ erro: sandbox ? "Cartão recusado no teste. Você pode tentar novamente."
             : "Cartão recusado. Você pode tentar novamente." });
         }
@@ -73,5 +83,5 @@ export async function checkoutCredito(req, res, { sandbox, accessToken }) {
 }
 
 export default function handler(req, res) {
-  return checkoutCredito(req, res, { sandbox: true, accessToken: process.env.MERCADO_PAGO_TEST_ACCESS_TOKEN });
+  return checkoutCredito(req, res, { sandbox: true, accessToken: process.env.MERCADO_PAGO_TEST_ACCESS_TOKEN, porEmpresa: true });
 }

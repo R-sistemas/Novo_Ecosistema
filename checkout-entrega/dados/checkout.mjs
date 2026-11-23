@@ -1,11 +1,12 @@
 import { executar } from "../../supabase-pdv.mjs";
 
 export async function consultarMetodos(slug) {
-  const [pagamentoNaEntrega, metodosOnline] = await Promise.all([
+  const [pagamentoNaEntrega, metodosOnline, mp] = await Promise.all([
     executar("pagamento_na_entrega_disponivel", { p_slug: slug }).catch(() => false),
-    executar("metodos_checkout_publico", { p_slug: slug }).catch(() => ({ pix: false, credito: false, debito: false }))
+    executar("metodos_checkout_publico", { p_slug: slug }).catch(() => ({ pix: false, credito: false, debito: false })),
+    executar("opcoes_mp_cardapio", { p_slug: slug }).catch(() => null)
   ]);
-  return { pagamentoNaEntrega, metodosOnline };
+  return { pagamentoNaEntrega, metodosOnline: typeof mp?.pix === "boolean" ? mp : metodosOnline };
 }
 
 export async function consultarFrete(slug, endereco, signal) {

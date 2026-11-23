@@ -21,7 +21,7 @@ const base = "http://127.0.0.1:" + server.address().port;
 const browser = await chromium.launch({ headless: true, channel: "chrome" });
 let testes = 0;
 try {
-  for (const caso of ["retirada", "mesa", "pix", "retomar", "entrega", "vazio", "credito", "retomar-pix", "pix-repetir", "quiosque", "fechado", "retomar-fechado"]) {
+  for (const caso of ["retirada", "mesa", "pix", "retomar", "entrega", "vazio", "credito", "retomar-pix", "pix-repetir", "quiosque", "fechado", "retomar-fechado", "credito-multiloja"]) {
     const page = await browser.newPage();
     const errors = [];
     const chamadas = [];
@@ -37,6 +37,7 @@ try {
           { id: "produto-teste", nome: "Produto de teste", preco_centavos: 1250, categoria: "Lanches" }
         ]
       };
+      else if (nome === "opcoes_mp_cardapio") json = caso === "credito-multiloja" ? { pix:true, credito:true, chave_publica:"publica-fixture" } : null;
       else if (nome === "enviar_pedido") json = "pedido-teste";
       else if (nome === "acompanhar_pedido") json = {
         ...pedido, mesa: caso === "mesa" ? "7" : null,
@@ -63,7 +64,7 @@ try {
       contentType: "text/javascript",
       body: 'export async function iniciarCheckoutEntrega(ctx) { window.checkoutSimulado = { slug: ctx.slug, callbacks: [typeof ctx.aoPix, typeof ctx.aoConfirmar] }; await ctx.aoConfirmar("pedido-entrega", "pix"); }'
     }));
-    const consulta = caso === "quiosque" ? "?loja=quiosque-dorafa" : caso === "entrega" ? "?loja=loja-teste&entrega=teste" :
+    const consulta = caso === "credito-multiloja" ? "?loja=empresa-mp" : caso === "quiosque" ? "?loja=quiosque-dorafa" : caso === "entrega" ? "?loja=loja-teste&entrega=teste" :
       caso === "credito" ? "?loja=loja-teste&cartao=credito" :
       caso === "retomar-pix" ? "?loja=loja-teste&pedido=pedido-teste" :
       caso.startsWith("pix") ? "?loja=loja-teste" :
@@ -98,6 +99,7 @@ try {
       await page.locator("#ver-pedido").click();
       await page.locator("#cliente").fill("Cliente de teste");
       if (caso.startsWith("pix")) await page.locator("#opcao-pix").click();
+      if (caso === "credito-multiloja") await page.locator("#pagamento-padrao [data-pagamento=credito-mp]").click();
       if (caso === "entrega") {
         for (const [nome, valor] of Object.entries({ logradouro: "Rua Teste", numero: "10", bairro: "Centro", cidade: "Cidade Teste" })) {
           await page.locator('#entrega-teste input[name="' + nome + '"]').fill(valor);
@@ -123,8 +125,12 @@ try {
           assert.equal(pix.length, 2);
           assert.equal(pix[0].dados.p_id, pix[1].dados.p_id);
         }
-      } else if (caso === "credito") {
+      } else if (caso.startsWith("credito")) {
         assert.equal(await page.evaluate(() => window.creditoSimulado.totalCentavos), 1250);
+        if (caso === "credito-multiloja") {
+          assert.equal(await page.evaluate(() => window.creditoSimulado.chavePublica), "publica-fixture");
+          if (process.env.MP_4A_CAPTURAS) await page.screenshot({path:path.join(process.env.MP_4A_CAPTURAS,"cardapio-mp-multiloja.png")});
+        }
       } else {
         const envio = chamadas.find(c => c.nome === "enviar_pedido");
         assert.equal(envio.dados.p_cliente, "Cliente de teste");
@@ -165,6 +171,7 @@ try {
       avisos.push({mensagem:mensagens,criado_em:"2026-11-20T15:00:00Z"});
       return route.fulfill({status:204});
     }
+    if (nome === "opcoes_mp_cardapio") return route.fulfill({json:null});
     if (nome === "ver_cardapio") return route.fulfill({json:{nome:"Loja de teste",produtos:[]}});
     if (nome === "acompanhar_pedido") {
       assert.ok([pedidoEntrega,pedidoMesa].includes(dados.p_id));

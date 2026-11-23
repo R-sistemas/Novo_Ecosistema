@@ -22,6 +22,7 @@ returns jsonb language sql stable set search_path = '' as $$
   select jsonb_build_object('configurado',coalesce(bool_or(estado='ativa'),false),
     'revisao',coalesce(max(revisao),0),
     'pendente',max(id::text) filter (where estado='pendente'),
+    'integracao',max(id::text) filter (where estado='ativa'),
     'recebedor_pendente',max(recebedor) filter (where estado='pendente'))
   from painel_privado.credenciais_mp where empresa_id=p_empresa and ambiente=p_ambiente;
 $$;
@@ -32,8 +33,10 @@ begin
   if not exists(select 1 from public.membros where empresa_id=p_empresa and usuario_id=auth.uid() and papel='gestor') then
     raise exception using errcode='42501',message='Acesso negado';
   end if;
-  return painel_privado.mp_status(p_empresa,p_ambiente) - 'pendente' - 'recebedor_pendente' ||
-    jsonb_build_object('troca_pendente',painel_privado.mp_status(p_empresa,p_ambiente)->>'pendente' is not null);
+  return painel_privado.mp_status(p_empresa,p_ambiente) - 'pendente' - 'recebedor_pendente' - 'integracao' ||
+    jsonb_build_object('troca_pendente',painel_privado.mp_status(p_empresa,p_ambiente)->>'pendente' is not null,
+      'rota_webhook',coalesce(painel_privado.mp_status(p_empresa,p_ambiente)->>'pendente',
+        painel_privado.mp_status(p_empresa,p_ambiente)->>'integracao'));
 end;
 $$;
 
@@ -101,7 +104,7 @@ begin
   if not found then raise exception using errcode='23505',message='Solicitação desatualizada'; end if;
   update painel_privado.credenciais_mp set estado='historica'
     where empresa_id=p_empresa and ambiente=v_pendente.ambiente and estado='ativa';
-  update painel_privado.credenciais_mp set estado='ativa' where id=v_pendente.id;
+  update painel_privado.credenciais_mp set estado='ativa',revisao=p_revisao+1 where id=v_pendente.id;
   insert into painel_privado.auditoria (autor_id,escopo,acao,entidade,entidade_id,depois,motivo,requisicao_id)
     values(v_autor,'plataforma','central.aprovar_recebedor_mp','empresa',p_empresa::text,
       jsonb_build_object('ambiente',v_pendente.ambiente,'revisao',v_pendente.revisao,'canal',p_canal),
@@ -136,7 +139,7 @@ begin
   select * into v_ativa from painel_privado.credenciais_mp
     where empresa_id=p_empresa and ambiente=p_ambiente and estado='ativa';
   if not found then return jsonb_build_object('configurado',false); end if;
-  update painel_privado.credenciais_mp set estado='revogada'
+  update painel_privado.credenciais_mp set estado='revogada',revisao=p_revisao+1
     where id=v_ativa.id;
   insert into painel_privado.auditoria (autor_id,escopo,empresa_id,acao,entidade,entidade_id,depois,requisicao_id)
     values(v_autor,'loja',p_empresa,'loja.revogar_credencial_mp','empresa',p_empresa::text,

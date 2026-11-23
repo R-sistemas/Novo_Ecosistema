@@ -1,5 +1,5 @@
 import { criarContexto } from "../regras/contexto.mjs";
-import { consultarCardapio } from "../dados/pedidos.mjs";
+import { consultarCardapio, consultarOpcoesMP } from "../dados/pedidos.mjs";
 import { aplicarTema } from "../../tema-cardapio.mjs";
 import { montarVitrine } from "../../vitrine-cardapio.mjs";
 import { iniciarCheckoutEntrega } from "../../checkout-entrega.mjs";
@@ -19,6 +19,13 @@ export function iniciarCardapio() {
     if (!ctx.p_slug) throw new Error("Abra o link do cardápio do estabelecimento.");
     const menu = await consultarCardapio({ p_slug: ctx.p_slug });
     if (!menu) throw new Error("Cardápio indisponível.");
+    const opcoes = await consultarOpcoesMP(ctx.p_slug).catch(() => null);
+    ctx.opcoesMP = typeof opcoes?.pix === "boolean" ? opcoes : null;
+    if (ctx.opcoesMP?.pix || ctx.parametros.get("pix") === "mercado-pago" && !ctx.pixTeste) {
+      ctx.pixMercadoPagoQuiosque = true;
+      ctx.pixDisponivel = Boolean(ctx.opcoesMP?.pix);
+    }
+    if (!ctx.pixTeste && ctx.p_id && ctx.parametros.get("cartao") === "credito") ctx.creditoQuiosque = true;
     el("loja").textContent = menu.nome;
     aplicarTema(document.documentElement, menu.cor, menu.fundo);
     const marca = el("marca-loja");
@@ -46,7 +53,8 @@ export function iniciarCardapio() {
     }
     if (!menu.produtos.length) throw new Error("Nenhum produto disponível.");
     ctx.carrinho = montarVitrine(menu.produtos);
-    if (ctx.p_slug === "quiosque-dorafa" && !ctx.p_mesa) {
+    if (!ctx.p_mesa && (ctx.p_slug === "quiosque-dorafa" ||
+        ctx.opcoesMP && ctx.parametros.get("entrega") === "sim")) {
       el("carrinho-cardapio").classList.add("checkout-entrega");
       el("contexto-cardapio").textContent = "Entrega";
       el("contexto-cardapio").hidden = false;

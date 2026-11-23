@@ -63,8 +63,8 @@ export async function abrirCreditoTeste(dados, aoEnviar, producao = false) {
       formulario.inert = false;
     }
   };
-  if (producao) {
-    document.getElementById("chave-credito-teste").value = "APP_USR-28b0f004-3565-43de-99f6-51fb3cde8735";
+  if (producao || dados.chavePublica) {
+    document.getElementById("chave-credito-teste").value = dados.chavePublica ?? "APP_USR-28b0f004-3565-43de-99f6-51fb3cde8735";
     await formulario.onsubmit(new Event("submit"));
   }
 }

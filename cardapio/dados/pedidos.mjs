@@ -20,3 +20,4 @@ export async function registrarEntrega(dados, entrega, teste) {
   });
   return { status: resposta.status, ok: resposta.ok, resultado: await resposta.json() };
 }
+export const consultarOpcoesMP = slug => executar("opcoes_mp_cardapio", { p_slug: slug });
