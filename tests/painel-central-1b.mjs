@@ -24,16 +24,20 @@ const menu = (slug = "unidade-a") => rpc("ver_cardapio", [slug], null, "anon");
 const enviar = (uuid = id(19)) => rpc("enviar_pedido", ["unidade-a", uuid, "Cliente fixture", null, item], null, "anon");
 
 function atraso(dias) {
-  return db.query(`insert into painel_privado.central_licencas (empresa_id,estado,vencimento,pagamento,revisao)
+  return db.transaction(async tx => {
+    await tx.exec("alter table painel_privado.central_licencas disable trigger central_validar_dia_vencimento");
+    await tx.query(`insert into painel_privado.central_licencas (empresa_id,estado,vencimento,pagamento,revisao)
     values($1,'ativa',(now() at time zone 'America/Sao_Paulo')::date-$2::int,'pendente',1)
     on conflict(empresa_id) do update set vencimento=excluded.vencimento,pagamento='pendente'`,[loja,dias]);
+    await tx.exec("alter table painel_privado.central_licencas enable trigger central_validar_dia_vencimento");
+  });
 }
 
 before(async () => {
   await db.exec(`
     create role authenticated; create role anon; create role service_role bypassrls;
     create schema auth; grant usage on schema auth to authenticated,anon,service_role;
-    create table auth.users(id uuid primary key,email text unique);
+    create table auth.users(id uuid primary key,email text unique,invited_at timestamptz,raw_user_meta_data jsonb);
     create function auth.jwt() returns jsonb language sql stable as $$
       select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb
     $$;

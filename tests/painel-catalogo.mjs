@@ -26,7 +26,7 @@ const config = JSON.parse(await read("vercel.json"));
 before(async () => {
   await db.exec(`
     create role authenticated; create role anon; create role service_role bypassrls;
-    create schema auth; create table auth.users(id uuid primary key,email text);
+    create schema auth; create table auth.users(id uuid primary key,email text,invited_at timestamptz,raw_user_meta_data jsonb);
     create function auth.uid() returns uuid language sql stable as $$
       select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
     create function auth.role() returns text language sql stable as $$
