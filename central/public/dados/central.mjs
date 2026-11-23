@@ -62,3 +62,7 @@ export function listarAuditoria(filtros, cursor) {
   }
   return chamar("auditoria?" + consulta, "GET");
 }
+
+const rotaRecebedorMP = empresa => "credencial-mp?" + new URLSearchParams({ empresa });
+export const lerRecebedorMP = empresa => chamar(rotaRecebedorMP(empresa), "GET");
+export const aprovarRecebedorMP = (empresa, dados) => chamar(rotaRecebedorMP(empresa), "POST", dados);

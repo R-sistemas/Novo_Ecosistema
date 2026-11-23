@@ -4,12 +4,12 @@ import { prepararVisao } from "./visao.mjs";
 import { prepararFinanceiro } from "./financeiro.mjs";
 import { prepararEntregas } from "./entregas.mjs";
 import { prepararPedidos } from "./pedidos.mjs";
+import { prepararCredencialMP } from "./credencial-mp.mjs";
 import { prepararPreferencias } from "./preferencias.mjs";
 import { prepararEquipe } from "./equipe.mjs";
 import { consultarProdutos, entrar, gravarProduto, lojasDoGestor, verificarLoja } from "../dados/catalogo.mjs";
 import { prepararEditor } from "./formulario-produto.mjs";
 import { paraReais } from "../../pdv/regras/moeda.mjs";
-
 const el = id => document.getElementById(id);
 const navegacao = prepararNavegacao();
 const dinheiro = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -30,6 +30,7 @@ let lojaAutorizada = false;
 let areaAtiva = "catalogo";
 let produtosDaPagina = [];
 const carregarEquipe = prepararEquipe(el("area-equipe"),aviso);
+const mostrarCredencialMP = prepararCredencialMP(el("area-preferencias"));
 const carregarPreferencias = prepararPreferencias(el("area-preferencias"),aviso);
 const financeiro = prepararFinanceiro(el("area-financeiro"));
 const entregas = prepararEntregas(el("area-entregas"));
@@ -52,7 +53,7 @@ async function mostrarArea(area,opcoes={}) {
     await carregar(opcoes.ativos ? null : cursores[indice],opcoes.ativos ? 0 : indice);
   }
   else if (area === "equipe") await carregarEquipe(empresa);
-  else if (area === "preferencias") await carregarPreferencias(empresa);
+  else if (area === "preferencias") { mostrarCredencialMP(empresa); await carregarPreferencias(empresa); }
   else if (area === "financeiro") await financeiro.abrirLoja(empresa);
   else if (area === "entregas") await entregas.abrirLoja(empresa);
   else if (area === "pedidos") await pedidos.abrirLoja(empresa,opcoes.campos,opcoes.intervalo);
@@ -133,6 +134,7 @@ async function carregar(cursor, pagina) {
 async function selecionarLoja() {
   if (consultando) return;
   lojaAutorizada = false;
+  mostrarCredencialMP();
   pedidos.limparDetalhe();
   entregas.limpar();
   financeiro.limpar();

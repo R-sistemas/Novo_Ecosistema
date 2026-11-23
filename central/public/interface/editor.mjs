@@ -2,6 +2,7 @@ import { editar } from "../dados/central.mjs";
 import { dadosLicenca, resumoLicenca, situacaoLicenca, rotuloSuspensao } from "../regras/licenca.mjs";
 import { controlesSuspensao } from "./suspensao.mjs";
 import { controlesCiclo } from "./ciclo.mjs";
+import { controlesRecebedorMP } from "./credencial-mp.mjs";
 import { selo } from "./selo.mjs";
 
 const el = id => document.getElementById(id);
@@ -27,6 +28,8 @@ export function editor(painel, atualizar, sair) {
   const mostrarSuspensao = controlesSuspensao(() => retornar(true), sair, bloquear);
 
   const mostrarCiclo = controlesCiclo(() => retornar(true), sair, bloquear);
+
+  const mostrarRecebedor = controlesRecebedorMP(detalhe, sair, bloquear);
 
   function mensagem(texto = "") {
     erro.textContent = texto;
@@ -54,6 +57,7 @@ export function editor(painel, atualizar, sair) {
     el("modo-suspensao").textContent = rotuloSuspensao[empresa.modo_suspensao] ?? "";
     mostrarSuspensao(empresa);
     mostrarCiclo(empresa);
+    mostrarRecebedor(empresa);
     mensagem();
     painel.hidden = true;
     detalhe.hidden = false;
@@ -72,6 +76,7 @@ export function editor(painel, atualizar, sair) {
     el("pagamento-editor").replaceChildren();
     mostrarSuspensao();
     mostrarCiclo();
+    mostrarRecebedor();
     mensagem();
     bloquear(false);
   }

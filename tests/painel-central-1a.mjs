@@ -7,6 +7,7 @@ import { after, before, test } from "node:test";
 import sessao from "../central/api/central/sessao.mjs";
 import onboarding from "../central/api/central/onboarding.mjs";
 import ativar from "../central/api/central/ativar-gestor.mjs";
+import { cifrarCredencialMP, decifrarCredencialMP } from "../lib/cofre-mercado-pago.mjs";
 import auditoria from "../central/api/central/auditoria.mjs";
 import licencas from "../central/api/central/licencas.mjs";
 import empresas from "../central/api/central/empresas.mjs";
@@ -49,7 +50,7 @@ before(async () => {
     $$;
   `);
   for (const nome of ["202611050001_base_pdv", "202611180047_painel_autorizacao",
-    "202611180048_painel_auditoria", "202611210073_central_inventario_licenca", "202611210074_politica_suspensao_central", "202611210076_central_pagamentos_licenca", "202611210077_central_historico_empresa", "202611210078_central_filtros_empresas", "202611210079_central_onboarding", "202611210080_central_auditoria_global"]) {
+    "202611180048_painel_auditoria", "202611210073_central_inventario_licenca", "202611210074_politica_suspensao_central", "202611210076_central_pagamentos_licenca", "202611210077_central_historico_empresa", "202611210078_central_filtros_empresas", "202611210079_central_onboarding", "202611210080_central_auditoria_global", "202611210081_credenciais_mercado_pago_empresa"]) {
     if (nome.endsWith("047_painel_autorizacao")) await db.exec("alter table public.empresas add column cardapio_slug text unique");
     if (nome.startsWith("202611210080")) await db.exec("alter table painel_privado.auditoria add column origem_autor text not null default 'usuario'");
     await db.exec(await ler("../supabase/migrations/" + nome + ".sql"));
@@ -454,4 +455,48 @@ test("SQL auditoria global combina filtros, pagina empates e protege dados", asy
   assert.deepEqual(segunda.eventos[0].depois, { plano: "pro" });
   const filtrada = (await como(a2, sql, ["central.acao_futura", ...filtros.slice(1)])).rows[0].dados;
   assert.equal(filtrada.eventos.length, 1);
+});
+
+test("SQL autorização e mudança de recebedor MP", async () => {
+  const status = "select public.loja_status_credencial_mp($1,'producao') as dados";
+  const central = "select public.central_status_credencial_mp($1,'producao') as dados";
+  const salvar = "select public.servico_gravar_credencial_mp($1,'producao',$2,$3,$4,null,$5) as dados";
+  const aprovar = "select public.central_aprovar_recebedor_mp($1,$2,$3,$4,$5) as dados";
+  const envelope = "v1.fixture." + "a".repeat(55);
+  const gravar = (recebedor, revisao) => como({}, salvar, [alvo, gestor, recebedor, envelope, revisao], "service_role");
+  await assert.rejects(como(loja, status, [id(2)]), { code: "42501" });
+  await assert.rejects(como(loja, salvar, [alvo, gestor, "20", envelope, 0]), { code: "42501" });
+  await assert.rejects(como(a1, central, [alvo]), { code: "42501" });
+  assert.equal((await gravar("20", 0)).rows[0].dados.estado, "ativa");
+  assert.equal((await gravar("20", 1)).rows[0].dados.estado, "ativa");
+  assert.equal((await gravar("21", 2)).rows[0].dados.estado, "pendente");
+  const ficha = (await como(a2, central, [alvo])).rows[0].dados;
+  assert.equal(ficha.recebedor_pendente, "21");
+  assert.ok(!JSON.stringify(ficha).includes(envelope));
+  const args = [alvo, ficha.pendente, 3, "telefone", "Confirmado no contato cadastrado"];
+  await assert.rejects(como(loja, aprovar, args), { code: "42501" });
+  await assert.rejects(como(a2, aprovar, [alvo, ficha.pendente, 2, "telefone", "Confirmado"]), { code: "23505" });
+  await como(a2, aprovar, args);
+  const ativa = await db.query("select recebedor from painel_privado.credenciais_mp where empresa_id=$1 and estado='ativa'", [alvo]);
+  assert.deepEqual(ativa.rows, [{ recebedor: "21" }]);
+  const trilha = await db.query("select depois from painel_privado.auditoria where acao='central.aprovar_recebedor_mp'");
+  assert.deepEqual(trilha.rows, [{ depois: { ambiente: "producao", revisao: 3, canal: "telefone" } }]);
+});
+
+test("cofre MP autentica o contexto da empresa, conta e ambiente", () => {
+  const anterior = process.env.MP_PEDIDOS_COFRE_V1;
+  process.env.MP_PEDIDOS_COFRE_V1 = Buffer.alloc(32, 23).toString("base64url");
+  try {
+    const destino = { empresa: alvo, ambiente: "producao", recebedor: "21" };
+    const segredos = { access_token: "token-de-fixture", webhook_secret: "segredo-de-fixture" };
+    const cifra = cifrarCredencialMP(segredos, destino);
+    assert.ok(!cifra.includes(segredos.access_token));
+    assert.deepEqual(decifrarCredencialMP(cifra, destino), segredos);
+    for (const alteracao of [{ empresa: id(2) }, { ambiente: "sandbox" }, { recebedor: "22" }]) {
+      assert.throws(() => decifrarCredencialMP(cifra, { ...destino, ...alteracao }));
+    }
+  } finally {
+    if (anterior === undefined) delete process.env.MP_PEDIDOS_COFRE_V1;
+    else process.env.MP_PEDIDOS_COFRE_V1 = anterior;
+  }
 });
