@@ -5,6 +5,9 @@ import { createRequire } from "node:module";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
 import sessao from "../central/api/central/sessao.mjs";
+import onboarding from "../central/api/central/onboarding.mjs";
+import ativar from "../central/api/central/ativar-gestor.mjs";
+import licencas from "../central/api/central/licencas.mjs";
 import empresas from "../central/api/central/empresas.mjs";
 
 const require = createRequire(import.meta.url);
@@ -36,7 +39,7 @@ before(async () => {
     create role service_role bypassrls;
     create schema auth;
     grant usage on schema auth to authenticated, anon, service_role;
-    create table auth.users (id uuid primary key);
+    create table auth.users (id uuid primary key, email text unique, invited_at timestamptz, raw_user_meta_data jsonb);
     create function auth.jwt() returns jsonb language sql stable as $$
       select current_setting('request.jwt.claims', true)::jsonb
     $$;
@@ -45,11 +48,11 @@ before(async () => {
     $$;
   `);
   for (const nome of ["202611050001_base_pdv", "202611180047_painel_autorizacao",
-    "202611180048_painel_auditoria", "202611210073_central_inventario_licenca", "202611210074_politica_suspensao_central"]) {
+    "202611180048_painel_auditoria", "202611210073_central_inventario_licenca", "202611210074_politica_suspensao_central", "202611210076_central_pagamentos_licenca", "202611210077_central_historico_empresa", "202611210078_central_filtros_empresas", "202611210079_central_onboarding"]) {
     if (nome.endsWith("047_painel_autorizacao")) await db.exec("alter table public.empresas add column cardapio_slug text unique");
     await db.exec(await ler("../supabase/migrations/" + nome + ".sql"));
   }
-  await db.query("insert into auth.users values ($1), ($2)", [admin, gestor]);
+  await db.query("insert into auth.users (id) values ($1), ($2)", [admin, gestor]);
   for (let numero = 1; numero <= 21; numero++) {
     const sufixo = String(numero).padStart(2, "0");
     await db.query("insert into empresas values ($1,$2,$3)", [id(numero), "Empresa " + sufixo, "loja-" + sufixo]);
@@ -94,13 +97,16 @@ test("SQL lista, pagina, busca, calcula atraso e audita edição idempotente", a
   assert.deepEqual((await listar(" LOJA-02 ", 1)).empresas.map(e => e.id), [id(2)]);
   assert.deepEqual((await listar("empresa 03", 1)).empresas.map(e => e.id), [id(3)]);
   assert.equal((await listar("%", 1)).empresas.length, 0);
-  const data = (await db.query("select ((now() at time zone 'America/Sao_Paulo')::date - 4)::text as data")).rows[0].data;
+  const { data, atraso } = (await db.query("select '2020-01-05' as data, (now() at time zone 'America/Sao_Paulo')::date - date '2020-01-05' as atraso")).rows[0];
   const dados = [alvo, 0, "ativa", "pro", 12345, data, "pendente", "Revisão contratual", id(201)];
   await assert.rejects(como(loja, alteracao, dados), { code: "42501" });
   await assert.rejects(como(a1, alteracao, dados), { code: "42501" });
+  const invalido = [...dados];
+  invalido[5] = "2020-01-06";
+  await assert.rejects(como(a2, alteracao, invalido), { code: "22023" });
   const resultados = await Promise.all([como(a2, alteracao, dados), como(a2, alteracao, dados)]);
   assert.deepEqual(resultados[0].rows, resultados[1].rows);
-  assert.equal((await listar("loja-01", 1)).empresas[0].dias_em_atraso, 4);
+  assert.equal((await listar("loja-01", 1)).empresas[0].dias_em_atraso, atraso);
   await assert.rejects(como(a2, alteracao, [...dados.slice(0, -1), id(202)]), { code: "23505" });
   const pago = [alvo, 1, "ativa", "pro", 12345, data, "pago", "Pagamento registrado", id(202)];
   await como(a2, alteracao, pago);
@@ -121,8 +127,10 @@ test("Chrome passa pelo login, MFA, inventário, busca, paginação, edição e 
   const { chromium } = require(process.env.PLAYWRIGHT_MODULE);
   const projeto = JSON.parse(await ler("../central/vercel.json"));
   await como(a2, alteracao,
-    [id(3), 0, "ativa", "basico", 12990, "2026-11-15", "pendente", "Licença de teste", id(203)]);
-  const tokens = { a1, a2, loja };
+    [id(3), 0, "ativa", "basico", 12990, "2020-11-05", "pendente", "Licença de teste", id(203)]);
+  const tokens = { a1, a2, loja, convidado: { usuario: id(2300), aal: "aal1" } };
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "fixture-service";
+  process.env.CENTRAL_GESTOR_REDIRECT = "https://central.example.test/ativar-gestor.html";
   process.env.SUPABASE_URL = "https://fixture.test";
   process.env.SUPABASE_ANON_KEY = "teste";
   t.mock.method(globalThis, "fetch", async (url, opcoes) => {
@@ -134,7 +142,23 @@ test("Chrome passa pelo login, MFA, inventário, busca, paginação, edição e 
       if (dados.email === "invalido@example.test") return Response.json({}, { status: 400 });
       return Response.json({ access_token: dados.email === "central@example.test" ? "a1" : "loja" });
     }
+    if (chave === "fixture-service") {
+      if (url.pathname.endsWith("/central_dados_convite")) {
+        const r = await como({}, "select public.central_dados_convite($1) as dados", [dados.p_empresa], "service_role");
+        return Response.json(r.rows[0].dados);
+      }
+      assert.equal(url.pathname, "/auth/v1/invite");
+      assert.equal(url.searchParams.get("redirect_to"), process.env.CENTRAL_GESTOR_REDIRECT);
+      await db.query("insert into auth.users values ($1,$2,null,$3)", [id(2300), dados.email, dados.data]);
+      await db.query("update auth.users set invited_at=now() where id=$1", [id(2300)]);
+      return Response.json({ id: id(2300) });
+    }
     if (!identidade) return Response.json({}, { status: 401 });
+    if (url.pathname === "/auth/v1/user" && opcoes.method === "PUT") {
+      assert.equal(chave, "convidado");
+      assert.equal(dados.password, "senha-apenas-fixture");
+      return Response.json({});
+    }
     if (url.pathname === "/auth/v1/user") {
       return Response.json({ id: identidade.usuario, factors: [{ id: fator, factor_type: "totp", status: "verified" }] });
     }
@@ -147,7 +171,12 @@ test("Chrome passa pelo login, MFA, inventário, busca, paginação, edição e 
       const rpc = url.pathname.split("/").pop();
       const sql = {
         painel_contexto_sessao: "select public.painel_contexto_sessao($1) as dados",
+        central_gestor_convidado: "select public.central_gestor_convidado() as dados",
+        central_criar_empresa: "select public.central_criar_empresa($1,$2,$3,$4,$5,$6,$7,$8) as dados",
         central_empresas: consulta, central_editar_licenca: alteracao,
+        central_empresas_filtradas: "select public.central_empresas_filtradas($1,$2,$3,$4) as dados",
+        central_historico_empresa: "select public.central_historico_empresa($1,$2) as dados",
+        central_registrar_pagamento: "select public.central_registrar_pagamento($1,$2,$3,$4,$5,$6) as dados",
         central_empresas_atencao: "select public.central_empresas_atencao($1,$2,$3) as dados",
         central_alterar_suspensao: "select public.central_alterar_suspensao($1,$2,$3,$4,$5) as dados"
       }[rpc];
@@ -164,7 +193,7 @@ test("Chrome passa pelo login, MFA, inventário, busca, paginação, edição e 
     try {
       const url = new URL(req.url, "http://localhost");
       for (const { key, value } of projeto.headers[0].headers) res.setHeader(key, value);
-      const handler = { "/api/central/sessao": sessao, "/api/central/empresas": empresas }[url.pathname];
+      const handler = { "/api/central/sessao": sessao, "/api/central/empresas": empresas, "/api/central/licencas": licencas, "/api/central/onboarding": onboarding, "/api/central/ativar-gestor": ativar }[url.pathname];
       if (handler) {
         const partes = [];
         for await (const parte of req) partes.push(parte);
@@ -208,7 +237,7 @@ test("Chrome passa pelo login, MFA, inventário, busca, paginação, edição e 
     const rotaLoja = await page.request.get(base + "/api/central/empresas", { headers: { Authorization: "Bearer loja" } });
     assert.equal(rotaLoja.status(), 403);
     async function login(email) {
-      await page.getByLabel("E-mail").fill(email);
+      await page.locator("#login").getByLabel("E-mail").fill(email);
       await page.getByLabel("Senha").fill("senha-fixture");
       await page.getByRole("button", { name: "Continuar" }).click();
     }
@@ -254,6 +283,21 @@ test("Chrome passa pelo login, MFA, inventário, busca, paginação, edição e 
     await page.getByRole("button", { name: "Abrir Empresa 01", exact: true }).waitFor();
     await page.getByRole("cell", { name: "Em débito", exact: true }).first().waitFor();
     await capturar("inventario");
+    await page.getByRole("button", { name: "Nova empresa" }).click();
+    await page.getByRole("dialog", { name: "Nova empresa" }).waitFor();
+    await capturar("onboarding");
+    await page.getByRole("dialog").getByRole("button", { name: "Cancelar" }).click();
+    await page.locator("#busca select[name=situacao]").selectOption("sem_licenca");
+    await page.getByRole("button", { name: "Abrir Empresa 02", exact: true }).waitFor();
+    assert.equal(await page.getByRole("button", { name: "Abrir Empresa 03", exact: true }).count(), 0);
+    await page.locator("#busca select[name=situacao]").selectOption("");
+    await page.getByRole("button", { name: "Abrir Empresa 03", exact: true }).click();
+    await page.locator("#historico-licenca").getByText("Licença de teste", { exact: false }).waitFor();
+    await capturar("quitacao-historico");
+    await page.locator("#quitar-ciclo input[name=data]").fill("2020-01-05");
+    await page.locator("#quitar-ciclo input[type=checkbox]").check();
+    await page.getByRole("button", { name: "Quitar ciclo" }).click();
+    await page.getByRole("button", { name: "Abrir Empresa 03", exact: true }).waitFor();
     await page.getByRole("button", { name: "Próxima" }).click();
     await page.getByText("Página 2").waitFor();
     assert.equal(await page.locator("tbody tr").count(), 1);
@@ -264,8 +308,8 @@ test("Chrome passa pelo login, MFA, inventário, busca, paginação, edição e 
     await page.getByRole("button", { name: "Buscar" }).click();
     await page.getByRole("button", { name: "Abrir Empresa 02", exact: true }).click();
     await page.getByRole("heading", { name: "Empresa 02" }).waitFor();
-    await page.getByLabel("Plano").selectOption("basico");
-    await page.getByLabel("Preço mensal (R$)").fill("149.90");
+    await page.locator("#licenca").getByLabel("Plano").selectOption("basico");
+    await page.locator("#licenca").getByLabel("Preço mensal (R$)").fill("149.90");
     await page.getByLabel("Motivo da alteração").fill("Conferência local");
     await capturar("empresa");
     await page.getByRole("button", { name: "Salvar licença" }).click();
@@ -293,6 +337,22 @@ test("Chrome passa pelo login, MFA, inventário, busca, paginação, edição e 
     await capturar("inventario-vazio");
     await page.getByRole("button", { name: "Limpar busca" }).click();
     await page.getByRole("button", { name: "Abrir Empresa 01", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Nova empresa" }).click();
+    const formNova = page.getByRole("dialog");
+    await formNova.getByLabel("Nome", { exact: true }).fill("TESTE-CHROME");
+    await formNova.getByLabel("Slug do cardápio").fill("teste-chrome");
+    await formNova.getByLabel("E-mail do gestor").fill("chrome@example.test");
+    await formNova.getByLabel("Preço mensal").fill("120");
+    await formNova.getByLabel("Primeiro vencimento").fill("2030-01-05");
+    await formNova.getByRole("button", { name: "Criar e convidar gestor" }).click();
+    await formNova.waitFor({ state: "hidden" });
+    const convidado = await browser.newPage();
+    await convidado.goto(base + "/ativar-gestor.html#type=invite&access_token=convidado");
+    await convidado.getByLabel("Crie sua senha").fill("senha-apenas-fixture");
+    await convidado.getByLabel("Repita a senha").fill("senha-apenas-fixture");
+    await convidado.getByRole("button", { name: "Definir senha" }).click();
+    await convidado.getByRole("link", { name: "Abrir painel da loja" }).waitFor();
+    await convidado.close();
     await page.getByRole("button", { name: "Sair" }).click();
     await page.getByRole("button", { name: "Continuar" }).waitFor();
     assert.deepEqual(erros, []);
@@ -300,4 +360,51 @@ test("Chrome passa pelo login, MFA, inventário, busca, paginação, edição e 
     await browser?.close();
     servidor.close();
   }
+});
+
+test("SQL quita um ciclo pelo vencimento esperado e não avança novamente no retry", async () => {
+  const empresa = id(19);
+  const ciclo = "2030-01-05";
+  await como(a2, alteracao, [empresa, 0, "ativa", "pro", 12500, ciclo, "pendente", "Contrato", id(1900)]);
+  const sql = "select public.central_registrar_pagamento($1,$2,$3,$4,$5,$6) as dados";
+  const args = [empresa, 1, ciclo, "2020-12-20", 12500, id(1901)];
+  for (const identidade of [a1, loja]) await assert.rejects(como(identidade, sql, args), { code: "42501" });
+  const resultado = (await como(a2, sql, args)).rows[0].dados;
+  assert.equal(resultado.vencimento, "2030-02-05");
+  assert.equal(resultado.revisao, 2);
+  assert.equal(resultado.pagamento, "pendente");
+  assert.equal(resultado.vencimento_quitado, ciclo);
+  assert.deepEqual((await como(a2, sql, args)).rows[0].dados, resultado);
+  await assert.rejects(como(a2, sql, [...args.slice(0, -1), id(1902)]), { code: "23505" });
+  const historico = "select public.central_historico_empresa($1,1) as dados";
+  await assert.rejects(como(loja, historico, [empresa]), { code: "42501" });
+  const eventos = (await como(a2, historico, [empresa])).rows[0].dados.eventos;
+  assert.deepEqual(eventos.map(evento => evento.acao), ["central.registrar_pagamento", "central.editar_licenca"]);
+  const auditoria = await db.query("select autor_id, entidade_id, empresa_id from painel_privado.auditoria where requisicao_id = $1", [id(1901)]);
+  assert.deepEqual(auditoria.rows, [{ autor_id: admin, entidade_id: empresa, empresa_id: null }]);
+});
+
+test("SQL cria empresa e licença, vincula apenas o gestor convidado e preserva isolamento", async () => {
+  const sql = "select public.central_criar_empresa($1,$2,$3,$4,$5,$6,$7,$8) as empresa";
+  const args = ["TESTE-NOVA", "teste-nova", "gestor@example.test", "basico", 12000, "2020-01-05", "pendente", id(2200)];
+  await assert.rejects(como(a1, sql, args), { code: "42501" });
+  await assert.rejects(como(loja, sql, args), { code: "42501" });
+  const empresa = (await como(a2, sql, args)).rows[0].empresa;
+  assert.equal((await como(a2, sql, args)).rows[0].empresa, empresa);
+  await assert.rejects(como(a2, "select public.central_dados_convite($1)", [empresa]), { code: "42501" });
+  const convite = "select public.central_dados_convite($1) as dados";
+  assert.equal((await como(a2, sql, [...args.slice(0, -1), id(2203)])).rows[0].empresa, empresa);
+  const pendente = (await como({}, convite, [empresa], "service_role")).rows[0].dados;
+  assert.equal(pendente.vinculado, false);
+  assert.equal((await como(loja, "select id from public.empresas where id=$1", [empresa])).rows.length, 0);
+  await db.query("insert into auth.users values ($1,$2,null,$3)", [id(2201), "outro@example.test", { rs_convite: pendente.chave }]);
+  assert.equal((await como({}, convite, [empresa], "service_role")).rows[0].dados.vinculado, false);
+  await db.query("insert into auth.users values ($1,$2,null,$3)", [id(2202), pendente.email, { rs_convite: pendente.chave }]);
+  await db.query("update auth.users set invited_at=now() where id in ($1,$2)", [id(2201), id(2202)]);
+  const contexto = await como({ usuario: id(2202), aal: "aal1" }, "select public.painel_contexto_sessao($1) as dados", [empresa]);
+  assert.equal(contexto.rows[0].dados.escopo, "loja");
+  const filtrados = await como(a2, "select public.central_empresas_filtradas('TESTE-NOVA',1,20,'bloqueada') as dados");
+  assert.equal(filtrados.rows[0].dados.empresas[0].id, empresa);
+  const eventos = await db.query("select acao from painel_privado.auditoria where entidade_id = $1 order by acao", [empresa]);
+  assert.deepEqual(eventos.rows.map(e => e.acao), ["central.criar_empresa", "central.vincular_gestor"]);
 });

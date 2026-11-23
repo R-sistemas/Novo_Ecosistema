@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ativar acesso do gestor | R Sistemas</title>
+  <link rel="stylesheet" href="/central.css">
+  <script type="module" src="/interface/ativar-gestor.mjs"></script>
+</head>
+<body class="acesso">
+  <main class="painel credencial">
+    <img src="/logo.png" alt="R Sistemas" width="88" height="56">
+    <h1>Ativar acesso do gestor</h1>
+    <p id="estado-ativacao" role="status"></p>
+    <form id="ativacao" class="campos" hidden>
+      <label>Crie sua senha<input name="senha" type="password" autocomplete="new-password" required minlength="12" maxlength="72"></label>
+      <label>Repita a senha<input name="confirmacao" type="password" autocomplete="new-password" required minlength="12" maxlength="72"></label>
+      <button type="submit">Definir senha</button>
+    </form>
+    <a id="painel-loja" href="https://novo-ecossistema.vercel.app/admin-loja.html" hidden>Abrir painel da loja</a>
+  </main>
+</body>
+</html>

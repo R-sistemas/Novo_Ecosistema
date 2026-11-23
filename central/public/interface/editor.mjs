@@ -1,6 +1,7 @@
 import { editar } from "../dados/central.mjs";
 import { dadosLicenca, resumoLicenca, situacaoLicenca, rotuloSuspensao } from "../regras/licenca.mjs";
 import { controlesSuspensao } from "./suspensao.mjs";
+import { controlesCiclo } from "./ciclo.mjs";
 import { selo } from "./selo.mjs";
 
 const el = id => document.getElementById(id);
@@ -19,11 +20,13 @@ export function editor(painel, atualizar, sair) {
   let acionador;
 
   function bloquear(ativo) {
-    document.getElementById("suspensao").inert = ativo;
+    for (const id of ["suspensao", "quitar-ciclo"]) el(id).inert = ativo;
     [salvar, cancelar, voltar, nav].forEach(botao => { botao.disabled = ativo; });
   }
 
   const mostrarSuspensao = controlesSuspensao(() => retornar(true), sair, bloquear);
+
+  const mostrarCiclo = controlesCiclo(() => retornar(true), sair, bloquear);
 
   function mensagem(texto = "") {
     erro.textContent = texto;
@@ -50,6 +53,7 @@ export function editor(painel, atualizar, sair) {
     el("pagamento-editor").replaceChildren(...selos);
     el("modo-suspensao").textContent = rotuloSuspensao[empresa.modo_suspensao] ?? "";
     mostrarSuspensao(empresa);
+    mostrarCiclo(empresa);
     mensagem();
     painel.hidden = true;
     detalhe.hidden = false;
@@ -67,6 +71,7 @@ export function editor(painel, atualizar, sair) {
     el("slug-editor").textContent = "";
     el("pagamento-editor").replaceChildren();
     mostrarSuspensao();
+    mostrarCiclo();
     mensagem();
     bloquear(false);
   }
@@ -83,6 +88,10 @@ export function editor(painel, atualizar, sair) {
   formulario.onsubmit = async evento => {
     evento.preventDefault();
     const dados = dadosLicenca(new FormData(formulario), empresa);
+    if (dados.vencimento && dados.vencimento !== empresa.vencimento && !dados.vencimento.endsWith("-05")) {
+      mensagem("Escolha um vencimento no dia 5.");
+      return;
+    }
     const assinatura = JSON.stringify(dados);
     if (tentativa?.assinatura !== assinatura) tentativa = { assinatura, id: crypto.randomUUID() };
     const atual = tentativa;

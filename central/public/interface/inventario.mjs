@@ -1,6 +1,7 @@
 import { listar } from "../dados/central.mjs";
 import { resumoLicenca, situacaoLicenca } from "../regras/licenca.mjs";
 import { editor } from "./editor.mjs";
+import { onboarding } from "./onboarding.mjs";
 import { selo } from "./selo.mjs";
 
 const el = id => document.getElementById(id);
@@ -13,8 +14,10 @@ export function inventario(sair) {
   const anterior = el("anterior");
   const proxima = el("proxima");
   const busca = el("busca");
+  const { atencao, situacao } = busca.elements;
   const paineis = ["carregando", "rolagem", "vazio", "falha"].map(el);
   const edicao = editor(painel, () => carregar(pagina), sair);
+  const fecharOnboarding = onboarding(() => carregar(1), sair);
   let carregando = false;
   let pagina = 1;
   let destinoAtual = 1;
@@ -71,15 +74,15 @@ export function inventario(sair) {
     el("total").hidden = true;
     mostrar("carregando");
     try {
-      const { empresas, tem_proxima } = await listar(termo, destino, busca.elements.atencao.checked);
+      const { empresas, tem_proxima } = await listar(termo, destino, atencao.checked, situacao.value);
       if (atual !== versao) return;
       pagina = destino;
       el("pagina").textContent = "Página " + pagina;
       el("total-pagina").textContent = empresas.length;
       el("total").hidden = false;
       corpo.replaceChildren(...empresas.map(linha));
-      el("ajuda-vazio").hidden = !termo;
-      el("limpar-busca").hidden = !termo;
+      el("ajuda-vazio").hidden = !(termo || situacao.value || atencao.checked);
+      el("limpar-busca").hidden = !(termo || situacao.value || atencao.checked);
       mostrar(empresas.length ? "rolagem" : "vazio");
       anterior.disabled = pagina <= 1;
       proxima.disabled = !tem_proxima;
@@ -95,7 +98,14 @@ export function inventario(sair) {
     }
   }
 
-  busca.elements.atencao.onchange = () => busca.requestSubmit();
+  atencao.onchange = () => {
+    if (atencao.checked) situacao.value = "";
+    busca.requestSubmit();
+  };
+  situacao.onchange = () => {
+    if (situacao.value) atencao.checked = false;
+    busca.requestSubmit();
+  };
   setInterval(() => {
     if (!painel.hidden && !document.hidden && busca.elements.atencao.checked && !carregando &&
         !el("rolagem").contains(document.activeElement) && !document.activeElement?.closest(".paginacao")) void carregar(pagina);
@@ -130,6 +140,7 @@ export function inventario(sair) {
       painel.hidden = true;
       corpo.replaceChildren();
       edicao.fechar();
+      fecharOnboarding();
     }
   };
 }

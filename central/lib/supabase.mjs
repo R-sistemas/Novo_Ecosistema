@@ -12,8 +12,9 @@ export function tokenDe(req) {
   return /^Bearer [\w.-]+$/.test(req.headers.authorization ?? "") ? req.headers.authorization : null;
 }
 
-export function supabase(caminho, { token, dados, metodo = dados === undefined ? "GET" : "POST" } = {}) {
-  const { SUPABASE_URL: url, SUPABASE_ANON_KEY: apikey } = process.env;
+export function supabase(caminho, { token, dados, apikey: chave, metodo = dados === undefined ? "GET" : "POST" } = {}) {
+  const { SUPABASE_URL: url, SUPABASE_ANON_KEY: anon } = process.env;
+  const apikey = chave ?? anon;
   if (!url || !apikey) throw new Error("Supabase indisponível");
   return fetch(new URL(caminho, url), {
     method: metodo, signal: AbortSignal.timeout(8000),

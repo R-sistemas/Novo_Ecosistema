@@ -1,11 +1,13 @@
 import { erroApi, iniciar, supabase, tokenDe, uuid } from "../../lib/supabase.mjs";
 
 function consulta(query = {}) {
-  const { busca = "", pagina = "1", atencao } = query;
+  const { busca = "", pagina = "1", atencao, situacao } = query;
   if (atencao !== undefined && atencao !== "1") return null;
+  if (situacao !== undefined && (atencao || !["em_dia", "em_debito", "bloqueada",
+    "sem_licenca", "sem_plano"].includes(situacao))) return null;
   if (typeof busca !== "string" || busca.length > 120 ||
       typeof pagina !== "string" || !/^[1-9]\d{0,5}$/.test(pagina) || Number(pagina) > 100000) return null;
-  return { p_busca: busca, p_pagina: Number(pagina), p_limite: 20 };
+  return { p_busca: busca, p_pagina: Number(pagina), p_limite: 20, ...(situacao && { p_situacao: situacao }) };
 }
 
 function edicao(corpo = {}) {
@@ -39,11 +41,11 @@ export default async function empresas(req, res) {
   const dados = leitura ? consulta(req.query) : manual ? suspensao(req.body) : edicao(req.body);
   if (!dados) return erroApi(res, 400);
   try {
-    const rpc = leitura ? (req.query?.atencao === "1" ? "central_empresas_atencao" : "central_empresas")
+    const rpc = leitura ? (req.query?.atencao === "1" ? "central_empresas_atencao" : dados.p_situacao ? "central_empresas_filtradas" : "central_empresas")
       : manual ? "central_alterar_suspensao" : "central_editar_licenca";
     const resposta = await supabase("/rest/v1/rpc/" + rpc, { token, dados });
     const corpo = await resposta.json();
-    if (!resposta.ok) return erroApi(res, corpo.code === "P0002" ? 404 : resposta.status);
+    if (!resposta.ok) return erroApi(res, corpo.code === "P0002" ? 404 : corpo.code === "22023" ? 400 : resposta.status);
     return res.status(200).json(corpo);
   } catch {
     return erroApi(res, 503);

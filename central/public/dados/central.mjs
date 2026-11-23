@@ -28,12 +28,28 @@ export function sair() {
   return pedido;
 }
 
-export function listar(termo, pagina, atencao) {
+export function listar(termo, pagina, atencao, situacao) {
   const consulta = new URLSearchParams({ busca: termo, pagina });
   if (atencao) consulta.set("atencao", "1");
+  else if (situacao) consulta.set("situacao", situacao);
   return chamar("empresas?" + consulta, "GET");
 }
 
 export const editar = dados => chamar("empresas", "POST", dados);
 
 export const alterarSuspensao = dados => chamar("empresas", "POST", { ...dados, acao: "suspensao" });
+
+export const historicoLicenca = (empresa, pagina) =>
+  chamar("licencas?" + new URLSearchParams({ empresa, pagina }), "GET");
+export const quitarLicenca = dados => chamar("licencas", "POST", dados);
+
+export const criarEmpresa = dados => chamar("onboarding", "POST", dados);
+
+export async function definirSenhaGestor(convite, senha) {
+  const resposta = await fetch("/api/central/ativar-gestor", {
+    method: "POST", credentials: "omit", cache: "no-store",
+    headers: { Authorization: "Bearer " + convite, "Content-Type": "application/json" },
+    body: JSON.stringify({ senha })
+  });
+  if (!resposta.ok) throw new Error("Não foi possível definir a senha. Confira a senha ou a validade do convite.");
+}
