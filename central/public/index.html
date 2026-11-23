@@ -21,7 +21,7 @@
       <span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h15V7H4"/><path d="M16 13h5"/></svg>Licenças</span>
       <span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M18 8a4 4 0 0 1 0 8M22 21v-2a4 4 0 0 0-3-3.87"/></svg>Parceiros</span>
       <span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="8" cy="8" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="6" cy="14" r="1"/><path d="M17 14c-2 0-4 3-2 5 1.5 2 6-.5 6-4a3 3 0 0 0-4-1Z"/></svg>Banners</span>
-      <span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h5l3-8 4 16 3-8h3"/></svg>Auditoria</span>
+      <button id="nav-auditoria" type="button"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h5l3-8 4 16 3-8h3"/></svg>Auditoria</button>
     </nav>
   </aside>
   <main>
@@ -163,6 +163,20 @@
         <p id="estado-historico" role="status"></p>
         <ol id="historico-licenca"></ol>
         <button id="mais-historico" type="button" class="neutro" hidden>Carregar mais</button>
+      </section>
+    </section>
+    <section id="auditoria" aria-labelledby="titulo-auditoria" hidden>
+      <div class="hero"><div><h1 id="titulo-auditoria" tabindex="-1">Auditoria</h1><p>Ações administrativas da plataforma</p></div></div>
+      <section class="painel conteudo campos" aria-label="Eventos de auditoria">
+        <form id="filtros-auditoria" class="grade campos">
+          <label>Ação<select name="acao"><option value="">Todas</option><option value="central.editar_licenca">Editar licença</option><option value="central.registrar_pagamento">Registrar pagamento</option><option value="central.alterar_suspensao">Alterar suspensão</option><option value="central.criar_empresa">Criar empresa</option><option value="central.vincular_gestor">Vincular gestor</option><option value="central.conceder_primeiro_papel">Conceder primeiro papel</option><option value="central.revogar_primeiro_papel">Revogar primeiro papel</option></select></label>
+          <label>Empresa<input type="search" name="empresa" maxlength="120" placeholder="Nome da empresa"></label><label>Autor<input type="search" name="autor" maxlength="254" placeholder="E-mail do autor"></label>
+          <label>De<input type="date" name="inicio" min="1900-01-01" max="9999-12-31"></label><label>Até<input type="date" name="fim" min="1900-01-01" max="9999-12-31"></label>
+          <div class="acoes"><button type="button" id="auditoria-limpar" class="neutro">Limpar</button><button type="submit">Filtrar</button></div>
+        </form>
+        <p id="status-auditoria" role="status"></p><button type="button" id="auditoria-repetir" class="neutro" hidden>Tentar novamente</button>
+        <div id="tabela-auditoria" class="rolagem-auditoria" hidden><table><thead><tr><th scope="col">Data e hora</th><th scope="col">Ação</th><th scope="col">Empresa</th><th scope="col">Autor</th><th scope="col">Motivo</th><th scope="col">Detalhe</th></tr></thead><tbody id="eventos-auditoria"></tbody></table></div>
+        <div class="paginacao"><nav aria-label="Paginação da auditoria"><button id="auditoria-anterior" type="button" class="neutro" disabled>Anterior</button><span id="auditoria-pagina" aria-live="polite"></span><button id="auditoria-proxima" type="button" class="neutro" disabled>Próxima</button></nav></div>
       </section>
     </section>
     <dialog id="nova-empresa" class="painel conteudo" aria-labelledby="titulo-onboarding">

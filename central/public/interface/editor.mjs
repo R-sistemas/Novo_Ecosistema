@@ -21,7 +21,7 @@ export function editor(painel, atualizar, sair) {
 
   function bloquear(ativo) {
     for (const id of ["suspensao", "quitar-ciclo"]) el(id).inert = ativo;
-    [salvar, cancelar, voltar, nav].forEach(botao => { botao.disabled = ativo; });
+    [salvar, cancelar, voltar, nav, el("nav-auditoria")].forEach(botao => { botao.disabled = ativo; });
   }
 
   const mostrarSuspensao = controlesSuspensao(() => retornar(true), sair, bloquear);

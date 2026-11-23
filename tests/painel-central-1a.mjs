@@ -7,6 +7,7 @@ import { after, before, test } from "node:test";
 import sessao from "../central/api/central/sessao.mjs";
 import onboarding from "../central/api/central/onboarding.mjs";
 import ativar from "../central/api/central/ativar-gestor.mjs";
+import auditoria from "../central/api/central/auditoria.mjs";
 import licencas from "../central/api/central/licencas.mjs";
 import empresas from "../central/api/central/empresas.mjs";
 
@@ -48,11 +49,12 @@ before(async () => {
     $$;
   `);
   for (const nome of ["202611050001_base_pdv", "202611180047_painel_autorizacao",
-    "202611180048_painel_auditoria", "202611210073_central_inventario_licenca", "202611210074_politica_suspensao_central", "202611210076_central_pagamentos_licenca", "202611210077_central_historico_empresa", "202611210078_central_filtros_empresas", "202611210079_central_onboarding"]) {
+    "202611180048_painel_auditoria", "202611210073_central_inventario_licenca", "202611210074_politica_suspensao_central", "202611210076_central_pagamentos_licenca", "202611210077_central_historico_empresa", "202611210078_central_filtros_empresas", "202611210079_central_onboarding", "202611210080_central_auditoria_global"]) {
     if (nome.endsWith("047_painel_autorizacao")) await db.exec("alter table public.empresas add column cardapio_slug text unique");
+    if (nome.startsWith("202611210080")) await db.exec("alter table painel_privado.auditoria add column origem_autor text not null default 'usuario'");
     await db.exec(await ler("../supabase/migrations/" + nome + ".sql"));
   }
-  await db.query("insert into auth.users (id) values ($1), ($2)", [admin, gestor]);
+  await db.query("insert into auth.users (id,email) values ($1,'central@example.test'), ($2,'loja@example.test')", [admin, gestor]);
   for (let numero = 1; numero <= 21; numero++) {
     const sufixo = String(numero).padStart(2, "0");
     await db.query("insert into empresas values ($1,$2,$3)", [id(numero), "Empresa " + sufixo, "loja-" + sufixo]);
@@ -171,6 +173,7 @@ test("Chrome passa pelo login, MFA, inventário, busca, paginação, edição e 
       const rpc = url.pathname.split("/").pop();
       const sql = {
         painel_contexto_sessao: "select public.painel_contexto_sessao($1) as dados",
+        central_auditoria_global: "select public.central_auditoria_global($1,$2,$3,$4,$5,$6,$7) as dados",
         central_gestor_convidado: "select public.central_gestor_convidado() as dados",
         central_criar_empresa: "select public.central_criar_empresa($1,$2,$3,$4,$5,$6,$7,$8) as dados",
         central_empresas: consulta, central_editar_licenca: alteracao,
@@ -193,7 +196,7 @@ test("Chrome passa pelo login, MFA, inventário, busca, paginação, edição e 
     try {
       const url = new URL(req.url, "http://localhost");
       for (const { key, value } of projeto.headers[0].headers) res.setHeader(key, value);
-      const handler = { "/api/central/sessao": sessao, "/api/central/empresas": empresas, "/api/central/licencas": licencas, "/api/central/onboarding": onboarding, "/api/central/ativar-gestor": ativar }[url.pathname];
+      const handler = { "/api/central/sessao": sessao, "/api/central/empresas": empresas, "/api/central/licencas": licencas, "/api/central/onboarding": onboarding, "/api/central/ativar-gestor": ativar, "/api/central/auditoria": auditoria }[url.pathname];
       if (handler) {
         const partes = [];
         for await (const parte of req) partes.push(parte);
@@ -353,6 +356,18 @@ test("Chrome passa pelo login, MFA, inventário, busca, paginação, edição e 
     await convidado.getByRole("button", { name: "Definir senha" }).click();
     await convidado.getByRole("link", { name: "Abrir painel da loja" }).waitFor();
     await convidado.close();
+    assert.equal((await page.request.get(base + "/api/central/auditoria")).status(), 401);
+    assert.equal((await page.request.get(base + "/api/central/auditoria", { headers: { Authorization: "Bearer loja" } })).status(), 403);
+    await page.getByRole("button", { name: "Auditoria" }).click();
+    await page.locator("#eventos-auditoria tr").first().waitFor();
+    await page.locator("#filtros-auditoria input[name=empresa]").fill("TESTE-CHROME");
+    await page.getByRole("button", { name: "Filtrar", exact: true }).click();
+    await page.getByRole("cell", { name: "TESTE-CHROME", exact: true }).first().waitFor();
+    await page.locator("#eventos-auditoria summary").last().click();
+    await page.locator("#eventos-auditoria").getByText("Básico", { exact: true }).waitFor();
+    await capturar("auditoria-global");
+    await page.getByRole("button", { name: "Inventário", exact: true }).click();
+    await page.getByRole("heading", { name: "Inventário", exact: true }).waitFor();
     await page.getByRole("button", { name: "Sair" }).click();
     await page.getByRole("button", { name: "Continuar" }).waitFor();
     assert.deepEqual(erros, []);
@@ -407,4 +422,36 @@ test("SQL cria empresa e licença, vincula apenas o gestor convidado e preserva 
   assert.equal(filtrados.rows[0].dados.empresas[0].id, empresa);
   const eventos = await db.query("select acao from painel_privado.auditoria where entidade_id = $1 order by acao", [empresa]);
   assert.deepEqual(eventos.rows.map(e => e.acao), ["central.criar_empresa", "central.vincular_gestor"]);
+});
+
+test("SQL auditoria global combina filtros, pagina empates e protege dados", async () => {
+  const sql = "select public.central_auditoria_global($1,$2,$3,$4,$5,$6,$7,$8) as dados";
+  const filtros = [null, "Empresa 21", "CENTRAL@", "2021-05-05", "2021-05-05", null, null, 1];
+  for (const identidade of [a1, loja]) await assert.rejects(como(identidade, sql, filtros), { code: "42501" });
+  await assert.rejects(como(a2, sql, filtros, "service_role"), { code: "42501" });
+  await assert.rejects(como(a2, sql, [...filtros.slice(0, -1), 101]), { code: "22023" });
+  for (const [n, escopo, acao, data] of [
+    [3100, "plataforma", "central.editar_licenca", "2021-05-06 02:59:59+00"],
+    [3101, "plataforma", "central.acao_futura", "2021-05-06 02:59:59+00"],
+    [3102, "loja", "central.editar_licenca", "2021-05-06 02:59:59+00"],
+    [3103, "plataforma", "central.criar_empresa", "2021-05-06 03:00:00+00"]
+  ]) {
+    await db.query("insert into painel_privado.auditoria (id,autor_id,escopo,empresa_id,acao,entidade,entidade_id,ocorrido_em,antes,depois,motivo,requisicao_id) values ($1,$2,$3,$4,$5,'empresa',$6,$7,$8,$9,'Motivo',$10)",
+      [id(n), admin, escopo, escopo === "loja" ? id(21) : null, acao, id(21), data,
+        { plano: "basico", segredo: "remover" }, { plano: "pro", gestor_id: id(900) }, id(n + 100)]);
+  }
+  const primeira = (await como(a2, sql, filtros)).rows[0].dados;
+  assert.equal(primeira.tem_proxima, true);
+  assert.equal(primeira.eventos[0].acao_rotulo, "Ação central");
+  assert.equal(primeira.eventos[0].depois, null);
+  assert.equal(primeira.eventos[0].motivo, null);
+  const cursor = primeira.eventos[0];
+  const segunda = (await como(a2, sql, [...filtros.slice(0, 5), cursor.ocorrido_em, cursor.id, 1])).rows[0].dados;
+  assert.equal(segunda.tem_proxima, false);
+  assert.equal(segunda.eventos[0].acao, "central.editar_licenca");
+  assert.equal(segunda.eventos[0].autor, "central@example.test");
+  assert.deepEqual(segunda.eventos[0].antes, { plano: "basico" });
+  assert.deepEqual(segunda.eventos[0].depois, { plano: "pro" });
+  const filtrada = (await como(a2, sql, ["central.acao_futura", ...filtros.slice(1)])).rows[0].dados;
+  assert.equal(filtrada.eventos.length, 1);
 });

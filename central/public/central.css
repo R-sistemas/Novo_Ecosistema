@@ -36,6 +36,7 @@ svg { flex: none; }
   display: flex; align-items: center; justify-content: start; gap: .65rem; border-radius: .55rem; padding: .7rem .85rem;
   white-space: nowrap; font-size: .925rem; color: inherit; text-decoration: none;
 }
+.lateral nav button { background: transparent; color: inherit; border-color: transparent; }
 .lateral nav button[aria-current] { background: #24523a; border: 0; color: white; box-shadow: inset 3px 0 var(--realce); font-weight: 700; }
 .lateral nav span { color: #b4cbb9; }
 .plataforma main { min-width: 0; width: 100%; max-width: 94rem; margin-inline: auto; padding: clamp(1rem, 3vw, 2.5rem); }
@@ -172,3 +173,20 @@ td button { padding-inline: .8rem; }
 .acoes-suspensao { display: grid; gap: .5rem; }
 #erro-suspensao { color: #8b2524; }
 #erro-suspensao:empty { display: none; }
+
+#filtros-auditoria .acoes { align-self: end; flex-wrap: wrap; }
+.rolagem-auditoria { overflow-x: auto; }
+.rolagem-auditoria table { width: 100%; }
+.rolagem-auditoria td { vertical-align: top; overflow-wrap: anywhere; }
+.rolagem-auditoria details { min-width: 9rem; }
+.rolagem-auditoria summary { cursor: pointer; }
+.rolagem-auditoria dl { display: grid; grid-template-columns: auto 1fr; gap: .25rem .65rem; margin: .5rem 0; }
+.rolagem-auditoria dt { font-weight: 600; }
+.rolagem-auditoria dd { margin: 0; }
+@media (max-width: 700px) {
+  .rolagem-auditoria thead { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
+  .rolagem-auditoria :is(table, tbody, tr, td) { display: block; width: 100%; }
+  .rolagem-auditoria tr { margin-block: .75rem; border: 1px solid var(--borda); border-radius: .75rem; }
+  .rolagem-auditoria td { display: grid; grid-template-columns: 6rem minmax(0, 1fr); gap: .5rem; }
+  .rolagem-auditoria .rotulo { display: block; font-weight: 600; }
+}

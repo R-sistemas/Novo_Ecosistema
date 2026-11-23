@@ -53,3 +53,12 @@ export async function definirSenhaGestor(convite, senha) {
   });
   if (!resposta.ok) throw new Error("Não foi possível definir a senha. Confira a senha ou a validade do convite.");
 }
+
+export function listarAuditoria(filtros, cursor) {
+  const consulta = new URLSearchParams(filtros);
+  if (cursor) {
+    consulta.set("cursor_em", cursor.ocorrido_em);
+    consulta.set("cursor_id", cursor.id);
+  }
+  return chamar("auditoria?" + consulta, "GET");
+}
