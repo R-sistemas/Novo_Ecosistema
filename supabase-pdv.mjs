@@ -51,3 +51,12 @@ export async function entrar(email, password) {
 export const listar = consulta => solicitar("/rest/v1/" + consulta);
 export const executar = (nome, dados) => solicitar("/rest/v1/rpc/" + nome, dados);
 export const executarApi = (caminho, dados) => solicitar("/api/" + caminho, dados, "POST", "");
+
+export function solicitarRecuperacaoSenha(email, destino) {
+  return requisitar("/auth/v1/recover?" + new URLSearchParams({ redirect_to: destino }), { email });
+}
+
+export async function redefinirSenha(token, password) {
+  await requisitar("/auth/v1/user", { password }, token, "PUT");
+  await requisitar("/auth/v1/logout?scope=local", undefined, token, "POST").catch(() => {});
+}
