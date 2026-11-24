@@ -256,3 +256,18 @@ form.filtros-painel :is(input,select), .campos-equipe :is(input,select) { min-wi
 
 #conciliacao-financeiro { scroll-margin-block-start: 5rem; }
 #area-financeiro #conciliacao-financeiro table { min-width: 38rem; }
+
+body:has(#login:not([hidden])) {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+main:has(> #login:not([hidden])) {
+  width: 100%;
+  padding-block: 1.5rem;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+}
+main:has(> #login:not([hidden])) > #titulo-area { text-align: center; }
+main:has(> #login:not([hidden])) > :is(#erro, #status) { width: min(100%, 26rem); }
