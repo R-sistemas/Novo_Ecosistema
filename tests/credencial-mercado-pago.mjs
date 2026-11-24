@@ -1,7 +1,11 @@
 import { createHmac } from "node:crypto";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import credencialMP from "../api/credencial-mercado-pago.mjs";
+import mercadoPagoEmpresa from "../api/mercado-pago-empresa.mjs";
+
+function credencialMP(req, res) {
+  return mercadoPagoEmpresa({ ...req, query: { ...req.query, operacao_mp: "credencial" } }, res);
+}
 
 test("API recusa token reprovado sem persistir ou devolver segredo", async t => {
   const anteriorUrl = process.env.SUPABASE_URL;
@@ -36,7 +40,7 @@ test("API recusa token reprovado sem persistir ou devolver segredo", async t => 
 test("checkouts selecionam por reserva e webhook autentica a aplicação", async t => {
   const { checkout } = await import("../api/checkout-pix-mercado-pago-teste.mjs");
   const { checkoutCredito } = await import("../api/checkout-credito-mercado-pago-teste.mjs");
-  const { default: webhook } = await import("../api/mercado-pago-empresa-webhook.mjs");
+  const webhook = (req, res) => mercadoPagoEmpresa({ ...req, query: { ...req.query, operacao_mp: "webhook" } }, res);
   const { cifrarCredencialMP } = await import("../lib/cofre-mercado-pago.mjs");
   const env = { SUPABASE_URL: "https://supabase.example.test", SUPABASE_SERVICE_ROLE_KEY: "servico-fixture",
     MP_PEDIDOS_COFRE_V1: Buffer.alloc(32, 7).toString("base64url") };

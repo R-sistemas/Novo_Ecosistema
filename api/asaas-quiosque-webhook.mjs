@@ -1,9 +1,14 @@
+import webhookSandbox from "../lib/asaas-sandbox-webhook.mjs";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { integracaoQuiosque, pedidoValido, pixRecebido } from "../lib/asaas-quiosque.mjs";
 
 const hash = valor => createHash("sha256").update(valor).digest();
 
 export default async function handler(req, res) {
+  const ambiente = req.query?.asaas_ambiente;
+  if (ambiente === "sandbox") return webhookSandbox(req, res);
+  if (ambiente !== undefined) return res.status(404).end();
+
   if (req.method !== "POST") return res.status(405).end();
   const token = process.env.ASAAS_QUIOSQUE_PRODUCTION_WEBHOOK_TOKEN;
   const integracao = integracaoQuiosque();
