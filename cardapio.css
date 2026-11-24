@@ -40,3 +40,24 @@ button.secundario,button.mais,button.produto-detalhe{border-color:var(--borda)}b
 .painel-pedido-pronto h2 { margin: 0; font-size: clamp(1.5rem,5vw,2.75rem); text-transform: uppercase; }
 .painel-pedido-pronto p { margin: .5rem 0 0; }
 #identificacao-retirada { font-size: clamp(1.15rem,4vw,1.8rem); font-weight: 800; }
+
+#andamento-pedido:has(#titulo-andamento:not([hidden])) {
+  display: grid;
+  gap: .55rem;
+  margin-block: .75rem 1.25rem;
+  padding: clamp(1rem, 4vw, 1.5rem);
+  border: 1px solid #7cb989;
+  border-inline-start: .4rem solid var(--verde);
+  border-radius: 1rem;
+  background: #e5f0e6;
+}
+#andamento-pedido #numero-pedido { margin: 0; justify-self: start; padding: 0; }
+#titulo-andamento { margin: 0; font-size: .9rem; color: var(--escuro); }
+#andamento-pedido:has(#titulo-andamento:not([hidden])) #mensagem {
+  margin: 0;
+  padding: 0;
+  font-size: clamp(1.2rem, 5vw, 1.7rem);
+  font-weight: 800;
+  line-height: 1.25;
+}
+#acompanhar { justify-self: start; min-height: 44px; }

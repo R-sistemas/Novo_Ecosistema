@@ -27,7 +27,9 @@ export function configurarAcompanhamento(ctx) {
     const resumo = resumirPedido(pedido, ctx);
     ctx.aguardandoPix = resumo.aguardandoPix;
     ctx.acompanhamentoAtivo = resumo.acompanhamentoAtivo;
-    el("mensagem").textContent = resumo.mensagem;
+    el("titulo-andamento").hidden = false;
+    const mensagem = el("mensagem");
+    if (mensagem.firstChild?.nodeValue !== resumo.mensagem) mensagem.textContent = resumo.mensagem;
     retirada.atualizar(pedido);
     if (ctx.p_mesa && (pedido.cancelado || !ctx.acompanhamentoAtivo)) apagarPedidoMesa(ctx.p_slug,ctx.p_mesa);
     exibirAvisosPedido(el("mensagem"),pedido.avisos ?? []);

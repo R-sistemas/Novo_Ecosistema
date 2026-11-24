@@ -23,6 +23,12 @@
 </div></header>
 <main class="limite">
 <button class="secondary secundario" id="instalar-pwa" type="button" hidden>Instalar cardápio</button>
+<section id="andamento-pedido" aria-label="Andamento do pedido">
+  <p id="numero-pedido" class="numero-pedido" hidden></p>
+  <h2 id="titulo-andamento" hidden>Andamento do pedido</h2>
+  <p id="mensagem" class="status painel-status" role="status"></p>
+  <button id="acompanhar" type="button" class="secundario" hidden>Atualizar andamento</button>
+</section>
 <section id="vitrine" hidden>
   <label class="busca"><input id="busca-cardapio" type="search" aria-label="Buscar produto" placeholder="Busque seu produto favorito"></label>
   <section id="secao-destaques" hidden><h2>Queridinhos</h2><div id="destaques" class="faixa" tabindex="0" aria-label="Queridinhos" role="region"></div></section>
@@ -87,7 +93,6 @@
   </div></div>
   <button class="primario largura" id="detalhe-adicionar" type="button">Adicionar ao pedido</button>
 </dialog>
-<p id="numero-pedido" class="numero-pedido" hidden></p>
 <section id="pagamento-pix" class="panel" hidden>
   <h2 id="titulo-pix">Pix</h2>
   <img id="qr-pix" width="220" height="220" alt="QR Code Pix">
@@ -105,9 +110,7 @@
   <p id="identificacao-retirada"></p>
   <p>Retire seu pedido no balcão.</p>
 </section>
-<p id="mensagem" class="status painel-status" role="status"></p>
 <p id="orientacao-pedido-mesa" class="painel-status" hidden>Mantenha esta tela aberta ou volte a ela pelo QR da mesa para acompanhar seu pedido.</p>
-<button id="acompanhar" hidden>Atualizar andamento</button>
 <section id="painel-credito-teste" hidden>
   <h2 id="titulo-credito">Crédito de homologação</h2>
   <p id="aviso-credito">Use somente as credenciais e os cartões de teste do Mercado Pago.</p>
