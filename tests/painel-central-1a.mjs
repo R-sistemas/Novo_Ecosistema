@@ -50,7 +50,7 @@ before(async () => {
     $$;
   `);
   for (const nome of ["202611050001_base_pdv", "202611180047_painel_autorizacao",
-    "202611180048_painel_auditoria", "202611210073_central_inventario_licenca", "202611210074_politica_suspensao_central", "202611210076_central_pagamentos_licenca", "202611210077_central_historico_empresa", "202611210078_central_filtros_empresas", "202611210079_central_onboarding", "202611210080_central_auditoria_global", "202611210081_credenciais_mercado_pago_empresa"]) {
+    "202611180048_painel_auditoria", "202611210073_central_inventario_licenca", "202611210074_politica_suspensao_central", "202611210076_central_pagamentos_licenca", "202611210077_central_historico_empresa", "202611210078_central_filtros_empresas", "202611210079_central_onboarding", "202611210080_central_auditoria_global", "202611210081_credenciais_mercado_pago_empresa", "202611210086_mp_primeiro_cadastro_pendente"]) {
     if (nome.endsWith("047_painel_autorizacao")) await db.exec("alter table public.empresas add column cardapio_slug text unique");
     if (nome.startsWith("202611210080")) await db.exec("alter table painel_privado.auditoria add column origem_autor text not null default 'usuario'");
     await db.exec(await ler("../supabase/migrations/" + nome + ".sql"));
@@ -467,20 +467,28 @@ test("SQL autorização e mudança de recebedor MP", async () => {
   await assert.rejects(como(loja, status, [id(2)]), { code: "42501" });
   await assert.rejects(como(loja, salvar, [alvo, gestor, "20", envelope, 0]), { code: "42501" });
   await assert.rejects(como(a1, central, [alvo]), { code: "42501" });
-  assert.equal((await gravar("20", 0)).rows[0].dados.estado, "ativa");
-  assert.equal((await gravar("20", 1)).rows[0].dados.estado, "ativa");
-  assert.equal((await gravar("21", 2)).rows[0].dados.estado, "pendente");
+  assert.equal((await gravar("20", 0)).rows[0].dados.estado, "pendente");
+  assert.equal((await gravar("20", 1)).rows[0].dados.estado, "pendente");
+  const primeiraCredencial = (await como(a2, central, [alvo])).rows[0].dados;
+  assert.equal(primeiraCredencial.configurado, false);
+  assert.equal(primeiraCredencial.recebedor_pendente, "20");
+  const aprovarPrimeira = [alvo, primeiraCredencial.pendente, 2, "email", "Primeira integração"];
+  await assert.rejects(como(a1, aprovar, aprovarPrimeira), { code: "42501" });
+  await como(a2, aprovar, aprovarPrimeira);
+  assert.equal((await gravar("20", 3)).rows[0].dados.estado, "ativa");
+  assert.equal((await gravar("21", 4)).rows[0].dados.estado, "pendente");
   const ficha = (await como(a2, central, [alvo])).rows[0].dados;
   assert.equal(ficha.recebedor_pendente, "21");
   assert.ok(!JSON.stringify(ficha).includes(envelope));
-  const args = [alvo, ficha.pendente, 3, "telefone", "Confirmado no contato cadastrado"];
+  const args = [alvo, ficha.pendente, 5, "telefone", "Confirmado no contato cadastrado"];
   await assert.rejects(como(loja, aprovar, args), { code: "42501" });
   await assert.rejects(como(a2, aprovar, [alvo, ficha.pendente, 2, "telefone", "Confirmado"]), { code: "23505" });
   await como(a2, aprovar, args);
   const ativa = await db.query("select recebedor from painel_privado.credenciais_mp where empresa_id=$1 and estado='ativa'", [alvo]);
   assert.deepEqual(ativa.rows, [{ recebedor: "21" }]);
   const trilha = await db.query("select depois from painel_privado.auditoria where acao='central.aprovar_recebedor_mp'");
-  assert.deepEqual(trilha.rows, [{ depois: { ambiente: "producao", revisao: 3, canal: "telefone" } }]);
+  assert.equal(trilha.rows.length, 2);
+  assert.ok(trilha.rows.some(({ depois }) => depois.ambiente === "producao" && depois.revisao === 5 && depois.canal === "telefone"));
 });
 
 test("cofre MP autentica o contexto da empresa, conta e ambiente", () => {
