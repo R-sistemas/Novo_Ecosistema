@@ -1,3 +1,4 @@
+import { ordemNoAmbienteMP } from "../lib/mercado-pago-ambiente.mjs";
 import { reservarPedidoMP, vincularOrdemMP } from "../lib/reserva-pedido-mp.mjs";
 import { codigoSuspensao, responderLojaFechada } from "../lib/suspensao-checkout.mjs";
 import { mercadoPago } from "../lib/mercado-pago.mjs";
@@ -55,7 +56,7 @@ export async function checkoutCredito(req, res, { sandbox, accessToken, porEmpre
         pagador: { email: cartao.email },
         metodo: { id: cartao.bandeira, type: "credit_card", token: cartao.token, installments: 1 }
       });
-    if (!/^ORD[A-Z0-9]+$/.test(ordem.id) || /^ORDTST/.test(ordem.id) !== sandbox || ordem.external_reference !== p_id ||
+    if (!ordemNoAmbienteMP(ordem, sandbox, reserva.recebedor) || ordem.external_reference !== p_id ||
         ordem.total_amount !== (pedido.total_centavos / 100).toFixed(2) ||
         ordem.transactions?.payments?.[0]?.payment_method?.type !== "credit_card") {
       throw new Error("Ordem de teste divergente.");

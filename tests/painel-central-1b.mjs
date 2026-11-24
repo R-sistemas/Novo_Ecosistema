@@ -204,3 +204,15 @@ test("fallback legado é fixado ao UUID e ao ambiente; Pix do caixa fixa a conta
   await assert.rejects(rpc("servico_mp_conciliar_pdv",[id(84),tentativa,"ORD9",100,"producao","aguardando"],null,"service_role"),{code:"42501"});
   assert.equal(await rpc("servico_mp_conciliar_pdv",[contaMP,tentativa,"ORD9",100,"producao","aguardando"],null,"service_role"),"aguardando");
 });
+
+test("banco limita sandbox ao recebedor de teste e à loja-teste", async () => {
+  const empresa=id(101), autor=id(102);
+  await db.query("insert into public.empresas(id,nome,cardapio_slug) values($1,'Fixture sandbox','loja-teste')",[empresa]);
+  await db.query("insert into auth.users(id,email) values($1,'gestor-sandbox@example.test')",[autor]);
+  await db.query("insert into public.membros values($1,$2,'gestor')",[empresa,autor]);
+  const envelope="v1."+"a".repeat(70);
+  const gravar=(e,a,r)=>rpc("servico_gravar_credencial_mp",[e,a,autor,r,envelope,"publica",0],null,"service_role");
+  await assert.rejects(gravar(empresa,"sandbox","3095871692"),{code:"22023"});
+  await assert.rejects(gravar(empresa,"producao","3095871690"),{code:"22023"});
+  assert.equal((await gravar(empresa,"sandbox","3095871690")).estado,"pendente");
+});

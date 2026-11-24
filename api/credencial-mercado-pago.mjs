@@ -1,3 +1,4 @@
+import { recebedorSandboxMP } from "../lib/mercado-pago-ambiente.mjs";
 import { bancoMercadoPagoTeste as banco } from "../lib/banco-mercado-pago-teste.mjs";
 import { cifrarCredencialMP } from "../lib/cofre-mercado-pago.mjs";
 import { mercadoPago } from "../lib/mercado-pago.mjs";
@@ -54,6 +55,9 @@ export default async function credencialMP(req, res) {
     }
     const recebedor = typeof conta.id === "string" || Number.isSafeInteger(conta.id) ? String(conta.id) : "";
     if (!/^\d{1,32}$/.test(recebedor) || conta.site_id !== "MLB") return erro(res, 422, "Conta Mercado Pago Brasil não confirmada.");
+    if ((ambiente === "sandbox") !== (recebedor === recebedorSandboxMP)) {
+      return erro(res, 422, "A conta Mercado Pago não corresponde ao ambiente.");
+    }
     const envelope = cifrarCredencialMP({ access_token, webhook_secret }, { empresa, ambiente, recebedor });
     const resultado = await banco("servico_gravar_credencial_mp", {
       p_empresa: empresa, p_ambiente: ambiente, p_autor: id, p_recebedor: recebedor,

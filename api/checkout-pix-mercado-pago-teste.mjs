@@ -1,3 +1,4 @@
+import { ordemNoAmbienteMP } from "../lib/mercado-pago-ambiente.mjs";
 import { cotarFreteCheckout } from "../lib/cotar-frete-checkout.mjs";
 import { reservarPedidoMP, vincularOrdemMP } from "../lib/reserva-pedido-mp.mjs";
 import { codigoSuspensao, responderLojaFechada } from "../lib/suspensao-checkout.mjs";
@@ -60,7 +61,7 @@ export async function checkout(req, res, { sandbox, token, porEmpresa = false })
         email: emailPixMercadoPago(sandbox),
         pagadorTeste: sandbox ? { first_name: "APRO" } : undefined
       });
-    if (!/^ORD[A-Z0-9]+$/.test(ordem.id) || /^ORDTST/.test(ordem.id) !== sandbox ||
+    if (!ordemNoAmbienteMP(ordem, sandbox, reserva.recebedor) ||
         ordem.external_reference !== p_id || ordem.total_amount !== (pedido.total_centavos / 100).toFixed(2)) {
       throw new Error("Ordem divergente.");
     }

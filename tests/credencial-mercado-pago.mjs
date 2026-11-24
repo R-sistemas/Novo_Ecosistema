@@ -140,3 +140,33 @@ test("Pix sandbox devolve copia-e-cola sem imagem e permite retomar", async t =>
     assert.deepEqual(res.body,{imagem:null,copiaECola:"fixture-pix",sandbox:true});
   }
 });
+
+test("o ambiente sandbox só aceita ORD comum com dono canônico de teste", async () => {
+  const { ordemNoAmbienteMP, recebedorSandboxMP: conta } = await import("../lib/mercado-pago-ambiente.mjs");
+  assert.equal(conta,"3095871690");
+  assert.equal(ordemNoAmbienteMP({id:"ORD01EXEMPLO",user_id:3095871690},true,conta),true);
+  assert.equal(ordemNoAmbienteMP({id:"ORD01EXEMPLO",live_mode:true,user_id:3095871690},true,conta),false);
+  assert.equal(ordemNoAmbienteMP({id:"ORD01EXEMPLO",user_id:3095871692},true,conta),false);
+  assert.equal(ordemNoAmbienteMP({id:"ORD01EXEMPLO"},true,conta),false);
+  assert.equal(ordemNoAmbienteMP({id:"ORD01EXEMPLO",user_id:3095871690},false,conta),false);
+  assert.equal(ordemNoAmbienteMP({id:"ORDTST01"},true),true);
+});
+
+test("cadastro sandbox rejeita token com prefixo correto e conta diferente", async t => {
+  const anterior = { SUPABASE_URL:process.env.SUPABASE_URL,SUPABASE_ANON_KEY:process.env.SUPABASE_ANON_KEY };
+  Object.assign(process.env,{SUPABASE_URL:"https://supabase.example.test",SUPABASE_ANON_KEY:"fixture"});
+  t.after(() => Object.entries(anterior).forEach(([c,v]) => { if(v===undefined) delete process.env[c]; else process.env[c]=v; }));
+  t.mock.method(globalThis,"fetch",async url => {
+    const rota=new URL(url).pathname;
+    if(rota.endsWith("loja_status_credencial_mp")) return Response.json({revisao:0});
+    if(rota==="/auth/v1/user") return Response.json({id:"00000000-0000-0000-0000-000000000002"});
+    if(rota==="/users/me") return Response.json({id:3095871692,site_id:"MLB"});
+    assert.fail("Não deve gravar credencial de um recebedor não autorizado.");
+  });
+  const res={setHeader(){},status(s){this.codigo=s;return this;},json(dados){this.dados=dados;return this;}};
+  await credencialMP({method:"POST",headers:{authorization:"Bearer fixture"},
+    query:{empresa:"00000000-0000-0000-0000-000000000001",ambiente:"sandbox"},
+    body:{access_token:"TEST-token-fixture",webhook_secret:"segredo-fixture",chave_publica:"TEST-chave-fixture",revisao:0}},res);
+  assert.equal(res.codigo,422);
+  assert.equal(res.dados.erro,"A conta Mercado Pago não corresponde ao ambiente.");
+});

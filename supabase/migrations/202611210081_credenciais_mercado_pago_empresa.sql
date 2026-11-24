@@ -62,6 +62,10 @@ begin
   if not found or not exists(select 1 from public.membros where empresa_id=p_empresa and usuario_id=p_autor and papel='gestor') then
     raise exception using errcode='42501',message='Acesso negado';
   end if;
+  if (p_ambiente='sandbox' and (v_slug is distinct from 'loja-teste' or p_recebedor is distinct from '3095871690'))
+    or (p_ambiente='producao' and p_recebedor='3095871690') then
+    raise exception using errcode='22023',message='Recebedor incompatível com o ambiente';
+  end if;
   if p_revisao is distinct from (painel_privado.mp_status(p_empresa,p_ambiente)->>'revisao')::integer then
     raise exception using errcode='23505',message='Configuração desatualizada';
   end if;
@@ -133,6 +137,7 @@ begin
   if not exists(select 1 from public.membros where empresa_id=p_empresa and usuario_id=v_autor and papel='gestor') then
     raise exception using errcode='42501',message='Acesso negado';
   end if;
+
   if p_revisao is distinct from (painel_privado.mp_status(p_empresa,p_ambiente)->>'revisao')::integer then
     raise exception using errcode='23505',message='Configuração desatualizada';
   end if;
