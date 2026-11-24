@@ -21,9 +21,13 @@ solicitar.onsubmit = async evento => {
   try {
     const destino = new URL("/recuperar-senha.html", location.origin);
     await solicitarRecuperacaoSenha(solicitar.elements.email.value.trim(), destino.href);
-    estado.textContent = "Se o endereço estiver cadastrado, você receberá um link para redefinir sua senha.";
+    solicitar.reset();
+    solicitar.hidden = true;
+    titulo.textContent = "Solicitação concluída";
+    estado.textContent = "Se o e-mail estiver cadastrado, o link foi enviado. Confira sua caixa de entrada e a pasta de spam.";
+    titulo.focus();
   } catch (erro) {
-    estado.textContent = erro.status === 429 ? "Aguarde alguns minutos antes de pedir outro link."
+    estado.textContent = erro.status === 429 ? "O limite de envio foi atingido. Confira se já recebeu um link. Aguarde antes de solicitar outro."
       : "Não foi possível enviar a solicitação. Tente novamente.";
   } finally {
     botao.disabled = false;
