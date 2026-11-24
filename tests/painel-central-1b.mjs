@@ -165,6 +165,11 @@ test("MP fixa o recebedor de cada loja em Pix e cartão e recusa conciliação c
     assert.equal(reserva.recebedor,String(900+i));
   }
   const vincular = (conta,pedido,meio,ordem) => rpc("servico_mp_vincular_ordem",[conta,pedido,ordem,100,meio,true],null,"service_role");
+  await db.query("insert into painel_privado.credenciais_mp(id,empresa_id,ambiente,recebedor,envelope,estado,revisao) values($1,$2,'producao','900',$3,'pendente',3)",[id(90),firmas[0],segredos]);
+  assert.equal((await rpc("servico_integracao_mp_webhook",[id(90)],null,"service_role")).estado,"pendente");
+  assert.equal(await vincular(id(90),pedidos[0],"pix","ORD1"),false);
+  assert.equal(await rpc("servico_mp_registrar_webhook_pendente",[id(90),"ordem","ORD1"],null,"service_role"),true);
+  assert.equal(await rpc("servico_mp_registrar_webhook_pendente",[id(90),"ordem","ORD1"],null,"service_role"),false);
   assert.equal(await vincular(contas[0],pedidos[1],"credito","ORD2"),false);
   assert.equal(await rpc("servico_mp_vincular_ordem",[contas[0],pedidos[0],"ORD1",99,"pix",true],null,"service_role"),false);
   assert.equal(await vincular(contas[0],pedidos[0],"pix","ORD1"),true);

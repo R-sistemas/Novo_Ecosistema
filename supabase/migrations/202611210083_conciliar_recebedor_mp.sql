@@ -55,7 +55,7 @@ begin
   select x.integracao_mp into p_integracao from public.pix_frente_caixa x
   join public.caixas ca on ca.id=x.caixa_id
   join painel_privado.credenciais_mp original on original.id=x.integracao_mp
-  join painel_privado.credenciais_mp origem on origem.id=p_integracao
+  join painel_privado.credenciais_mp origem on origem.id=p_integracao and origem.estado<>'pendente'
     and (origem.empresa_id,origem.ambiente,origem.recebedor)=(original.empresa_id,original.ambiente,original.recebedor)
   where x.id=p_id and original.empresa_id=ca.empresa_id and original.ambiente=p_ambiente;
   if not found then raise exception using errcode='42501',message='Recebedor incompatível'; end if;
@@ -105,6 +105,7 @@ begin
   update public.pedidos_online p set estado='recusado' from public.pagamentos_online pg
     where pg.pedido_id=p_pedido and pg.pedido_id=p.id and pg.empresa_id=p.empresa_id
       and p.estado='novo' and pg.integracao_mp=p_integracao and pg.meio='credito'
+      and exists(select 1 from painel_privado.credenciais_mp where id=p_integracao and estado<>'pendente')
       and pg.cobranca_id is null and pg.confirmado_em is null;
   return found;
 end;
@@ -119,7 +120,7 @@ begin
   select pg.integracao_mp into p_integracao from public.pagamentos_online pg
   join painel_privado.credenciais_mp original on original.id=pg.integracao_mp
     and original.empresa_id=pg.empresa_id and original.ambiente=pg.ambiente
-  join painel_privado.credenciais_mp origem on origem.id=p_integracao
+  join painel_privado.credenciais_mp origem on origem.id=p_integracao and origem.estado<>'pendente'
     and (origem.empresa_id,origem.ambiente,origem.recebedor)=(original.empresa_id,original.ambiente,original.recebedor)
   where pg.pedido_id=(p_evento->>'p_pedido')::uuid and pg.provedor='mercado_pago'
       and pg.ambiente=p_evento->>'p_ambiente' and pg.cobranca_id=p_evento->>'p_cobranca';

@@ -23,7 +23,7 @@ create index pix_caixa_recebedor_mp on public.pix_frente_caixa(integracao_mp,ord
 create function painel_privado.mp_envelope_runtime(p_integracao uuid)
 returns jsonb language sql stable set search_path = '' as $$
   select jsonb_build_object('integracao',c.id,'empresa',c.empresa_id,'recebedor',c.recebedor,
-    'ambiente',c.ambiente,'envelope',c.envelope,'envelope_atual',
+    'ambiente',c.ambiente,'estado',c.estado,'envelope',c.envelope,'envelope_atual',
     (select n.envelope from painel_privado.credenciais_mp n where n.empresa_id=c.empresa_id
       and n.ambiente=c.ambiente and n.recebedor=c.recebedor and n.estado='ativa')) from painel_privado.credenciais_mp c where c.id=p_integracao;
 $$;
@@ -31,7 +31,7 @@ $$;
 create function public.servico_integracao_mp_webhook(p_integracao uuid)
 returns jsonb language sql stable security definer set search_path = '' as $$
   select painel_privado.mp_envelope_runtime(p_integracao)
-  where exists (select 1 from painel_privado.credenciais_mp where id=p_integracao and estado in ('ativa','historica','revogada'));
+  where exists (select 1 from painel_privado.credenciais_mp where id=p_integracao and estado in ('ativa','pendente','historica','revogada'));
 $$;
 
 create function painel_privado.mp_reservar_legado(
@@ -151,7 +151,7 @@ begin
   select pg.integracao_mp into p_integracao
   from public.pagamentos_online pg
   join painel_privado.credenciais_mp original on original.id=pg.integracao_mp
-  join painel_privado.credenciais_mp origem on origem.id=p_integracao
+  join painel_privado.credenciais_mp origem on origem.id=p_integracao and origem.estado<>'pendente'
     and (origem.empresa_id,origem.ambiente,origem.recebedor)=(original.empresa_id,original.ambiente,original.recebedor)
   where pg.pedido_id=p_pedido;
   if not found then return false; end if;

@@ -11,7 +11,7 @@ export default async function notificar(req, res) {
     const registro = await banco("servico_integracao_mp_webhook", { p_integracao: id });
     if (!registro) return res.status(401).end();
     return await receberNotificacao(req, res, {
-      ...abrirCredencialMP(registro), sandbox: registro.ambiente === "sandbox", recebedor: registro.recebedor
+      ...abrirCredencialMP(registro), sandbox: registro.ambiente === "sandbox", recebedor: registro.recebedor, pendente: registro.estado === "pendente"
     });
   } catch {
     return res.status(502).end();
