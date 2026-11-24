@@ -44,9 +44,9 @@ test("checkouts selecionam por reserva e webhook autentica a aplicação", async
   Object.assign(process.env, env);
   t.after(() => Object.entries(anterior).forEach(([k,v]) => { if (v === undefined) delete process.env[k]; else process.env[k] = v; }));
   const id = n => "00000000-0000-0000-0000-" + String(n).padStart(12,"0");
-  const empresas = ["a","b"].map((slug,i) => {
-    const conta = { empresa:id(i+1), ambiente:"producao", recebedor:String(100+i), integracao:id(i+10) };
-    return { slug, conta, pedido:id(i+20), token:"token-"+slug, segredo:"segredo-"+slug, ordem:"ORD"+(i+1) };
+  const empresas = ["a","b","loja-teste"].map((slug,i) => {
+    const conta = { empresa:id(i+1), ambiente:i === 2 ? "sandbox" : "producao", recebedor:i === 2 ? "3095871690" : String(100+i), integracao:id(i+10) };
+    return { slug, conta, pedido:id(i+20), token:"APP_USR-token-"+slug, segredo:"segredo-"+slug, ordem:"ORD"+(i+1) };
   });
   for (const e of empresas) e.conta.envelope = cifrarCredencialMP({ access_token:e.token, webhook_secret:e.segredo },e.conta);
   const chamadas = [];
@@ -71,9 +71,10 @@ test("checkouts selecionam por reserva e webhook autentica a aplicação", async
       assert.ok(e);
       assert.equal(opcoes.headers.Authorization,"Bearer "+e.token);
       const credito = e.slug === "b";
+      const pago = credito || (!pedido && e.slug === "loja-teste");
       return Response.json({ id:e.ordem, external_reference:e.pedido, collector_id:e.conta.recebedor, total_amount:"1.00",
-        status:credito ? "processed" : "action_required", status_detail:credito ? "accredited" : "waiting_transfer",
-        transactions:{payments:[{status:credito ? "processed" : "action_required",amount:"1.00",
+        status:pago ? "processed" : "action_required", status_detail:pago ? "accredited" : "waiting_transfer",
+        transactions:{payments:[{status:pago ? "processed" : "action_required",amount:"1.00",
           payment_method:credito ? {type:"credit_card"} : {type:"bank_transfer",id:"pix",qr_code_base64:"png",qr_code:"pix"}}]} });
     }
     assert.fail("Rota inesperada: "+rota);
@@ -84,32 +85,34 @@ test("checkouts selecionam por reserva e webhook autentica a aplicação", async
     const res = resposta();
     const req = { method:"POST", headers:{},body:{p_slug:e.slug,p_id:e.pedido,p_cliente:"Fixture",
       p_itens:[{produto_id:id(99),quantidade:1}],cartao:{token:"fixture-cartao",bandeira:"visa",email:"fixture@example.test"}} };
-    await (e.slug === "a" ? checkout : checkoutCredito)(req,res,{ sandbox:false,porEmpresa:true });
+    await (e.slug === "b" ? checkoutCredito : checkout)(req,res,{ sandbox:e.conta.ambiente === "sandbox",porEmpresa:true });
     assert.equal(res.codigo,200);
     assert.equal(chamadas.at(-1).p_integracao,e.conta.integracao);
   }
-  const e=empresas[1], timestamp="1795400000", requestId="webhook-fixture";
-  const assinar = segredo => "ts="+timestamp+",v1="+createHmac("sha256",segredo)
-    .update("id:"+e.ordem.toLowerCase()+";request-id:"+requestId+";ts:"+timestamp+";").digest("hex");
-  const req = { method:"POST",query:{integracao:e.conta.integracao,"data.id":e.ordem},
-    headers:{"x-request-id":requestId,"x-signature":assinar(empresas[0].segredo)} };
-  e.conta.estado = "pendente";
-  const negada = resposta();
-  const antes = chamadas.length;
-  await webhook(req,negada);
-  assert.equal(negada.codigo,401);
-  assert.equal(chamadas.length,antes);
-  req.headers["x-signature"] = assinar(e.segredo);
-  const pendente = resposta();
-  await webhook(req,pendente);
-  assert.equal(pendente.codigo,200);
-  assert.deepEqual(chamadas.slice(antes),[{p_integracao:e.conta.integracao,p_tipo:"ordem",p_recurso:e.ordem}]);
-  e.conta.estado = "ativa";
-  const aceita=resposta();
-  await webhook(req,aceita);
-  assert.equal(aceita.codigo,200);
-  assert.equal(chamadas[antes+1].p_integracao,e.conta.integracao);
-  assert.equal(chamadas[antes+1].p_confirmado,true);
+  for (const e of empresas.slice(1)) {
+    const timestamp="1795400000", requestId="webhook-fixture";
+    const assinar = segredo => "ts="+timestamp+",v1="+createHmac("sha256",segredo)
+      .update("id:"+e.ordem.toLowerCase()+";request-id:"+requestId+";ts:"+timestamp+";").digest("hex");
+    const req = { method:"POST",query:{integracao:e.conta.integracao,"data.id":e.ordem},
+      headers:{"x-request-id":requestId,"x-signature":assinar(empresas[0].segredo)} };
+    e.conta.estado = "pendente";
+    const negada = resposta();
+    const antes = chamadas.length;
+    await webhook(req,negada);
+    assert.equal(negada.codigo,401);
+    assert.equal(chamadas.length,antes);
+    req.headers["x-signature"] = assinar(e.segredo);
+    const pendente = resposta();
+    await webhook(req,pendente);
+    assert.equal(pendente.codigo,200);
+    assert.deepEqual(chamadas.slice(antes),[{p_integracao:e.conta.integracao,p_tipo:"ordem",p_recurso:e.ordem}]);
+    e.conta.estado = "ativa";
+    const aceita=resposta();
+    await webhook(req,aceita);
+    assert.equal(aceita.codigo,200);
+    assert.equal(chamadas[antes+1].p_integracao,e.conta.integracao);
+    assert.equal(chamadas[antes+1].p_confirmado,true);
+  }
 });
 
 test("Pix sandbox devolve copia-e-cola sem imagem e permite retomar", async t => {
@@ -150,23 +153,53 @@ test("o ambiente sandbox só aceita ORD comum com dono canônico de teste", asyn
   assert.equal(ordemNoAmbienteMP({id:"ORD01EXEMPLO"},true,conta),false);
   assert.equal(ordemNoAmbienteMP({id:"ORD01EXEMPLO",user_id:3095871690},false,conta),false);
   assert.equal(ordemNoAmbienteMP({id:"ORDTST01"},true),true);
+  assert.equal(ordemNoAmbienteMP({id:"ORDTST01"},false),false);
 });
 
-test("cadastro sandbox rejeita token com prefixo correto e conta diferente", async t => {
-  const anterior = { SUPABASE_URL:process.env.SUPABASE_URL,SUPABASE_ANON_KEY:process.env.SUPABASE_ANON_KEY };
-  Object.assign(process.env,{SUPABASE_URL:"https://supabase.example.test",SUPABASE_ANON_KEY:"fixture"});
-  t.after(() => Object.entries(anterior).forEach(([c,v]) => { if(v===undefined) delete process.env[c]; else process.env[c]=v; }));
-  t.mock.method(globalThis,"fetch",async url => {
-    const rota=new URL(url).pathname;
-    if(rota.endsWith("loja_status_credencial_mp")) return Response.json({revisao:0});
-    if(rota==="/auth/v1/user") return Response.json({id:"00000000-0000-0000-0000-000000000002"});
-    if(rota==="/users/me") return Response.json({id:3095871692,site_id:"MLB"});
-    assert.fail("Não deve gravar credencial de um recebedor não autorizado.");
+test("cadastro valida prefixo e titularidade em cada ambiente", async t => {
+  const env = { SUPABASE_URL: "https://supabase.example.test", SUPABASE_ANON_KEY: "fixture",
+    SUPABASE_SERVICE_ROLE_KEY: "servico-fixture", MP_PEDIDOS_COFRE_V1: Buffer.alloc(32, 7).toString("base64url") };
+  const anterior = Object.fromEntries(Object.keys(env).map(chave => [chave, process.env[chave]]));
+  Object.assign(process.env, env);
+  t.after(() => Object.entries(anterior).forEach(([chave, valor]) => {
+    if (valor === undefined) delete process.env[chave]; else process.env[chave] = valor;
+  }));
+  const vendedor = 3095871690;
+  const outro = 3095871692;
+  const casos = [
+    ["APP_USR-", "sandbox", vendedor, 200],
+    ["APP_USR-", "sandbox", outro, 422],
+    ["APP_USR-", "producao", outro, 200],
+    ["APP_USR-", "producao", vendedor, 422],
+    ["TEST-", "sandbox", vendedor, 200],
+    ["TEST-", "sandbox", outro, 422],
+    ["TEST-", "producao", outro, 400]
+  ];
+  let conta, gravacoes;
+  t.mock.method(globalThis, "fetch", async (url, opcoes) => {
+    const rota = new URL(url).pathname;
+    if (rota.endsWith("loja_status_credencial_mp")) return Response.json({ revisao: 0 });
+    if (rota === "/auth/v1/user") return Response.json({ id: "00000000-0000-0000-0000-000000000002" });
+    if (rota === "/users/me") return Response.json({ id: conta, site_id: "MLB" });
+    assert.ok(rota.endsWith("servico_gravar_credencial_mp"));
+    gravacoes.push(JSON.parse(opcoes.body));
+    return Response.json({ estado: "pendente" });
   });
-  const res={setHeader(){},status(s){this.codigo=s;return this;},json(dados){this.dados=dados;return this;}};
-  await credencialMP({method:"POST",headers:{authorization:"Bearer fixture"},
-    query:{empresa:"00000000-0000-0000-0000-000000000001",ambiente:"sandbox"},
-    body:{access_token:"TEST-token-fixture",webhook_secret:"segredo-fixture",chave_publica:"TEST-chave-fixture",revisao:0}},res);
-  assert.equal(res.codigo,422);
-  assert.equal(res.dados.erro,"A conta Mercado Pago não corresponde ao ambiente.");
+  for (const [prefixo, ambiente, recebedor, esperado] of casos) {
+    conta = recebedor;
+    gravacoes = [];
+    const res = { setHeader() {}, status(s) { this.codigo = s; return this; }, json(dados) { this.dados = dados; } };
+    const token = prefixo + "token-fixture";
+    await credencialMP({ method: "POST", headers: { authorization: "Bearer fixture" },
+      query: { empresa: "00000000-0000-0000-0000-000000000001", ambiente },
+      body: { access_token: token, webhook_secret: "segredo-fixture", chave_publica: prefixo + "chave-fixture", revisao: 0 }
+    }, res);
+    assert.equal(res.codigo, esperado, [prefixo, ambiente, recebedor].join(" "));
+    assert.equal(gravacoes.length, esperado === 200 ? 1 : 0);
+    if (esperado === 200) {
+      assert.equal(gravacoes[0].p_recebedor, String(recebedor));
+      assert.equal(gravacoes[0].p_ambiente, ambiente);
+      assert.ok(!JSON.stringify({ gravacoes, resposta: res.dados }).includes(token));
+    }
+  }
 });

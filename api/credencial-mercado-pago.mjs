@@ -5,6 +5,7 @@ import { mercadoPago } from "../lib/mercado-pago.mjs";
 import { chamarSupabasePainel, uuid } from "../lib/painel-sessao.mjs";
 
 const segredoValido = valor => typeof valor === "string" && /^[\x21-\x7e]{12,512}$/.test(valor);
+const prefixoValido = (valor, ambiente) => valor.startsWith("APP_USR-") || (ambiente === "sandbox" && valor.startsWith("TEST-"));
 const erro = (res, status, mensagem) => res.status(status).json({ erro: mensagem });
 
 export default async function credencialMP(req, res) {
@@ -37,9 +38,8 @@ export default async function credencialMP(req, res) {
       return res.status(200).json(await resposta.json());
     }
     const { access_token, webhook_secret, chave_publica, revisao } = req.body ?? {};
-    const prefixo = ambiente === "producao" ? "APP_USR-" : "TEST-";
-    if (!segredoValido(access_token) || !access_token.startsWith(prefixo) ||
-        !segredoValido(webhook_secret) || !segredoValido(chave_publica) || !chave_publica.startsWith(prefixo) ||
+    if (!segredoValido(access_token) || !prefixoValido(access_token, ambiente) ||
+        !segredoValido(webhook_secret) || !segredoValido(chave_publica) || !prefixoValido(chave_publica, ambiente) ||
         !Number.isSafeInteger(revisao) || revisao < 0) return erro(res, 400, "Confira as credenciais e o ambiente.");
     if (revisao !== atual.revisao) return erro(res, 409, "Recarregue a configuração.");
     const auth = await chamar("/auth/v1/user");
