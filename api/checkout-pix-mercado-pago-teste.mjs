@@ -53,7 +53,7 @@ export async function checkout(req, res, { sandbox, token, porEmpresa = false })
     if (!reserva) return res.status(503).json({ erro: "Pix indisponível." });
     const { pedido, integracao } = reserva;
     const cliente = mercadoPago(reserva.token);
-    if (sandbox && pedido.cobranca) return res.status(200).json({ aguardaConfirmacao: true });
+
     const ordem = pedido.cobranca ? await cliente.consultarOrdem(pedido.cobranca)
       : await cliente.criarPix({
         pedidoId: p_id, totalCentavos: pedido.total_centavos,
@@ -68,13 +68,14 @@ export async function checkout(req, res, { sandbox, token, porEmpresa = false })
       const vinculada = await vincularOrdemMP(integracao, ambiente, "pix", p_id, ordem.id, pedido.total_centavos);
       if (!vinculada) throw new Error("Vínculo da ordem recusado.");
     }
-    if (sandbox || ordem.status === "processed") return res.status(200).json({ aguardaConfirmacao: true });
+    if (ordem.status === "processed") return res.status(200).json({ aguardaConfirmacao: true });
     const metodo = ordem.transactions?.payments?.[0]?.payment_method;
+    if (sandbox && (ordem.status !== "action_required" || !metodo?.qr_code)) return res.status(200).json({ aguardaConfirmacao: true });
     if (ordem.status !== "action_required" || metodo?.id !== "pix" ||
-        !metodo.qr_code_base64 || !metodo.qr_code) {
+        (!sandbox && !metodo.qr_code_base64) || !metodo.qr_code) {
       return res.status(409).json({ erro: "QR Code indisponível para esta cobrança." });
     }
-    return res.status(200).json({ imagem: metodo.qr_code_base64, copiaECola: metodo.qr_code });
+    return res.status(200).json({ imagem: metodo.qr_code_base64 || null, copiaECola: metodo.qr_code, ...(sandbox && { sandbox: true }) });
   } catch (erro) {
     if (erro.codigo === codigoSuspensao) return responderLojaFechada(res);
     console.error("Checkout Mercado Pago", erro.message, erro.codigo || "", erro.diagnostico || "");

@@ -10,7 +10,7 @@ export async function gerarPix(dados, opcoes) {
   });
   const pix = await resposta.json();
   if (resposta.ok && pix.aguardaConfirmacao) return null;
-  if (!resposta.ok || !pix.imagem || !pix.copiaECola) {
+  if (!resposta.ok || (!pix.imagem && !(pixMercadoPagoTeste && pix.sandbox === true)) || !pix.copiaECola) {
     const erro = new Error(pix.erro ?? "QR Code indisponível.");
     if (resposta.status === 409 && Number.isSafeInteger(pix.frete_centavos)) erro.frete_centavos = pix.frete_centavos;
     throw erro;

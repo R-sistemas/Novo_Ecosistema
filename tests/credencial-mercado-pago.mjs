@@ -60,7 +60,8 @@ test("checkouts selecionam por reserva e webhook autentica a aplicação", async
     if (rota.endsWith("/servico_integracao_mp_webhook")) {
       return Response.json(empresas.find(e => e.conta.integracao === corpo.p_integracao)?.conta ?? null);
     }
-    if (rota.endsWith("/servico_mp_vincular_ordem") || rota.endsWith("/servico_mp_evento_financeiro")) {
+    if (rota.endsWith("/servico_mp_vincular_ordem") || rota.endsWith("/servico_mp_evento_financeiro") ||
+        rota.endsWith("/servico_mp_registrar_webhook_pendente")) {
       chamadas.push(corpo);
       return Response.json(true);
     }
@@ -92,15 +93,50 @@ test("checkouts selecionam por reserva e webhook autentica a aplicação", async
     .update("id:"+e.ordem.toLowerCase()+";request-id:"+requestId+";ts:"+timestamp+";").digest("hex");
   const req = { method:"POST",query:{integracao:e.conta.integracao,"data.id":e.ordem},
     headers:{"x-request-id":requestId,"x-signature":assinar(empresas[0].segredo)} };
+  e.conta.estado = "pendente";
   const negada = resposta();
   const antes = chamadas.length;
   await webhook(req,negada);
   assert.equal(negada.codigo,401);
   assert.equal(chamadas.length,antes);
   req.headers["x-signature"] = assinar(e.segredo);
+  const pendente = resposta();
+  await webhook(req,pendente);
+  assert.equal(pendente.codigo,200);
+  assert.deepEqual(chamadas.slice(antes),[{p_integracao:e.conta.integracao,p_tipo:"ordem",p_recurso:e.ordem}]);
+  e.conta.estado = "ativa";
   const aceita=resposta();
   await webhook(req,aceita);
   assert.equal(aceita.codigo,200);
-  assert.equal(chamadas[antes].p_integracao,e.conta.integracao);
-  assert.equal(chamadas[antes].p_confirmado,true);
+  assert.equal(chamadas[antes+1].p_integracao,e.conta.integracao);
+  assert.equal(chamadas[antes+1].p_confirmado,true);
+});
+
+test("Pix sandbox devolve copia-e-cola sem imagem e permite retomar", async t => {
+  const { checkout } = await import("../api/checkout-pix-mercado-pago-teste.mjs");
+  const urlAnterior=process.env.SUPABASE_URL;
+  process.env.SUPABASE_URL="https://fixture.test";
+  t.after(() => { if(urlAnterior === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL=urlAnterior; });
+  const pedido="00000000-0000-0000-0000-000000000001";
+  let cobranca;
+  t.mock.method(globalThis,"fetch",async (url,opts) => {
+    const path=new URL(url).pathname;
+    if(path.endsWith("servico_mp_reserva_pedido"))
+      return Response.json({legado:true,pedido:{total_centavos:100,cobranca}});
+    if(path.endsWith("atualizar_pix_mercado_pago_teste")) {
+      cobranca=JSON.parse(opts.body).p_cobranca;
+      return Response.json(true);
+    }
+    assert.match(path,/^\/v1\/orders(?:\/ORDTST1)?$/);
+    if (!cobranca) assert.equal(JSON.parse(opts.body).payer.first_name,"APRO");
+    return Response.json({id:"ORDTST1",external_reference:pedido,total_amount:"1.00",status:"action_required",
+      transactions:{payments:[{payment_method:{id:"pix",qr_code:"fixture-pix",qr_code_base64:""}}]}});
+  });
+  for (let i=0;i<2;i++) {
+    const res={setHeader(){},status(s){this.statusCode=s;return this;},json(body){this.body=body;return this;}};
+    await checkout({method:"POST",body:{p_slug:"loja-teste",p_id:pedido,p_itens:[{}]}},res,
+      {sandbox:true,token:"fixture",porEmpresa:true});
+    assert.equal(res.statusCode,200);
+    assert.deepEqual(res.body,{imagem:null,copiaECola:"fixture-pix",sandbox:true});
+  }
 });
