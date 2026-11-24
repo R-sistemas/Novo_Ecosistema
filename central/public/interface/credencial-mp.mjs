@@ -4,6 +4,9 @@ export function controlesRecebedorMP(detalhe, sair, bloquear) {
   const bloco = document.createElement("section");
   bloco.className = "painel conteudo campos";
   bloco.innerHTML = `<h2>Conta Mercado Pago de pedidos</h2>
+    <label data-ambiente hidden>Ambiente <select aria-label="Ambiente Mercado Pago">
+      <option value="producao">Produção</option><option value="sandbox">Sandbox (teste)</option>
+    </select></label>
     <p role="status"></p>
     <form class="campos" hidden>
       <label>Canal de confirmação <select name="canal" required>
@@ -15,6 +18,8 @@ export function controlesRecebedorMP(detalhe, sair, bloquear) {
       <button type="submit">Aprovar novo recebedor</button>
     </form>`;
   detalhe.append(bloco);
+  const seletor = bloco.querySelector("[data-ambiente]");
+  const ambiente = seletor.querySelector("select");
   const aviso = bloco.querySelector("p");
   const form = bloco.querySelector("form");
   const botao = form.querySelector("button");
@@ -27,16 +32,15 @@ export function controlesRecebedorMP(detalhe, sair, bloquear) {
     else aviso.textContent = erro.message;
   }
 
-  async function abrir(registro) {
+  async function consultar() {
     const atual = ++versao;
-    empresa = registro?.id;
     status = null;
     form.hidden = true;
     form.reset();
     if (!empresa) return;
     aviso.textContent = "Consultando configuração…";
     try {
-      const dados = await lerRecebedorMP(empresa);
+      const dados = await lerRecebedorMP(empresa, ambiente.value);
       if (versao !== atual) return;
       status = dados;
       aviso.textContent = (dados.configurado ? "Conta configurada." : "Sem conta configurada.") +
@@ -47,19 +51,30 @@ export function controlesRecebedorMP(detalhe, sair, bloquear) {
     }
   }
 
+  function abrir(registro) {
+    empresa = registro?.id;
+    seletor.hidden = registro?.cardapio_slug !== "loja-teste";
+    ambiente.value = seletor.hidden ? "producao" : "sandbox";
+    return consultar();
+  }
+
+  ambiente.onchange = consultar;
+
   form.onsubmit = async evento => {
     evento.preventDefault();
     const atual = versao;
     const dados = Object.fromEntries(new FormData(form));
     botao.disabled = true;
+    ambiente.disabled = true;
     bloquear(true);
     try {
       await aprovarRecebedorMP(empresa, { ...dados, integracao: status.pendente, revisao: status.revisao });
-      if (versao === atual) await abrir({ id: empresa });
+      if (versao === atual) await consultar();
     } catch (erro) {
       if (versao === atual) falha(erro);
     } finally {
       botao.disabled = false;
+      ambiente.disabled = false;
       bloquear(false);
     }
   };

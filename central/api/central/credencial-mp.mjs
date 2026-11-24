@@ -4,16 +4,18 @@ export default async function credencialMP(req, res) {
   if (!iniciar(req, res, ["GET", "POST"])) return;
   const token = tokenDe(req);
   if (!token) return erroApi(res, 401);
-  const { empresa } = req.query ?? {};
+  const { empresa, ambiente = "producao" } = req.query ?? {};
   if (!uuid.test(empresa ?? "")) return erroApi(res, 400);
-  const dados = { p_empresa: empresa, p_ambiente: "producao" };
+  const dados = { p_empresa: empresa };
   const leitura = req.method === "GET";
-  if (!leitura) {
+  if (leitura) {
+    if (!["producao", "sandbox"].includes(ambiente)) return erroApi(res, 400);
+    dados.p_ambiente = ambiente;
+  } else {
     const { integracao, revisao, canal, motivo } = req.body ?? {};
     if (!uuid.test(integracao ?? "") || !Number.isSafeInteger(revisao) || revisao < 1 ||
         !["telefone", "email", "whatsapp"].includes(canal) || typeof motivo !== "string" ||
         motivo.trim().length < 1 || motivo.trim().length > 240) return erroApi(res, 400);
-    delete dados.p_ambiente;
     Object.assign(dados, { p_integracao: integracao, p_revisao: revisao, p_canal: canal, p_motivo: motivo });
   }
   try {
