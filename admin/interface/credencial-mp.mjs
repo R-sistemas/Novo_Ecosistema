@@ -2,94 +2,156 @@ import { gravarCredencialMP, lerCredencialMP, revogarCredencialMP } from "../dad
 
 export function prepararCredencialMP(area) {
   const bloco = document.createElement("details");
-  bloco.className = "cartao";
+  bloco.className = "cartao credencial-mp";
   bloco.innerHTML = `<summary>Conta Mercado Pago para pedidos</summary>
-    <p role="status"></p><p data-webhook hidden></p>
-    <form autocomplete="off" hidden>
+    <h3 data-estado tabindex="-1"></h3>
+    <p role="status"></p>
+    <p data-webhook hidden><strong>URL de notificações do Mercado Pago</strong><code></code></p>
+    <div class="acoes" data-acoes hidden>
+      <button type="button" data-editar>Editar credenciais</button>
+      <button type="button" class="secondary" data-atualizar>Atualizar situação</button>
+      <button type="button" class="secondary" data-revogar>Revogar credencial ativa</button>
+    </div>
+    <form autocomplete="off" method="post" hidden>
+      <p class="ajuda">Informe as novas credenciais. Uma troca de recebedor precisa de aprovação da Central.</p>
       <label>Access Token <input type="password" name="access_token" autocomplete="new-password" maxlength="512" required></label>
       <label>Segredo do webhook <input type="password" name="webhook_secret" autocomplete="new-password" maxlength="512" required></label>
       <label>Public Key <input name="chave_publica" maxlength="240" required></label>
-      <button type="submit">Validar e salvar</button><button type="button" data-revogar hidden>Revogar credencial</button>
+      <div class="acoes">
+        <button type="submit">Validar e salvar</button>
+        <button type="button" class="secondary" data-cancelar>Cancelar</button>
+      </div>
     </form>`;
   area.append(bloco);
-  const status = bloco.querySelector("p");
+  const titulo = bloco.querySelector("[data-estado]");
+  const aviso = bloco.querySelector("[role=status]");
   const form = bloco.querySelector("form");
   const webhook = bloco.querySelector("[data-webhook]");
-  const botao = form.querySelector("button[type=submit]");
-  const revogar = form.querySelector("[data-revogar]");
-  let empresa, revisao, versao = 0;
+  const acoes = bloco.querySelector("[data-acoes]");
+  const editar = bloco.querySelector("[data-editar]");
+  const atualizar = bloco.querySelector("[data-atualizar]");
+  const revogar = bloco.querySelector("[data-revogar]");
+  const cancelar = bloco.querySelector("[data-cancelar]");
+  let empresa, dados, versao = 0, gravando = false;
 
-  async function consultar() {
-    const atual = ++versao;
-    webhook.hidden = true;
+  function mostrar() {
+    const pendente = dados.troca_pendente;
+    titulo.textContent = pendente ? "Aguardando confirmação da Central"
+      : dados.configurado ? "Dados configurados" : "Conta ainda não configurada";
+    aviso.textContent = pendente
+      ? dados.configurado ? "A credencial atual continua ativa enquanto a Central verifica a troca."
+        : "Solicitação recebida. A Central precisa aprovar a credencial para ativá-la."
+      : "";
+    webhook.hidden = !dados.rota_webhook;
+    webhook.querySelector("code").textContent = dados.rota_webhook ? location.origin +
+      "/api/mercado-pago-empresa-webhook?integracao=" + dados.rota_webhook : "";
+    editar.textContent = dados.configurado ? "Editar credenciais" : "Configurar conta";
+    editar.hidden = pendente;
+    revogar.hidden = !dados.configurado;
+    atualizar.hidden = false;
+    acoes.hidden = false;
+  }
+
+  function fecharFormulario() {
     form.reset();
     form.hidden = true;
-    status.textContent = "Consultando configuração…";
+  }
+
+  async function consultar(focar = false, mensagem = "") {
+    const atual = ++versao;
+    dados = null;
+    fecharFormulario();
+    acoes.hidden = webhook.hidden = true;
+    titulo.textContent = "Consultando configuração…";
+    aviso.textContent = "";
     try {
-      const dados = await lerCredencialMP(empresa);
+      const resposta = await lerCredencialMP(empresa);
       if (atual !== versao) return;
-      revisao = dados.revisao;
-      webhook.hidden = !dados.rota_webhook;
-      webhook.textContent = dados.rota_webhook ? "URL de notificações MP: " + location.origin +
-        "/api/mercado-pago-empresa-webhook?integracao=" + dados.rota_webhook : "";
-      status.textContent = dados.troca_pendente ? "Troca aguardando verificação da Central."
-        : dados.configurado ? "Conta configurada." : "Conta ainda não configurada.";
-      form.hidden = false;
-      revogar.hidden = !dados.configurado;
+      dados = resposta;
+      mostrar();
+      if (mensagem) aviso.textContent = [mensagem, aviso.textContent].filter(Boolean).join(" ");
     } catch {
-      if (atual === versao) status.textContent = "Configuração indisponível. Feche e abra esta seção para tentar novamente.";
+      if (atual !== versao) return;
+      titulo.textContent = "Configuração indisponível";
+      aviso.textContent = [mensagem, "Atualize a situação para consultar a configuração."].filter(Boolean).join(" ");
+      acoes.hidden = atualizar.hidden = false;
+      editar.hidden = revogar.hidden = true;
     }
+    if (focar) titulo.focus();
   }
 
   bloco.ontoggle = () => {
     if (bloco.open && empresa) void consultar();
     else {
       versao++;
-      webhook.hidden = true;
-    form.reset();
-      form.hidden = true;
+      dados = null;
+      acoes.hidden = webhook.hidden = true;
+      fecharFormulario();
     }
   };
 
-  form.onsubmit = async evento => {
-    evento.preventDefault();
+  atualizar.onclick = () => { if (!gravando) void consultar(true); };
+  editar.onclick = () => {
+    if (!dados || dados.troca_pendente || gravando) return;
+    aviso.textContent = "";
+    acoes.hidden = true;
+    form.hidden = false;
+    form.elements.access_token.focus();
+  };
+  cancelar.onclick = () => {
+    fecharFormulario();
+    mostrar();
+    editar.focus();
+  };
+
+  async function alterar(operacao, mensagem, erroPadrao) {
     const atual = versao;
-    const dados = Object.fromEntries(new FormData(form));
-    botao.disabled = true;
-    webhook.hidden = true;
-    form.reset();
+    gravando = true;
+    for (const botao of bloco.querySelectorAll("button")) botao.disabled = true;
+    aviso.textContent = "Aguarde…";
     try {
-      await gravarCredencialMP(empresa, { ...dados, revisao });
-      if (versao === atual) await consultar();
+      const resultado = await operacao();
+      if (atual === versao) await consultar(true, mensagem(resultado));
     } catch (erro) {
-      if (versao === atual) status.textContent = erro.status === 422 ? "Mercado Pago não confirmou a credencial."
-        : erro.status === 409 ? "A configuração mudou. Reabra esta seção."
-        : "Não foi possível salvar a configuração.";
+      if (atual !== versao) return;
+      if (erro.status === 409) {
+        await consultar(true, "A configuração mudou. Confira a situação atual.");
+      } else {
+        aviso.textContent = erro.status === 422 ? "Mercado Pago não confirmou a credencial." : erroPadrao;
+      }
     } finally {
-      botao.disabled = false;
+      gravando = false;
+      for (const botao of bloco.querySelectorAll("button")) botao.disabled = false;
     }
+  }
+
+  form.onsubmit = evento => {
+    evento.preventDefault();
+    if (gravando || !dados || dados.troca_pendente) return;
+    const credencial = Object.fromEntries(new FormData(form));
+    form.reset();
+    void alterar(() => gravarCredencialMP(empresa, { ...credencial, revisao: dados.revisao }),
+      resultado => resultado.estado === "pendente" ? "" : "Credenciais salvas.",
+      "Não foi possível salvar a configuração.");
   };
 
-  revogar.onclick = async () => {
-    if (!window.confirm("Revogar a credencial Mercado Pago escolhida para novos pedidos?")) return;
-    const atual = versao;
-    botao.disabled = revogar.disabled = true;
-    try {
-      await revogarCredencialMP(empresa, revisao);
-      if (atual === versao) await consultar();
-    } catch {
-      if (atual === versao) status.textContent = "Não foi possível revogar. Reabra esta seção para verificar o estado.";
-    } finally {
-      botao.disabled = revogar.disabled = false;
-    }
+  revogar.onclick = () => {
+    if (gravando || !dados?.configurado ||
+        !window.confirm("Revogar a credencial ativa? Novos pedidos podem ficar sem pagamento online.")) return;
+    void alterar(() => revogarCredencialMP(empresa, dados.revisao), () => "Credencial ativa revogada.",
+      "Não foi possível revogar a credencial.");
   };
+
   return novaEmpresa => {
-    if (empresa === novaEmpresa) return;
+    if (empresa === novaEmpresa) {
+      if (bloco.open && !gravando && form.hidden) void consultar();
+      return;
+    }
     versao++;
     empresa = novaEmpresa;
+    dados = null;
     bloco.open = false;
-    webhook.hidden = true;
-    form.reset();
-    form.hidden = true;
+    acoes.hidden = webhook.hidden = true;
+    fecharFormulario();
   };
 }

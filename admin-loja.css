@@ -272,3 +272,9 @@ body.acesso-loja { grid-template-rows: 1fr; }
 }
 .acesso-loja #titulo-area, main:has(> #login:not([hidden])) > #titulo-area { text-align: center; }
 main:has(> #login:not([hidden])) > :is(#erro, #status) { width: min(100%, 26rem); }
+
+.credencial-mp { width: min(100%, 34rem); margin-block-start: 1rem; }
+.credencial-mp summary { cursor: pointer; font-weight: 750; }
+.credencial-mp h3 { margin: 1rem 0 .5rem; }
+.credencial-mp [data-webhook] code { display: block; margin-block-start: .35rem; overflow-wrap: anywhere; }
+#area-preferencias .credencial-mp form { margin-block-start: 1rem; }
