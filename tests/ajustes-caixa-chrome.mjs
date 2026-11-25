@@ -22,14 +22,15 @@ await new Promise(resolve => server.listen(0,"127.0.0.1",resolve));
 const browser = await chromium.launch({headless:true,channel:"chrome"});
 
 try {
-  const page = await browser.newPage();
+  const contexto = await browser.newContext();
+  const page = await contexto.newPage();
   page.setDefaultTimeout(15000);
   const decisoes = [], empresas = [{id:"loja-a",nome:"Loja A"},{id:"loja-b",nome:"Loja B"}];
   const ajuste = (id,comanda) => ({id,comanda,cliente:"Cliente "+comanda,
     operacao:"adicionar",quantidade:1,produto_nome:"Suco",motivo:"Solicitado",protegido:false});
   let segurarA = false, acessoA = true;
   let respostaA;
-  await page.context().route("https://eyqxxlcmxlilgogxdcoq.supabase.co/**", async route => {
+  await contexto.route("https://eyqxxlcmxlilgogxdcoq.supabase.co/**", async route => {
     const url = new URL(route.request().url());
     const nome = url.pathname.split("/").at(-1);
     const dados = route.request().postDataJSON();
@@ -106,7 +107,7 @@ try {
   await page.locator("#form-resolver-ajuste").evaluate(el => el.requestSubmit());
   await page.getByText("Decisão registrada na comanda.").waitFor();
   assert.deepEqual(decisoes.map(({p_empresa,p_id})=>[p_empresa,p_id]),[["loja-b","ajuste-b"]]);
-  const abaA = await page.context().newPage();
+  const abaA = await contexto.newPage();
   await abaA.goto("http://127.0.0.1:"+server.address().port+"/?empresa_id=loja-a");
   await abaA.locator("#email").fill("fixture@example.invalid");
   await abaA.locator("#password").fill("senha-fixture");
