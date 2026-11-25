@@ -3,6 +3,8 @@ import { preencherSeletorLojas } from "../../equipe/interface/seletor-loja.mjs";
 import { lojaInicial } from "../../equipe/regras/loja-inicial.mjs";
 import { carregarCozinha } from "../../cozinha.mjs";
 import { carregarAjustesCaixa } from "../../ajustes-caixa.mjs";
+import { vigiarVinculos } from "../../equipe/interface/vigiar-vinculos.mjs";
+import { vigiaDaLoja } from "../regras/contexto-loja.mjs";
 import { limparLojaPdv } from "./limpar-loja.mjs";
 
 export function configurarSessao(ctx) {
@@ -12,23 +14,31 @@ export function configurarSessao(ctx) {
   const formulario = dialogo.querySelector("form");
   const senha = formulario.elements.senha;
   const aviso = el("aviso-troca-loja");
-  let email, ativa, anterior, destino;
+  let email, ativa, anterior, destino, geracao = 0;
+  let revisaoAtiva;
+  let revisoes = new Map();
 
   async function vinculos() {
     const [empresas, vinculos] = await carregarVinculosPdv();
-    ctx.setEmpresasGerenciadas(new Set(vinculos.map(vinculo => vinculo.empresa_id)));
-    return ctx.area() === "administracao" ? empresas.filter(e => ctx.empresasGerenciadas().has(e.id)) : empresas;
+    ctx.setEmpresasGerenciadas(new Set(vinculos.filter(v => v.papel === "gestor").map(v => v.empresa_id)));
+    revisoes = new Map(vinculos.map(v => [v.empresa_id,v.vinculo_id]));
+    const elegiveis = ctx.area() === "administracao" ? empresas.filter(e => ctx.empresasGerenciadas().has(e.id)) : empresas;
+    return elegiveis.map(loja => ({...loja, revisao:revisoes.get(loja.id)}));
   }
 
   async function abrir(empresa) {
+    const atual = ++geracao;
     seletor.value = empresa;
+    const vigente = vigiaDaLoja(seletor);
     try { await atualizar(); }
     catch (erro) {
       seletor.value = "";
       limparLojaPdv(ctx);
       throw erro;
     }
+    if (atual !== geracao || !vigente()) return "";
     ativa = empresa;
+    revisaoAtiva = revisoes.get(empresa);
     el("area-vendas").hidden = ctx.area() !== "vendas";
     el("area-administracao").hidden = ctx.area() !== "administracao";
     if (ctx.area() === "vendas") {
@@ -67,6 +77,7 @@ export function configurarSessao(ctx) {
     destino = escolhida;
     anterior = ativa;
     ativa = undefined;
+    geracao++;
     seletor.value = "";
     limparLojaPdv(ctx);
     formulario.reset();
@@ -112,4 +123,15 @@ export function configurarSessao(ctx) {
   }
   dialogo.oncancel = cancelar;
   el("cancelar-troca-loja").onclick = cancelar;
+  vigiarVinculos({
+    empresa: () => ativa, versao: () => geracao, consultar: vinculos, revisao: () => revisaoAtiva,
+    revogado(lojas) {
+      ativa = undefined;
+      geracao++;
+      preencherSeletorLojas(seletor, lojas);
+      limparLojaPdv(ctx);
+      el("notice").textContent = lojas.length ? "Acesso à loja encerrado. Escolha outro estabelecimento."
+        : "Seu usuário ainda não tem acesso a um estabelecimento nesta área.";
+    }
+  });
 }

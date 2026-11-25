@@ -1,5 +1,6 @@
 import { consultarEquipe, criarOperador, mudarEquipe } from "../dados/equipe.mjs";
 
+import { prepararDesligamentos } from "../../equipe/interface/desligamentos.mjs";
 import { configurarFormularioConvites } from "../../equipe/interface/formulario-convites.mjs";
 
 export function prepararEquipe(area, aoAvisar) {
@@ -8,6 +9,7 @@ export function prepararEquipe(area, aoAvisar) {
   const terminais = encontrar("[data-terminais]");
   const cadastro = encontrar("[data-cadastro]");
   const convites = configurarFormularioConvites(cadastro,encontrar("[data-convites-painel]"));
+  const desligamentos = prepararDesligamentos(encontrar("[data-desligamentos]"),() => carregar(empresa));
   const terminal = encontrar("[data-terminal]");
   const nomePdv = encontrar("[data-nome-pdv]");
   const erro = encontrar("[data-erro-equipe]");
@@ -64,7 +66,7 @@ export function prepararEquipe(area, aoAvisar) {
         permissao(operador,"edicao_comanda","edita_comanda","Pode editar comanda"),
         permissao(operador,"contato_cliente","contato_cliente","Pode contatar cliente")
       );
-      controles.append(remover);
+      controles.append(remover,desligamentos.suspender(operador.email));
       item.append(descricao, controles);
       return item;
     }));
@@ -108,9 +110,9 @@ export function prepararEquipe(area, aoAvisar) {
     terminal.reset();
     nomePdv.reset();
     bloquear(true);
-    if (!loja) { await convites.carregar(); return; }
+    if (!loja) { await Promise.all([convites.carregar(),desligamentos.carregar()]); return; }
     try {
-      const [resposta] = await Promise.all([consultarEquipe(loja),convites.carregar(loja)]);
+      const [resposta] = await Promise.all([consultarEquipe(loja),convites.carregar(loja),desligamentos.carregar(loja)]);
       atualizarPerfil();
       if (atual !== versao) return;
       dados = resposta;

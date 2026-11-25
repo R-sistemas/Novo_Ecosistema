@@ -16,6 +16,7 @@ async function requisitar(caminho, dados, token, metodo = dados === undefined ? 
   });
   const corpo = await resposta.text();
   const resultado = corpo ? JSON.parse(corpo) : null;
+  if ([401,403].includes(resposta.status) && token) globalThis.dispatchEvent?.(new Event("acesso-negado"));
   if (!resposta.ok) throw Object.assign(new Error(resultado?.erro ?? resultado?.message ?? resultado?.msg ?? "Não foi possível concluir a solicitação."), { status: resposta.status });
   return resultado;
 }

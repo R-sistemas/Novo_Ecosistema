@@ -1,8 +1,13 @@
+import { prepararDesligamentos } from "../../equipe/interface/desligamentos.mjs";
+import { vigiaDaLoja } from "../regras/contexto-loja.mjs";
 import { listarOperadores, removerOperador } from "../dados/administracao.mjs";
 
 export function configurarOperadores({ el, botao, operar, atualizar }) {
+  const desligamentos = prepararDesligamentos(el("desligamentos-pdv"),() => carregarOperadores());
+  el("operacao").addEventListener("invalidar-loja", () => { void desligamentos.carregar(); });
   async function carregarOperadores(apenasCozinha = false) {
     const empresa = el("empresa").value;
+    const vigente = vigiaDaLoja(el("empresa"));
     const aviso = el(apenasCozinha ? "aviso-operadores-kds" : "aviso-lista-operadores");
     const lista = el(apenasCozinha ? "email-permissao-kds" : "operadores-da-loja");
     const salvar = el("permissao-kds").querySelector("button");
@@ -12,8 +17,8 @@ export function configurarOperadores({ el, botao, operar, atualizar }) {
     lista.replaceChildren();
     aviso.textContent = "Carregando equipe…";
     try {
-      const operadores = await listarOperadores(empresa);
-      if (empresa !== el("empresa").value) return;
+      const [operadores] = await Promise.all([listarOperadores(empresa),apenasCozinha ? null : desligamentos.carregar(empresa)]);
+      if (!vigente()) return;
       if (apenasCozinha) {
         const cozinha = operadores.filter((operador) => operador.cozinha);
         lista.replaceChildren(
@@ -66,13 +71,14 @@ export function configurarOperadores({ el, botao, operar, atualizar }) {
                 true,
               ),
             );
+            linha.append(desligamentos.suspender(operador.email));
             return linha;
           }),
         );
         aviso.textContent = operadores.length ? "" : "Nenhum operador cadastrado nesta loja.";
       }
     } catch (erro) {
-      if (empresa === el("empresa").value) aviso.textContent = erro.message;
+      if (vigente()) aviso.textContent = erro.message;
     } finally {
       if (!apenasCozinha) atualizarLista.disabled = false;
     }

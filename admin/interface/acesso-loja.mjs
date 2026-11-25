@@ -1,8 +1,15 @@
 import { entrar, lojasDoGestor } from "../dados/catalogo.mjs";
+import { vigiarVinculos } from "../../equipe/interface/vigiar-vinculos.mjs";
 import { lojaInicial } from "../../equipe/regras/loja-inicial.mjs";
 import { preencherSeletorLojas } from "../../equipe/interface/seletor-loja.mjs";
 
-export function prepararAcessoLoja({ el, navegacao, selecionarLoja, falha, mensagem }) {
+export function prepararAcessoLoja({ el, navegacao, selecionarLoja, falha, mensagem, empresa, versao, invalidar }) {
+  vigiarVinculos({empresa,versao,consultar:lojasDoGestor,revogado(lojas) {
+    preencherSeletorLojas(el("loja"),lojas);
+    invalidar();
+    falha(lojas.length ? "Acesso à loja encerrado. Escolha outro estabelecimento." :
+      "Seu usuário ainda não tem acesso ao painel de uma loja.");
+  }});
   el("login").addEventListener("submit", async evento => {
     evento.preventDefault();
     const form = evento.currentTarget;

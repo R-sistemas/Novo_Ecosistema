@@ -182,7 +182,8 @@ async function selecionarLoja() {
   await mostrarArea(areaAtiva);
 }
 
-prepararAcessoLoja({ el, navegacao, selecionarLoja, falha, mensagem });
+prepararAcessoLoja({ el, navegacao, selecionarLoja, falha, mensagem, empresa: () => empresa,
+  versao: () => geracaoLoja, invalidar() { consultando = false; void selecionarLoja(); } });
 
 el("loja").addEventListener("change", selecionarLoja);
 el("catalogo-ativos").onchange = renderizar;

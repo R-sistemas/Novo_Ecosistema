@@ -42,6 +42,7 @@ after(() => db.close());
 const queries = {
   gerenciar_convites_equipe:["p_empresa","p_acao","p_dados"],
   responder_convite_equipe:["p_token","p_acao"],
+  operar_desligamento_equipe:["p_empresa","p_acao","p_dados"],
   enviar_aviso_pedido:["p_empresa","p_pedido","p_mensagem"],
   painel_contexto_sessao:["p_empresa_id"], painel_equipe:["p_empresa","p_acao","p_dados"],
   painel_iniciar_cadastro_operador:["p_gestor","p_empresa","p_email","p_perfil"],
@@ -235,6 +236,10 @@ test("Chrome percorre login, equipe, cadastro, listagem e remoção",{
     await pagina.route("https://eyqxxlcmxlilgogxdcoq.supabase.co/**",async route=>{
       const u=new URL(route.request().url());
       if(u.pathname==="/auth/v1/token")return route.fulfill({json:{user:{id:users.get("a")},access_token:"a",refresh_token:"fixture",expires_in:3600}});
+      if (u.pathname.startsWith("/rest/v1/rpc/")) {
+        const resposta = await supabase(u,{headers:{Authorization:route.request().headers().authorization},body:route.request().postData()});
+        return route.fulfill({status:resposta.status,body:await resposta.text(),contentType:"application/json"});
+      }
       assert.equal(u.pathname,"/rest/v1/membros");
       return route.fulfill({json:[{empresas:{id:A,nome:"A"}}]});
     });
@@ -432,4 +437,36 @@ test("convite de B preserva A, valida titular, gera novo link e aceita exatament
   } finally {
     await db.query("delete from painel_privado.convites_equipe_ativacao where empresa_id=$1",[B]);
   }
+});
+
+test("suspensão local interrompe vendas e cozinha, preserva B e permite fechamento assistido", async () => {
+  const atuar = async (ator, empresa, acao, dados = {}) => (await como(ator,
+    "select operar_desligamento_equipe($1,$2,$3) as r",[empresa,acao,JSON.stringify(dados)]
+  )).rows[0].r;
+  const usuario = users.get("op");
+  const [vinculo] = await rows("select vinculo_id from membros where empresa_id=$1 and usuario_id=$2",[A,usuario]);
+  await db.query("insert into equipe_kds(empresa_id,usuario_id) values($1,$2)",[A,usuario]);
+  const [terminal] = await rows("insert into terminais_pdv(empresa_id,nome,operador_id) values($1,'Caixa suspenso',$2) returning id",[A,usuario]);
+  const caixa = (await como("op","select abrir_caixa($1,100,$2) as id",[A,terminal.id])).rows[0].id;
+  await como("op","select movimentar_caixa($1,'suprimento',25)",[caixa]);
+  await assert.rejects(atuar("b",A,"suspender",{email:"op@example.invalid",motivo:"Desligamento"}),{code:"42501"});
+  const {id} = await atuar("a",A,"suspender",{email:"op@example.invalid",motivo:"Desligamento"});
+  assert.equal((await atuar("a",A,"listar"))[0].caixa,caixa);
+  assert.deepEqual((await como("op","select id from empresas order by id")).rows.map(r=>r.id),[B]);
+  assert.deepEqual((await como("op","select * from lojas_kds()")).rows,[]);
+  assert.deepEqual((await como("op","select id from caixas where id=$1",[caixa])).rows,[]);
+  await assert.rejects(como("op","select movimentar_caixa($1,'suprimento',10)",[caixa]),{code:"42501"});
+  await assert.rejects(como("op","select fechar_caixa($1,125)",[caixa]),{code:"42501"});
+  await assert.rejects(atuar("a",A,"desvincular",{id}),{code:"P0001"});
+  await assert.rejects(db.query("insert into membros values($1,$2,'operador')",[A,usuario]),{code:"42501"});
+  await assert.rejects(atuar("b",B,"reconciliar",{id,caixa,contado:123}),{code:"42501"});
+  assert.deepEqual(await atuar("a",A,"reconciliar",{id,caixa,contado:123}),{esperado:125});
+  assert.deepEqual(await atuar("a",A,"desvincular",{id}),{id});
+  assert.deepEqual(await atuar("a",A,"listar"),[]);
+  assert.equal((await rows("select operador_id from caixas where id=$1 and fechado_em is not null",[caixa]))[0].operador_id,usuario);
+  const trilha = await rows("select autor_id,acao from painel_privado.auditoria where requisicao_id=$1 order by id",[id]);
+  assert.equal(trilha.length,3);
+  assert.ok(trilha.every(evento => evento.autor_id === users.get("a")));
+  const [recontratado] = await rows("insert into membros(empresa_id,usuario_id,papel) values($1,$2,'operador') returning vinculo_id",[A,usuario]);
+  assert.notEqual(recontratado.vinculo_id,vinculo.vinculo_id);
 });
