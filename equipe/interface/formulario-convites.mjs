@@ -11,7 +11,6 @@ export function configurarFormularioConvites(formulario, painel) {
     const atualVersao = ++versao;
     dados = undefined;
     formulario.reset();
-    formulario.hidden = !empresa;
     if (!empresa) { await convites.carregar(); return; }
     formulario.inert = true;
     try {

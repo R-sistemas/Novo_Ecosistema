@@ -6,6 +6,8 @@ export function montarAcesso(ctx) {
   configurarSessao({
     el,
     operar,
+    ocupado: ctx.ocupado,
+    limparContexto: ctx.limparContexto,
     atualizar,
     estado,
     carrinho,
@@ -38,6 +40,8 @@ export function montarAcesso(ctx) {
   configurarAdministracao({
     el,
     operar,
+    ocupado: ctx.ocupado,
+    limparContexto: ctx.limparContexto,
     atualizar,
     temItens,
     vendaPendente: ctx.vendaPendente,

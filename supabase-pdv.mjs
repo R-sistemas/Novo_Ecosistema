@@ -48,6 +48,16 @@ export async function entrar(email, password) {
   return nova.user.id;
 }
 
+export async function confirmarSenhaAtual(email, password) {
+  const usuario = sessao?.user.id;
+  if (!usuario) throw Object.assign(new Error("Entre novamente."), { status: 401 });
+  const nova = await requisitar("/auth/v1/token?grant_type=password", { email, password });
+  if (nova.user.id !== usuario || sessao?.user.id !== usuario) {
+    throw Object.assign(new Error("A conta atual mudou. Entre novamente."), { status: 403 });
+  }
+  guardarSessao(nova);
+}
+
 export async function criarMinhaConta(email, password) {
   const destino = new URL("/convite-equipe.html", location.origin).href;
   const nova = await requisitar("/auth/v1/signup?" + new URLSearchParams({ redirect_to: destino }), { email, password });

@@ -1,3 +1,4 @@
+import { vigiaDaLoja } from "./pdv/regras/contexto-loja.mjs";
 import { listarCancelamentos, resolverCancelamento, solicitarCancelamento } from "./pdv/dados/comandas.mjs";
 
 const el = id => document.getElementById(id);
@@ -36,10 +37,12 @@ export function configurarCancelamentos({ comandaAtual, atualizar }) {
   }
 
   async function carregar() {
+    const vigente = vigiaDaLoja(el("empresa"));
     formulario.hidden = true;
     const { comandas, gestor, historico } = await listarCancelamentos({
       p_empresa: empresa(), p_busca: el("numero-cancelamentos").value
     });
+    if (!vigente()) return;
     const lista = el("lista-cancelamentos");
     lista.replaceChildren(...comandas.map(comanda => {
       const linha = document.createElement("div");
@@ -72,11 +75,12 @@ export function configurarCancelamentos({ comandaAtual, atualizar }) {
 
   async function executarNoDialogo(acao) {
     if (dialogo.inert) return;
+    const vigente = vigiaDaLoja(el("empresa"));
     dialogo.inert = true;
     aviso.textContent = "";
     try { await acao(); }
-    catch (erro) { aviso.textContent = erro.message; }
-    finally { dialogo.inert = false; }
+    catch (erro) { if (vigente()) aviso.textContent = erro.message; }
+    finally { if (vigente()) dialogo.inert = false; }
   }
 
   function abrir(numero) {
@@ -88,6 +92,10 @@ export function configurarCancelamentos({ comandaAtual, atualizar }) {
     void executarNoDialogo(carregar);
   }
 
+  el("operacao").addEventListener("invalidar-loja", () => {
+    selecionada = tentativa = undefined;
+    dialogo.inert = false;
+  });
   el("abrir-cancelamentos-caixa").onclick = () => abrir(comandaAtual()?.comanda);
   el("abrir-cancelamentos-gestor").onclick = () => abrir();
   el("fechar-cancelamentos").onclick = () => dialogo.close();
@@ -97,7 +105,9 @@ export function configurarCancelamentos({ comandaAtual, atualizar }) {
   formulario.onsubmit = evento => {
     evento.preventDefault();
     void executarNoDialogo(async () => {
+      const vigente = vigiaDaLoja(el("empresa"));
       const comanda = selecionada;
+      if (!comanda) return;
       let resultado;
       if (comanda.solicitacao) {
         const aprovar = decisao.value === "aprovar";
@@ -109,13 +119,14 @@ export function configurarCancelamentos({ comandaAtual, atualizar }) {
         const chave = JSON.stringify(dados);
         if (tentativa?.chave !== chave) tentativa = { chave, id: crypto.randomUUID() };
         resultado = await solicitarCancelamento({ ...dados, p_id: tentativa.id });
-        tentativa = undefined;
+        if (vigente()) tentativa = undefined;
       }
+      if (!vigente()) return;
       atualizar(comanda.id, resultado);
       const mensagens = { cancelado: "Comanda cancelada. A cozinha foi avisada.",
         pendente: "Solicitação enviada ao gestor. O preparo está pausado.", negado: "Cancelamento negado. A comanda voltou ao fluxo." };
       await carregar();
-      aviso.textContent = mensagens[resultado];
+      if (vigente()) aviso.textContent = mensagens[resultado];
     });
   };
 }

@@ -37,13 +37,13 @@ test("troca A→B e A→B→A invalida botões, diálogo e respostas antigas", a
   t.after(() => { delete globalThis.document; });
 
   const consultas = [], decisoes = [];
-  const { carregarAjustesCaixa } = await import("../ajustes-caixa.mjs");
-  const { configurarSessao } = await import("../pdv/interface/sessao.mjs");
+  t.mock.method(globalThis, "setInterval", () => 0);
+  const { carregarAjustesCaixa, invalidarAjustesCaixa } = await import("../ajustes-caixa.mjs");
   const noop = () => {};
-  configurarSessao({ el, operar: noop, estado: {}, area: () => "vendas" });
   const trocar = empresa => {
     el("empresa").value = empresa;
-    el("empresa").eventos.change();
+    invalidarAjustesCaixa();
+    void carregarAjustesCaixa();
   };
   const resolver = (consulta, id) => consulta.resolve(Response.json([{ id, cliente: id }]));
   const lista = el("lista-ajustes-caixa");

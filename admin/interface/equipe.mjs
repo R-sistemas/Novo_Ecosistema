@@ -108,6 +108,7 @@ export function prepararEquipe(area, aoAvisar) {
     terminal.reset();
     nomePdv.reset();
     bloquear(true);
+    if (!loja) { await convites.carregar(); return; }
     try {
       const [resposta] = await Promise.all([consultarEquipe(loja),convites.carregar(loja)]);
       atualizarPerfil();

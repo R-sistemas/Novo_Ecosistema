@@ -22,6 +22,7 @@ export function configurarPixPdv({ caixa, atualizar, recebido, aoFechar }) {
   let verificandoCaixa;
   let confirmado = false;
   let vigencia;
+  let versao = 0;
 
   function abrir() {
     if (!dialogo.open) dialogo.showModal();
@@ -98,26 +99,31 @@ export function configurarPixPdv({ caixa, atualizar, recebido, aoFechar }) {
     const idCaixa = caixa();
     if (!idCaixa || ocupado || (!cobranca && !recuperar)) return;
     const contexto = cobranca ?? { p_caixa: idCaixa };
+    const atual = versao;
     ocupado = true;
     el("consultar-pix-frente").disabled = el("cancelar-pix-frente").disabled = true;
     try {
       const resultado = await api({ acao, p_caixa: idCaixa, p_id: contexto.id ?? null });
-      if (caixa() !== idCaixa || (!resultado && recuperar && !cobranca)) return false;
+      if (atual !== versao || caixa() !== idCaixa || (!resultado && recuperar && !cobranca)) return false;
       await aplicar(resultado, contexto);
-      if (acao === "cancelar" && cobranca) status.textContent = "O provedor ainda não confirmou o cancelamento. Confira esta cobrança.";
+      if (atual === versao && acao === "cancelar" && cobranca) status.textContent = "O provedor ainda não confirmou o cancelamento. Confira esta cobrança.";
       return Boolean(resultado);
     } catch (erro) {
+      if (atual !== versao) return;
       if (!recuperar || cobranca) status.textContent = erro.message;
       else if (caixa() === idCaixa) throw erro;
     } finally {
-      ocupado = false;
-      el("consultar-pix-frente").disabled = el("cancelar-pix-frente").disabled = false;
+      if (atual === versao) {
+        ocupado = false;
+        el("consultar-pix-frente").disabled = el("cancelar-pix-frente").disabled = false;
+      }
     }
   }
 
   async function iniciar(dados) {
     if (ocupado || cobranca) return;
     const contexto = { ...dados, id: crypto.randomUUID() };
+    const atual = versao;
     cobranca = contexto;
     ocupado = true;
     exibir({ mensagem: "Preparando o QR Code…" });
@@ -125,16 +131,19 @@ export function configurarPixPdv({ caixa, atualizar, recebido, aoFechar }) {
     atualizar(true);
     try {
       const resultado = await api({ ...dados, acao: "criar", p_id: contexto.id });
-      await aplicar(resultado, contexto);
+      if (atual === versao) await aplicar(resultado, contexto);
     } catch (erro) {
+      if (atual !== versao) return;
       if (erro.status === 400) {
         cobranca = undefined;
         exibir({ mensagem: erro.message });
         atualizar(false);
       } else status.textContent = erro.message;
     } finally {
-      ocupado = false;
-      el("consultar-pix-frente").disabled = el("cancelar-pix-frente").disabled = false;
+      if (atual === versao) {
+        ocupado = false;
+        el("consultar-pix-frente").disabled = el("cancelar-pix-frente").disabled = false;
+      }
     }
   }
 
@@ -152,6 +161,13 @@ export function configurarPixPdv({ caixa, atualizar, recebido, aoFechar }) {
     abrir,
     aberta: () => dialogo.open,
     iniciar,
+    limpar() {
+      versao++;
+      cobranca = verificandoCaixa = undefined;
+      ocupado = false;
+      exibir();
+      dialogo.close();
+    },
     atual: () => cobranca,
     async recuperar(forcar = false) {
       const id = caixa();

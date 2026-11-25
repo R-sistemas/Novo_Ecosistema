@@ -1,3 +1,4 @@
+import { vigiaDaLoja } from "./pdv/regras/contexto-loja.mjs";
 import { executar, executarApi } from "./supabase-pdv.mjs";
 import { estadosEntrega } from "./estado-entrega.mjs";
 import { criarAlertaPedidos } from "./alerta-pedidos.mjs";
@@ -21,7 +22,7 @@ const acoes = {
 let empresaExibida;
 let ultimaFila;
 let ultimosCancelamentos;
-let carregando = false;
+let carregando;
 const falhasDespacho = new Map();
 const painelCancelamentos = document.getElementById("cancelamentos-kds");
 const listaCancelamentos = document.getElementById("lista-cancelamentos-kds");
@@ -48,14 +49,15 @@ export async function carregarCozinha() {
     fila.replaceChildren();
     exibirCancelamentos([]);
   }
-  if (!idEmpresa || carregando || document.getElementById("area-vendas").hidden) return;
-  carregando = true;
+  if (!idEmpresa || carregando?.() || document.getElementById("area-vendas").hidden) return;
+  const vigente = vigiaDaLoja(empresa);
+  carregando = vigente;
   try {
     const [pedidos, cancelamentos] = await Promise.all([
       executar("fila_cozinha", { p_empresa: idEmpresa }),
       kds ? executar("cancelamentos_recentes_kds", { p_empresa: idEmpresa }) : []
     ]);
-    if (empresa.value !== idEmpresa) return;
+    if (!vigente()) return;
     alerta.atualizar(idEmpresa, pedidos);
     exibirCancelamentos(cancelamentos);
     aviso.textContent = pedidos.length ? "" : "Nenhum pedido em andamento.";
@@ -118,7 +120,7 @@ export async function carregarCozinha() {
           await executarApi("despachar-remo", { pedido: pedido.id });
           falhasDespacho.delete(pedido.id);
           avisoDespacho.textContent = "Despacho solicitado à REMO.";
-          if (empresa.value === idEmpresa) await carregarCozinha();
+          if (vigente()) await carregarCozinha();
         } catch (erro) {
           const mensagem = "Despacho pendente: " + erro.message;
           falhasDespacho.set(pedido.id, mensagem);
@@ -169,9 +171,9 @@ export async function carregarCozinha() {
             if (destino === "pronto" && pedido.pagamento_entrega && !pedido.adicional) {
               await solicitarDespacho();
             }
-            if (empresa.value === idEmpresa) await carregarCozinha();
+            if (vigente()) await carregarCozinha();
           } catch (erro) {
-            if (empresa.value === idEmpresa) aviso.textContent = erro.message;
+            if (vigente()) aviso.textContent = erro.message;
           } finally {
             artigo.inert = false;
           }
@@ -181,12 +183,16 @@ export async function carregarCozinha() {
       return artigo;
     }));
   } catch (erro) {
-    if (empresa.value === idEmpresa) aviso.textContent = "Falha ao atualizar a cozinha. " + erro.message;
+    if (vigente()) aviso.textContent = "Falha ao atualizar a cozinha. " + erro.message;
   } finally {
-    carregando = false;
+    if (carregando === vigente) carregando = undefined;
   }
 }
 
+document.getElementById("operacao").addEventListener("invalidar-loja", () => {
+  ultimaFila = empresaExibida = undefined;
+  falhasDespacho.clear();
+});
 document.getElementById("atualizar-cozinha").onclick = carregarCozinha;
 setInterval(() => {
   if (!document.hidden && !document.getElementById("operacao").hidden) void carregarCozinha();

@@ -1,3 +1,4 @@
+import { vigiaDaLoja } from "./pdv/regras/contexto-loja.mjs";
 import { paraReais } from "./pdv/regras/moeda.mjs";
 import { listarRecebimentosOnline } from "./pdv/dados/caixa.mjs";
 
@@ -16,11 +17,12 @@ export function configurarRecebimentosOnline(empresaAtual) {
   async function carregar() {
     const empresa = empresaAtual();
     if (!empresa) return;
+    const vigente = vigiaDaLoja(document.getElementById("empresa"));
     botao.disabled = true;
     try {
       const dia = data.value;
       const dados = await listarRecebimentosOnline(empresa, dia);
-      if (empresa !== empresaAtual() || dia !== data.value) return;
+      if (!vigente() || dia !== data.value) return;
       resumo.textContent = `${dados.quantidade} pedido(s) pago(s) online nesta data · ${moeda.format(paraReais(dados.total_centavos))} recebido(s), incluindo ${moeda.format(paraReais(dados.frete_centavos))} de taxa de entrega. Não altera o dinheiro esperado neste caixa.`;
       lista.replaceChildren(...dados.pedidos.map(pedido => {
         const linha = document.createElement("li");
@@ -31,12 +33,12 @@ export function configurarRecebimentosOnline(empresaAtual) {
       }));
       if (!dados.pedidos.length) lista.textContent = "Nenhum pagamento online confirmado hoje.";
     } catch (erro) {
-      if (empresa === empresaAtual()) {
+      if (vigente()) {
         resumo.textContent = "Não foi possível carregar os pagamentos online. " + erro.message;
         lista.replaceChildren();
       }
     } finally {
-      botao.disabled = false;
+      if (vigente()) botao.disabled = false;
     }
   }
   botao.onclick = carregar;

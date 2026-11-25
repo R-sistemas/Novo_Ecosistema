@@ -47,6 +47,7 @@ export function configurarComandas(ctx) {
     const atual = ++consultaComandas;
     const lista = el("comandas-pendentes");
     const empresa = el("empresa").value;
+    if (!empresa || el("area-vendas").hidden) return;
     try {
       const comandas = await listarComandas({
         p_empresa: empresa,
@@ -102,6 +103,11 @@ export function configurarComandas(ctx) {
       lista.textContent = erro.message;
     }
   }
+  el("operacao").addEventListener("invalidar-loja", () => {
+    consultaComandas++;
+    ultimaListaComandas = undefined;
+    el("buscar-comanda").value = "";
+  });
   el("buscar-comanda").oninput = carregarComandas;
   el("abrir-comandas").onclick = () => {
     el("aviso-comandas").textContent = "";

@@ -21,7 +21,7 @@
     <label>Senha <input name="senha" type="password" autocomplete="current-password" required></label>
     <button type="submit">Entrar</button> <a href="/recuperar-senha.html">Esqueci minha senha</a>
   </form>
-  <section id="catalogo" hidden aria-label="Administração da loja">
+  <section id="catalogo" hidden aria-label="Administração da loja"><p id="loja-ativa" role="status"></p>
     <div id="fundo-menu" class="fundo-menu" hidden></div>
     <aside id="lateral-painel" class="lateral-painel" aria-label="Menu principal" hidden>
       <a class="marca-painel" href="/"><img src="/icone-pwa-192.png" alt="" width="44" height="44"><span>R Sistemas<small>Painel da loja</small></span></a>
@@ -35,7 +35,7 @@
     </aside>
     <section id="area-mesas" hidden aria-labelledby="aba-mesas"></section>
     <section id="area-financeiro" hidden aria-labelledby="aba-financeiro"></section><section id="area-visao" hidden aria-labelledby="aba-visao"></section>
-    <section id="area-catalogo" aria-label="Produtos da loja">
+    <section id="area-catalogo" hidden aria-label="Produtos da loja">
     <div class="acoes"><button id="novo" type="button" disabled>Novo produto</button></div>
     <label class="escolha-filtro"><input type="checkbox" id="catalogo-ativos"> Somente ativos nesta página</label>
     <div class="rolagem" tabindex="0" aria-label="Tabela de produtos">

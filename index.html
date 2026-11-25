@@ -19,7 +19,7 @@
 <section class="intro"><p class="eyebrow">OPERAÇÃO DE BALCÃO</p><h1>Ponto de venda</h1></section>
 <button id="instalar-pwa" class="secondary" type="button" hidden>Instalar R Sistemas PDV</button>
 <form id="login" inert class="panel"><label for="email">E-mail</label><input id="email" type="email" autocomplete="username" required><label for="password">Senha</label><input id="password" type="password" autocomplete="current-password" required><label for="entrada">Área de acesso</label><select id="entrada"><option value="vendas">Vendas</option><option value="administracao">Administração</option></select><button>Entrar</button></form>
-<div id="operacao" hidden><label for="empresa">Estabelecimento</label><select id="empresa"></select>
+<div id="operacao" hidden><label for="empresa">Estabelecimento</label><select id="empresa" aria-label="Escolher estabelecimento"></select>
 <button id="trocar-area" type="button">Trocar área</button>
 <div id="area-vendas" hidden>
 <div class="frente-topo"><div><strong>Frente de caixa</strong><small id="operador-frente"></small></div>
@@ -167,6 +167,13 @@
 </dialog>
 <template data-pdv-parcial="administracao"></template>
 </div><p id="notice" role="status" aria-live="polite"></p>
+<dialog id="troca-loja-pdv" class="frente-comandas" aria-labelledby="titulo-troca-loja">
+<h2 id="titulo-troca-loja">Confirmar troca de loja</h2>
+<p>Estabelecimento de destino · <strong id="destino-troca-loja"></strong></p>
+<form method="post"><label>Senha <input type="password" name="senha" autocomplete="current-password" required></label>
+<p id="aviso-troca-loja" role="status"></p><button>Confirmar troca</button>
+<button type="button" id="cancelar-troca-loja" class="secondary">Cancelar</button></form>
+</dialog>
 <dialog id="pix-frente" class="frente-comandas" aria-labelledby="titulo-pix-modal">
   <span id="marca-pix-sucesso" aria-hidden="true" hidden>✓</span>
   <h2 id="titulo-pix-modal">Pagamento via Pix</h2>

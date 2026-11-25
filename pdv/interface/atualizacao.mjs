@@ -1,3 +1,4 @@
+import { vigiaDaLoja } from "../regras/contexto-loja.mjs";
 import { configurarLicencaPdv } from "./licenca.mjs";
 import { carregarDadosPdv } from "../dados/atualizar.mjs";
 import { mapearMovimentos } from "../regras/movimentos.mjs";
@@ -12,6 +13,8 @@ export function configurarAtualizacao(ctx) {
   async function atualizar() {
     void atualizarLicenca();
     const empresa = el("empresa").value;
+    if (!empresa) return;
+    const vigente = vigiaDaLoja(el("empresa"));
     const administracao = ctx.area() === "administracao";
     const terminalAnterior = el("terminal-pdv").value;
     el("configuracao-entrega").hidden = true;
@@ -20,6 +23,8 @@ export function configurarAtualizacao(ctx) {
       administracao,
       usuario: ctx.usuario(),
     });
+    if (!vigente()) return;
+    if (!configuracao.length) throw Object.assign(new Error("Acesso à loja indisponível."), {status:403});
     const nomePdv = configuracao[0].nome_pdv ?? configuracao[0].nome;
     el("nome-pdv-exibido").textContent = nomePdv;
     ctx.setTerminais(terminais);
@@ -78,7 +83,7 @@ export function configurarAtualizacao(ctx) {
     void carregarRecebimentosOnline();
     if (estado.sessao)
       await pixFrente.recuperar().catch((erro) => {
-        el("notice").textContent = erro.message;
+        if (vigente()) el("notice").textContent = erro.message;
       });
   }
 

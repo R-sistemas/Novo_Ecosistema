@@ -1,3 +1,4 @@
+import { prepararAcessoLoja } from "./acesso-loja.mjs";
 import { prepararNavegacao } from "./navegacao-loja.mjs";
 import { prepararMesas } from "./mesas.mjs";
 import { prepararVisao } from "./visao.mjs";
@@ -7,7 +8,7 @@ import { prepararPedidos } from "./pedidos.mjs";
 import { prepararCredencialMP } from "./credencial-mp.mjs";
 import { prepararPreferencias } from "./preferencias.mjs";
 import { prepararEquipe } from "./equipe.mjs";
-import { consultarProdutos, entrar, gravarProduto, lojasDoGestor, verificarLoja } from "../dados/catalogo.mjs";
+import { consultarProdutos, gravarProduto, verificarLoja } from "../dados/catalogo.mjs";
 import { prepararEditor } from "./formulario-produto.mjs";
 import { paraReais } from "../../pdv/regras/moeda.mjs";
 const el = id => document.getElementById(id);
@@ -22,6 +23,7 @@ const mensagem = falha => mensagens[falha.status] || "Não foi possível acessar
 const aviso = texto => { el("status").textContent = texto; };
 const falha = texto => { el("erro").textContent = texto; };
 let empresa;
+let geracaoLoja = 0;
 let cursores = [null];
 let indice = 0;
 let proximo;
@@ -108,6 +110,7 @@ function renderizar() {
 }
 
 async function carregar(cursor, pagina) {
+  const atual = geracaoLoja;
   consultando = true;
   comandos(false);
   falha("");
@@ -116,6 +119,7 @@ async function carregar(cursor, pagina) {
   let habilitado = false;
   try {
     const dados = await consultarProdutos(empresa, cursor);
+    if (atual !== geracaoLoja) return;
     indice = pagina;
     cursores[indice] = cursor;
     proximo = dados.proximo_cursor;
@@ -124,15 +128,18 @@ async function carregar(cursor, pagina) {
     renderizar();
     habilitado = true;
   } catch (erro) {
-    falha(mensagem(erro));
+    if (atual === geracaoLoja) falha(mensagem(erro));
   } finally {
-    consultando = false;
-    comandos(habilitado);
+    if (atual === geracaoLoja) {
+      consultando = false;
+      comandos(habilitado);
+    }
   }
 }
 
 async function selecionarLoja() {
   if (consultando) return;
+  const atual = ++geracaoLoja;
   lojaAutorizada = false;
   mostrarCredencialMP();
   pedidos.limparDetalhe();
@@ -141,7 +148,11 @@ async function selecionarLoja() {
   el("area-financeiro").hidden = el("area-entregas").hidden = true;
   el("area-mesas").hidden = el("area-pedidos").hidden = el("area-visao").hidden = true;
   el("area-catalogo").hidden = el("area-equipe").hidden = el("area-preferencias").hidden = true;
+  void carregarEquipe();
+  for (const dialogo of document.querySelectorAll("dialog[open]")) dialogo.close();
   empresa = el("loja").value;
+  el("loja-ativa").textContent = empresa ? "" : "Escolher estabelecimento";
+  produtosDaPagina = [];
   cursores = [null];
   indice = 0;
   proximo = null;
@@ -152,45 +163,26 @@ async function selecionarLoja() {
   el("produtos").replaceChildren();
   el("vazio").hidden = true;
   el("pagina").textContent = "";
+  if (!empresa) { consultando = false; comandos(false); return; }
   try {
     await verificarLoja(empresa);
+    if (atual !== geracaoLoja) return;
   } catch (erro) {
+    if (atual !== geracaoLoja) return;
     consultando = false;
-    comandos(false);
+    el("loja").value = "";
+    void selecionarLoja();
     falha(mensagem(erro));
     return;
   }
   lojaAutorizada = true;
+  el("loja-ativa").textContent = el("loja").selectedOptions[0].textContent;
   consultando = false;
   comandos(true);
   await mostrarArea(areaAtiva);
 }
 
-el("login").addEventListener("submit", async evento => {
-  evento.preventDefault();
-  const form = evento.currentTarget;
-  const botao = form.querySelector("button");
-  if (botao.disabled) return;
-  botao.disabled = true;
-  falha("");
-  try {
-    await entrar(form.elements.email.value, form.elements.senha.value);
-    const lojas = await lojasDoGestor();
-    const solicitada = new URLSearchParams(location.search).get("empresa_id");
-    if (!lojas.length || (solicitada && !lojas.some(loja => loja.id === solicitada))) throw Object.assign(new Error(), { status: 403 });
-    el("loja").replaceChildren(...lojas.map(loja => new Option(loja.nome, loja.id)));
-    if (solicitada) el("loja").value = solicitada;
-    form.hidden = true;
-    el("catalogo").hidden = false;
-    navegacao.revelar();
-    await selecionarLoja();
-  } catch (erro) {
-    falha(erro.status === 400 || erro.status === 401 ? "Confira o e-mail e a senha." : mensagem(erro));
-  } finally {
-    form.elements.senha.value = "";
-    botao.disabled = false;
-  }
-});
+prepararAcessoLoja({ el, navegacao, selecionarLoja, falha, mensagem });
 
 el("loja").addEventListener("change", selecionarLoja);
 el("catalogo-ativos").onchange = renderizar;

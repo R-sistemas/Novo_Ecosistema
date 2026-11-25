@@ -1,6 +1,6 @@
-import { entrar, listar } from "../../supabase-pdv.mjs";
+import { entrar, confirmarSenhaAtual, listar } from "../../supabase-pdv.mjs";
 
-export { entrar };
+export { entrar, confirmarSenhaAtual };
 
 export function carregarVinculosPdv() {
   return Promise.all([

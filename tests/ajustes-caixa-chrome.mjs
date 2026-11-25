@@ -33,7 +33,9 @@ try {
     const url = new URL(route.request().url());
     const nome = url.pathname.split("/").at(-1);
     const dados = route.request().postDataJSON();
-    if (nome === "token") return route.fulfill({json:{user:{id:"operador-fixture"},access_token:"fixture",expires_in:3600}});
+    if (nome === "token") return dados.password === "senha-fixture"
+      ? route.fulfill({json:{user:{id:"operador-fixture"},access_token:"fixture",expires_in:3600}})
+      : route.fulfill({status:400,json:{msg:"Senha inválida"}});
     if (nome === "empresas") return route.fulfill({json:url.searchParams.has("id") ? [empresas.find(e=>url.searchParams.get("id")==="eq."+e.id)] : empresas});
     if (nome === "ajustes_pendentes_caixa") {
       if (dados.p_empresa === "loja-a" && segurarA) {
@@ -54,6 +56,9 @@ try {
   await page.locator("#email").fill("fixture@example.invalid");
   await page.locator("#password").fill("senha-fixture");
   await page.getByRole("button",{name:"Entrar"}).click();
+  await page.locator("#empresa").waitFor();
+  assert.equal(await page.locator("#empresa").inputValue(),"");
+  await page.locator("#empresa").selectOption("loja-a");
   const lista = page.locator("#lista-ajustes-caixa");
   await lista.getByText(/Comanda 41/).waitFor();
   await lista.getByRole("button",{name:"Resolver ajuste"}).click();
@@ -68,6 +73,14 @@ try {
     el.dispatchEvent(new Event("change",{bubbles:true}));
   });
   await page.locator("#resolver-ajuste-caixa[open]").waitFor({state:"detached"});
+  const troca = page.locator("#troca-loja-pdv");
+  await troca.waitFor();
+  assert.equal(await page.locator("#empresa").inputValue(),"");
+  await troca.getByLabel("Senha").fill("senha-errada");
+  await troca.getByRole("button",{name:"Confirmar troca"}).click();
+  await troca.getByText("Senha inválida. Confira e tente novamente.").waitFor();
+  await troca.getByLabel("Senha").fill("senha-fixture");
+  await troca.getByRole("button",{name:"Confirmar troca"}).click();
   await lista.getByText(/Comanda 42/).waitFor();
   const chegouA = page.waitForResponse(res => res.url().endsWith("/ajustes_pendentes_caixa") &&
     res.request().postDataJSON().p_empresa === "loja-a");

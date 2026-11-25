@@ -9,6 +9,7 @@ export function configurarAdministracao(ctx) {
   const { el, operar, atualizar, temItens } = ctx;
   const formulario = el("cadastrar-operador");
   const convites = configurarFormularioConvites(formulario,el("convites-equipe-pdv"));
+  el("operacao").addEventListener("invalidar-loja", () => { void convites.carregar(); });
   formulario.addEventListener("abrir-convites", () => {
     void convites.carregar(el("empresa").value).then(() => el("novo-operador-perfil").onchange())
       .catch(() => { el("notice").textContent = "Não foi possível consultar os convites da loja."; });

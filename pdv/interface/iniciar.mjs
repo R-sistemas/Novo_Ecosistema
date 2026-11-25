@@ -129,6 +129,12 @@ montarAcesso({
   editarProduto: admin.editarProduto,
   el,
   operar,
+  ocupado,
+  limparContexto: () => {
+    adicionalPendente = meioSelecionado = ambientePixFrente = undefined;
+    terminais = catalogoAdmin = produtos = [];
+    pixFrente.limpar();
+  },
   atualizar,
   estado,
   carrinho,

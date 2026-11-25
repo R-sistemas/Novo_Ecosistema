@@ -1,3 +1,4 @@
+import { vigiaDaLoja } from "../regras/contexto-loja.mjs";
 import { validarAcerto } from "../regras/acertos.mjs";
 import { listarAcertos, confirmarAcerto } from "../dados/caixa.mjs";
 
@@ -7,10 +8,12 @@ export function configurarAcertos(ctx) {
   async function carregarAcertos() {
     if (ctx.area() !== "vendas" || el("operacao").hidden) return;
     const empresa = el("empresa").value;
+    if (!empresa || el("area-vendas").hidden) return;
+    const vigente = vigiaDaLoja(el("empresa"));
     const lista = el("acertos-pendentes");
     try {
       const pendentes = await listarAcertos(empresa);
-      if (empresa !== el("empresa").value) return;
+      if (!vigente()) return;
       el("numero-acertos").textContent = pendentes.length ? `(${pendentes.length})` : "";
       lista.replaceChildren(
         ...pendentes.map((acerto) => {
@@ -39,9 +42,10 @@ export function configurarAcertos(ctx) {
       if (!pendentes.length) lista.textContent = "Nenhum acerto pendente.";
       el("aviso-acertos").textContent = "";
     } catch (erro) {
-      el("aviso-acertos").textContent = erro.message;
+      if (vigente()) el("aviso-acertos").textContent = erro.message;
     }
   }
+  el("operacao").addEventListener("invalidar-loja", () => { acertoSelecionado = undefined; });
   el("atualizar-acertos").onclick = () => void carregarAcertos();
   el("fechar-acerto").onclick = () => el("dialogo-acerto").close();
   el("form-acerto").addEventListener("submit", (evento) => {
