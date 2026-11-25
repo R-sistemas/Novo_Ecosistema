@@ -21,6 +21,7 @@ export function prepararPreferencias(area,avisar) {
   const rascunho = () => ({
     nome:original.nome, ...arte,
     cardapio_cor:campos.cardapio_cor.value, cardapio_fundo:campos.cardapio_fundo.value,
+    oferece_entrega:campos.oferece_entrega.checked,
     pagamento_na_entrega:campos.pagamento_na_entrega.checked
   });
   const previa = () => {
@@ -39,6 +40,7 @@ export function prepararPreferencias(area,avisar) {
     mapaAtual.hidden = !link;
     if (link) mapaAtual.href = link;
     else mapaAtual.removeAttribute("href");
+    campos.oferece_entrega.checked = config.oferece_entrega === true;
     campos.pagamento_na_entrega.checked = config.pagamento_na_entrega;
     arte = Object.fromEntries(Object.keys(imagens).map(c => [c,config[c]]));
     metodos.textContent = !config.metodos ? "Métodos públicos indisponíveis sem link de cardápio."

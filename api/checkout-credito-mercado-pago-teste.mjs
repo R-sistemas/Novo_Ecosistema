@@ -5,14 +5,14 @@ import { mercadoPago } from "../lib/mercado-pago.mjs";
 import { bancoMercadoPagoTeste as banco } from "../lib/banco-mercado-pago-teste.mjs";
 import { cotarFreteRemo, enderecoValido } from "../lib/frete-remo.mjs";
 
-export async function checkoutCredito(req, res, { sandbox, accessToken, porEmpresa = false }) {
+export async function checkoutCredito(req, res, { sandbox, accessToken }) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") return res.status(405).end();
-  if (!accessToken && !porEmpresa) return res.status(503).json({ erro: "Crédito online indisponível." });
+
   const ambiente = sandbox ? "teste" : "quiosque";
   const { p_slug, p_id, p_cliente, p_mesa = null, p_itens, cartao, endereco, pagamento, frete_centavos: freteInformado } = req.body ?? {};
   if (typeof p_slug !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(p_slug) || p_slug.length > 100 ||
-      (!porEmpresa && p_slug !== (sandbox ? "loja-teste" : "quiosque-dorafa")) || typeof p_id !== "string" ||
+      typeof p_id !== "string" ||
       !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(p_id) ||
       !Array.isArray(p_itens) || !p_itens.length || p_itens.length > 30 ||
       typeof cartao?.token !== "string" || !/^[a-z0-9_-]{10,256}$/i.test(cartao.token) ||
@@ -38,14 +38,9 @@ export async function checkoutCredito(req, res, { sandbox, accessToken, porEmpre
         erro: "O frete foi atualizado. Confira o novo total antes de pagar.", frete_centavos: freteCentavos
       });
     }
-    const legado = async () => pagamento === "online"
-      ? await banco("reservar_credito_entrega_frete_quiosque", {
-        p_id, p_cliente, p_itens, p_endereco: endereco, p_frete_centavos: freteCentavos
-      })
-      : await banco("reservar_credito_mercado_pago_" + ambiente, { p_id, p_cliente, p_mesa, p_itens });
     const reserva = await reservarPedidoMP({ p_slug, p_id, p_cliente, p_mesa, p_itens,
       ...(pagamento === "online" && { p_endereco: endereco, p_frete: freteCentavos }) },
-      { sandbox, meio: "credito", legado, token: accessToken, porEmpresa });
+      { sandbox, meio: "credito", token: accessToken });
     if (!reserva) return res.status(503).json({ erro: "Crédito online indisponível." });
     const { pedido } = reserva;
     integracao = reserva.integracao;
@@ -84,5 +79,5 @@ export async function checkoutCredito(req, res, { sandbox, accessToken, porEmpre
 }
 
 export default function handler(req, res) {
-  return checkoutCredito(req, res, { sandbox: true, accessToken: process.env.MERCADO_PAGO_TEST_ACCESS_TOKEN, porEmpresa: true });
+  return checkoutCredito(req, res, { sandbox: true, accessToken: process.env.MERCADO_PAGO_TEST_ACCESS_TOKEN });
 }

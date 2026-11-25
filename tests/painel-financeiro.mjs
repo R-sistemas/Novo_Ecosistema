@@ -38,6 +38,8 @@ before(async () => {
       ('${usuarios.b}','b@teste.invalid'), ('${usuarios.op}','op@teste.invalid');
     insert into empresas(id,nome,cardapio_slug) values ('${a}','Loja A','quiosque-dorafa'),
       ('${b}','Loja B','b'), ('${vazia}','Vazia','vazia');
+    insert into painel_privado.mp_legado_empresa(empresa_id,ambiente,slug)
+      values ('${a}','producao','quiosque-dorafa');
     insert into membros(empresa_id,usuario_id,papel) values
       ('${a}','${usuarios.a}','gestor'), ('${b}','${usuarios.b}','gestor'),
       ('${vazia}','${usuarios.a}','gestor'), ('${a}','${usuarios.op}','operador');

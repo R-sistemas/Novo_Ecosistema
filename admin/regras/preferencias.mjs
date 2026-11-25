@@ -1,7 +1,7 @@
 export const fundos = ["#f4f6f2","#ffffff","#f1f3f5","#f8f4eb"];
 export const imagens = { cardapio_logo:44000, cardapio_agradecimento:82000 };
 const coordenadas = ["mapa_centro_latitude","mapa_centro_longitude"];
-const comuns = ["cardapio_cor","cardapio_fundo","pagamento_na_entrega",...Object.keys(imagens)];
+const comuns = ["cardapio_cor","cardapio_fundo","pagamento_na_entrega","oferece_entrega",...Object.keys(imagens)];
 
 export function validarPreferencias(dados) {
   if (!dados || typeof dados !== "object" || Array.isArray(dados) ||
@@ -26,7 +26,7 @@ export function validarPreferencias(dados) {
       throw new Error("Informe latitude de −90 a 90 e longitude de −180 a 180, ou limpe as duas.");
     }
   }
-  if ("pagamento_na_entrega" in dados && typeof dados.pagamento_na_entrega !== "boolean") {
+  if (["pagamento_na_entrega","oferece_entrega"].some(campo => campo in dados && typeof dados[campo] !== "boolean")) {
     throw new Error("Confira a opção de pagamento na entrega.");
   }
   return dados;

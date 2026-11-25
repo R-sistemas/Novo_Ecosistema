@@ -61,3 +61,12 @@ button.secundario,button.mais,button.produto-detalhe{border-color:var(--borda)}b
   line-height: 1.25;
 }
 #acompanhar { justify-self: start; min-height: 44px; }
+
+#voltar-cardapio {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: .75rem;
+  text-decoration: none;
+}
+#voltar-cardapio:focus-visible { outline: 3px solid #7cb989; outline-offset: 2px; }

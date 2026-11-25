@@ -17,7 +17,7 @@ const server = http.createServer(async (req, res) => {
   } catch { res.writeHead(404).end(); }
 });
 await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
-const base = "http://127.0.0.1:" + server.address().port + "/cardapio.html?loja=quiosque-dorafa";
+const base = "http://127.0.0.1:" + server.address().port + "/cardapio.html?loja=empresa-entrega";
 const browser = await chromium.launch({ headless: true, channel: "chrome" });
 try {
   for (const caso of ["validacao", "pix", "dinheiro", "credito", "frete-alterado", "conflito", "repeticao", "metodos", "pino", "memoria", "limpeza", "armazenamento"]) {
@@ -35,7 +35,7 @@ try {
     await page.route("https://eyqxxlcmxlilgogxdcoq.supabase.co/**", async route => {
       const nome = route.request().url().split("/").at(-1);
       const json = nome === "ver_cardapio" ? {
-        nome: "Quiosque Teste", mapa_centro: { latitude: -16.68, longitude: -49.26 },
+        nome: "Loja com entrega", oferece_entrega: true, mapa_centro: { latitude: -16.68, longitude: -49.26 },
         produtos: [{ id: "produto", nome: "Produto teste", preco_centavos: 1250, categoria: "Lanches" }]
       } : nome === "metodos_checkout_publico" ? { pix: caso !== "metodos", credito: caso !== "metodos", debito: false } :
         nome === "pagamento_na_entrega_disponivel" ? caso !== "metodos" :
@@ -75,6 +75,12 @@ try {
       await page.locator(".leaflet-container").waitFor();
     }
     await abrir();
+    if (caso === "validacao" && process.env.ENTREGA_CAPTURAS) {
+      await page.screenshot({ path: path.join(process.env.ENTREGA_CAPTURAS, "checkout-entrega-desktop.png") });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.screenshot({ path: path.join(process.env.ENTREGA_CAPTURAS, "checkout-entrega-mobile.png") });
+      await page.setViewportSize({ width: 1280, height: 720 });
+    }
     if (caso === "validacao") {
       await page.locator("#enviar-pedido").click();
       assert.equal(await page.locator('[name="nome"]').getAttribute("aria-invalid"), "true");

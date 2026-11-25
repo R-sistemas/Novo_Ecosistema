@@ -24,7 +24,7 @@ export function configurarEnvio(ctx) {
       if (ctx.creditoTeste || ctx.creditoQuiosque || ctx.formaPagamento === "credito-mp") {
         if (!ctx.creditoTeste) {
           el("titulo-credito").textContent = "Cartão de crédito";
-          el("aviso-credito").textContent = ctx.opcoesMP ? "Pagamento Mercado Pago" : "Piloto do Quiosque";
+          el("aviso-credito").textContent = ctx.opcoesMP ? "Pagamento Mercado Pago" : "Pagamento com cartão";
         }
         const totalCentavos = ctx.carrinho.total();
         const { abrirCreditoTeste } = await import("../../credito-teste.mjs");
@@ -66,7 +66,7 @@ export function configurarEnvio(ctx) {
         else if (!ctx.entregaTeste && !ctx.entregaQuiosque) ctx.parametros.delete("entrega");
         if (pix) {
           await ctx.mostrarPix({ ...dados, cpfCnpj, endereco, pagamento, frete_centavos });
-          if (ctx.pixMercadoPagoQuiosque) ctx.parametros.set("pix", "mercado-pago");
+          if (ctx.pixMercadoPagoQuiosque || ctx.pixMercadoPagoTeste) ctx.parametros.set("pix", "mercado-pago");
           el("documento-pix").value = "";
           ctx.p_id = ctx.tentativa.id;
         } else if (ctx.entrega) {

@@ -2,14 +2,13 @@ import { consultarDisponibilidadePix, consultarPagamentoNaEntrega } from "../dad
 const el = id => document.getElementById(id);
 
 export async function configurarPagamento(ctx) {
-  if (ctx.p_slug === "quiosque-dorafa" && !ctx.opcoesMP) {
+  if (ctx.mpLegado && !ctx.opcoesMP) {
     ctx.pixDisponivel = await consultarDisponibilidadePix({ p_slug: ctx.p_slug }).catch(() => false);
   }
   el("tipo-entrega").hidden = !ctx.escolhaPublicaEntrega || ctx.entrega;
   el("pagamento-padrao").hidden = Boolean(ctx.p_mesa) || ctx.entrega || ctx.creditoTeste || ctx.creditoQuiosque;
   el("opcao-pix").hidden = !ctx.pixDisponivel || ctx.creditoTeste || ctx.creditoQuiosque;
-  el("opcao-pix").textContent = ctx.pixTeste ? "Pagar com Pix Sandbox"
-    : ctx.pixMercadoPagoQuiosque ? "Pagar com Pix Mercado Pago" : "Pagar com Pix";
+  el("opcao-pix").textContent = "Pix";
   const atualizarPagamento = () => {
     const solicitarDocumento = !ctx.pixTeste && !ctx.pixMercadoPagoQuiosque && ctx.formaPagamento === "pix";
     el("dados-pix").hidden = !solicitarDocumento;
@@ -77,10 +76,10 @@ export async function configurarPagamento(ctx) {
   if (ctx.entrega || ctx.escolhaPublicaEntrega) {
     el("entrega-teste").hidden = false;
     el("entrega-teste").disabled = false;
-    if (ctx.p_slug === "quiosque-dorafa" && !ctx.opcoesMP) {
+    if (ctx.mpLegado && !ctx.opcoesMP) {
       el("legenda-entrega").textContent = "Endereço da entrega";
       el("pagamento-entrega").querySelector('[data-pagamento="online"]').textContent = ctx.entregaTeste
-        ? "Pix Mercado Pago de teste" : "Pix Mercado Pago";
+        ? "Pix de teste" : "Pix";
     }
     if (await consultarPagamentoNaEntrega({ p_slug: ctx.p_slug }).catch(() => false)) {
       el("pagamento-entrega").insertAdjacentHTML("beforeend", '<button class="opcao-escolha" type="button" data-pagamento="na_entrega" aria-pressed="false">Pagar na entrega</button>');

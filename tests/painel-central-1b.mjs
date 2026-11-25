@@ -122,7 +122,7 @@ test("ações manuais exigem MFA e capacidade, liberam e auditam sem duplicaçã
 test("checkout traduz a negativa do banco sem criar cobrança externa", async t => {
   const { checkout } = await import("../api/checkout-pix-mercado-pago-teste.mjs");
   t.mock.method(globalThis, "fetch", async url => {
-    assert.equal(new URL(url).pathname, "/rest/v1/rpc/reservar_pix_mercado_pago_quiosque");
+    assert.equal(new URL(url).pathname, "/rest/v1/rpc/servico_mp_reserva_pedido");
     return Response.json({code:"P0751", message:"Loja fechada para novos pedidos."}, {status:400});
   });
   const anteriorUrl=process.env.SUPABASE_URL, anteriorChave=process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -205,9 +205,9 @@ test("fallback legado é fixado ao UUID e ao ambiente; Pix do caixa fixa a conta
   assert.equal(await rpc("servico_mp_conciliar_pdv",[contaMP,tentativa,"ORD9",100,"producao","aguardando"],null,"service_role"),"aguardando");
 });
 
-test("banco limita sandbox ao recebedor de teste e à loja-teste", async () => {
+test("banco limita sandbox ao recebedor de teste e à loja habilitada", async () => {
   const empresa=id(101), autor=id(102);
-  await db.query("insert into public.empresas(id,nome,cardapio_slug) values($1,'Fixture sandbox','loja-teste')",[empresa]);
+  await db.query("insert into public.empresas(id,nome,cardapio_slug,sandbox_checkout) values($1,'Fixture sandbox','empresa-sandbox',true)",[empresa]);
   await db.query("insert into auth.users(id,email) values($1,'gestor-sandbox@example.test')",[autor]);
   await db.query("insert into public.membros values($1,$2,'gestor')",[empresa,autor]);
   const envelope="v1."+"a".repeat(70);
@@ -215,4 +215,22 @@ test("banco limita sandbox ao recebedor de teste e à loja-teste", async () => {
   await assert.rejects(gravar(empresa,"sandbox","3095871692"),{code:"22023"});
   await assert.rejects(gravar(empresa,"producao","3095871690"),{code:"22023"});
   assert.equal((await gravar(empresa,"sandbox","3095871690")).estado,"pendente");
+});
+
+test("Pix entrega reaproveita a reserva no reload e impede nova entrega quando desligada", async () => {
+  const loja = id(81), pedido = id(110);
+  const itens = JSON.stringify([{produto_id:id(85),quantidade:1}]);
+  const endereco = JSON.stringify({logradouro:"Rua",numero:"10",bairro:"Centro",cidade:"Cidade"});
+  const reservar = (slug, cliente, produtos, dados = null, frete = null) => rpc(
+    "servico_mp_reserva_pedido",[slug,pedido,cliente,null,produtos,"pix","producao",dados,frete],null,"service_role"
+  );
+  await assert.rejects(reservar("recebedor-0","Fixture",itens,endereco,25),{code:"22023"});
+  await db.query("update public.empresas set oferece_entrega=true where id=$1",[loja]);
+  const inicial = await reservar("recebedor-0","Fixture",itens,endereco,25);
+  await db.query("update public.empresas set oferece_entrega=false where id=$1",[loja]);
+  const retomada = await reservar("recebedor-0",null,"[]");
+  assert.equal(retomada.integracao,inicial.integracao);
+  assert.equal(retomada.total_centavos,125);
+  await assert.rejects(reservar("recebedor-1",null,"[]"),{code:"23505"});
+  await assert.rejects(reservar("recebedor-0","Fixture",itens),{code:"23505"});
 });

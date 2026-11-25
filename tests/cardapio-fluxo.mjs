@@ -33,7 +33,7 @@ try {
       chamadas.push({ nome, dados });
       let json;
       if (nome === "ver_cardapio") json = {
-        nome: "Loja de teste", fechado: caso.endsWith("fechado"), produtos: (caso === "vazio" || caso.endsWith("fechado")) ? [] : [
+        nome: "Loja de teste", sandbox_checkout: dados.p_slug === "loja-teste", oferece_entrega: caso === "quiosque", fechado: caso.endsWith("fechado"), produtos: (caso === "vazio" || caso.endsWith("fechado")) ? [] : [
           { id: "produto-teste", nome: "Produto de teste", preco_centavos: 1250, categoria: "Lanches" }
         ]
       };
@@ -87,6 +87,12 @@ try {
       if (caso === "retomar-pix") {
         await page.locator("#pagamento-pix").waitFor();
         assert.equal(await page.locator("#pix-codigo").inputValue(), "PIX-TESTE");
+      }
+      if (caso === "retomar") {
+        const voltar = page.getByRole("link", { name: "Voltar ao cardápio" });
+        await voltar.click();
+        await page.locator('[aria-label*="Adicionar"]').first().waitFor();
+        assert.equal(new URL(page.url()).searchParams.has("pedido"), false);
       }
       assert.equal(chamadas.filter(c => c.nome === "enviar_pedido").length, 0);
       if (caso === "quiosque") {

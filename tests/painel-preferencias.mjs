@@ -14,6 +14,7 @@ const read=p=>readFile(resolve(root,p),"utf8");
 const config=JSON.parse(await read("vercel.json"));
 const a="30000000-0000-0000-0000-00000000000a";
 const b="30000000-0000-0000-0000-00000000000b";
+const historica="30000000-0000-0000-0000-00000000000c";
 const ids={a:"40000000-0000-0000-0000-000000000001",b:"40000000-0000-0000-0000-000000000002",
   op:"40000000-0000-0000-0000-000000000003"};
 before(async()=>{
@@ -26,8 +27,13 @@ before(async()=>{
       select nullif(current_setting('request.jwt.claim.role',true),'') $$;
     grant usage on schema auth to anon,authenticated,service_role;
   `);
-  for(const n of (await readdir(resolve(root,"supabase/migrations"))).filter(n=>n.endsWith(".sql")).sort())
+  for(const n of (await readdir(resolve(root,"supabase/migrations"))).filter(n=>n.endsWith(".sql")).sort()) {
+    if (n.includes("numeracao_comanda_empresa")) {
+      await db.query("insert into empresas(id,nome,cardapio_slug) values($1,'Histórica','historica')",[historica]);
+      await db.query("insert into pedidos_online(id,empresa_id,cliente,itens,total_centavos,comanda) overriding system value values(gen_random_uuid(),$1,'Cliente de teste','[]',100,95)",[historica]);
+    }
     await db.exec(await read("supabase/migrations/"+n));
+  }
   for(const [label,id] of Object.entries(ids))await db.query("insert into auth.users values($1,$2)",[id,label+"@example.invalid"]);
   await db.query("insert into empresas(id,nome,cardapio_slug) values($1,'Loja A','a'),($2,'Loja B','b')",[a,b]);
   await db.query("insert into membros values($1,$3,'gestor'),($2,$4,'gestor'),($1,$5,'operador')",[a,b,ids.a,ids.b,ids.op]);
@@ -237,4 +243,48 @@ test("Chrome sobrepõe rascunho à vitrine real do ensaio e abre o cardápio atu
     await pagina.locator("#loja").getByText("Loja A",{exact:true}).waitFor();
     assert.equal(await pagina.locator("html").evaluate(e=>e.style.getPropertyValue("--verde")),"#226655");
   }finally{servidor.close();await navegador.close();}
+});
+
+test("oferecer entrega fica isolado por loja e aparece no cardápio público", async () => {
+  const anterior = (await publicacao("a")).oferece_entrega;
+  assert.equal(anterior, false);
+  await assert.rejects(prefs("a", b, { oferece_entrega: true }), { code: "42501" });
+  await assert.rejects(prefs("a", a, { oferece_entrega: "sim" }), { code: "22023" });
+  const { rows } = await prefs("a", a, { oferece_entrega: true });
+  assert.equal(rows[0].dados.oferece_entrega, true);
+  assert.equal((await publicacao("a")).oferece_entrega, true);
+  assert.equal((await publicacao("b")).oferece_entrega, false);
+  const eventos = await db.query("select antes,depois from painel_privado.auditoria where empresa_id=$1 and depois ? 'oferece_entrega'", [a]);
+  assert.deepEqual(eventos.rows.at(-1), { antes: { oferece_entrega: false }, depois: { oferece_entrega: true } });
+});
+
+test("comandas começam em 1 por loja e o contador reverte junto com o pedido", async () => {
+  const inserir = (tx, loja) => tx.query(
+    "insert into pedidos_online(id,empresa_id,cliente,itens,total_centavos) values(gen_random_uuid(),$1,'Cliente de teste','[]',100) returning id,comanda",
+    [loja]
+  );
+  const legado = await db.query("select comanda from pedidos_online where empresa_id=$1",[historica]);
+  assert.equal(Number(legado.rows[0].comanda), 95);
+  assert.equal(Number((await inserir(db, historica)).rows[0].comanda), 96);
+  const [primeiro, outro] = await Promise.all([inserir(db, a), inserir(db, b)]);
+  assert.equal(Number(primeiro.rows[0].comanda), 1);
+  assert.equal(Number(outro.rows[0].comanda), 1);
+  assert.notEqual(primeiro.rows[0].id, outro.rows[0].id);
+  await assert.rejects(db.transaction(async tx => {
+    const inserido = await inserir(tx, a);
+    assert.equal(Number(inserido.rows[0].comanda), 2);
+    throw new Error("rollback");
+  }), /rollback/);
+  const proximos = await Promise.all([inserir(db, a), inserir(db, a)]);
+  assert.deepEqual(proximos.map(r => Number(r.rows[0].comanda)), [2, 3]);
+});
+
+test("funções efetivas de checkout e despacho não decidem pelo slug piloto", async () => {
+  const { rows } = await db.query(`
+    select p.oid::regprocedure::text as funcao
+    from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+    where n.nspname in ('public','painel_privado','remo')
+      and (p.prosrc like '%quiosque-dorafa%' or p.prosrc like '%loja-teste%')
+  `);
+  assert.deepEqual(rows, []);
 });

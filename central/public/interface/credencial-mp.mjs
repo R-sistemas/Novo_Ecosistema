@@ -42,6 +42,7 @@ export function controlesRecebedorMP(detalhe, sair, bloquear) {
     try {
       const dados = await lerRecebedorMP(empresa, ambiente.value);
       if (versao !== atual) return;
+      seletor.hidden = dados.sandbox_disponivel !== true;
       status = dados;
       aviso.textContent = (dados.configurado ? "Conta configurada." : "Sem conta configurada.") +
         (dados.pendente ? " Aprovação pendente do recebedor " + dados.recebedor_pendente + "." : "");
@@ -53,8 +54,8 @@ export function controlesRecebedorMP(detalhe, sair, bloquear) {
 
   function abrir(registro) {
     empresa = registro?.id;
-    seletor.hidden = registro?.cardapio_slug !== "loja-teste";
-    ambiente.value = seletor.hidden ? "producao" : "sandbox";
+    seletor.hidden = true;
+    ambiente.value = "producao";
     return consultar();
   }
 

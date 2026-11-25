@@ -1,4 +1,4 @@
-export function criarContexto(busca) {
+export function criarContexto(busca, capacidades = {}) {
   const parametros = new URLSearchParams(busca);
   const p_slug = parametros.get("loja");
   const p_mesa = parametros.get("mesa");
@@ -7,15 +7,15 @@ export function criarContexto(busca) {
   const ocupado = false;
   const aguardandoPix = false;
   const acompanhamentoAtivo = false;
-  const pixTeste = p_slug === "loja-teste";
+  const pixTeste = capacidades.sandbox_checkout === true;
   const creditoTeste = pixTeste && parametros.get("cartao") === "credito";
   const entregaTeste = pixTeste && !p_mesa && !creditoTeste && parametros.get("entrega") === "teste";
-  const entregaQuiosque = p_slug === "quiosque-dorafa" && !p_mesa && parametros.get("entrega") === "sim";
+  const entregaQuiosque = Boolean(p_id || capacidades.oferece_entrega) && !p_mesa && parametros.get("entrega") === "sim";
   const entrega = entregaTeste || entregaQuiosque;
-  const creditoQuiosque = !entrega && p_slug === "quiosque-dorafa" && parametros.get("cartao") === "credito";
-  const escolhaPublicaEntrega = p_slug === "quiosque-dorafa" && !p_mesa && !creditoTeste && !creditoQuiosque;
+  const creditoQuiosque = !entrega && capacidades.mp_legado === true && parametros.get("cartao") === "credito";
+  const escolhaPublicaEntrega = capacidades.oferece_entrega === true && !p_mesa && !creditoTeste && !creditoQuiosque;
   const pixMercadoPagoTeste = entregaTeste || (pixTeste && parametros.get("pix") === "mercado-pago");
-  const pixMercadoPagoQuiosque = p_slug === "quiosque-dorafa" &&
+  const pixMercadoPagoQuiosque = capacidades.mp_legado === true &&
     (entregaQuiosque || parametros.get("pix") === "mercado-pago" || (!p_id && !parametros.has("pix")));
   const pixDisponivel = pixTeste;
   const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -28,7 +28,7 @@ export function criarContexto(busca) {
     ocupado,
     aguardandoPix,
     acompanhamentoAtivo,
-    pixTeste,
+    mpLegado: capacidades.mp_legado === true, pixTeste,
     creditoTeste,
     entregaTeste,
     entregaQuiosque,

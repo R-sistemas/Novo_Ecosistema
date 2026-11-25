@@ -19,9 +19,13 @@ export function iniciarCardapio() {
     if (!ctx.p_slug) throw new Error("Abra o link do cardápio do estabelecimento.");
     const menu = await consultarCardapio({ p_slug: ctx.p_slug });
     if (!menu) throw new Error("Cardápio indisponível.");
+    Object.assign(ctx, criarContexto(location.search, menu), { ocupado: true });
     const opcoes = await consultarOpcoesMP(ctx.p_slug).catch(() => null);
     ctx.opcoesMP = typeof opcoes?.pix === "boolean" ? opcoes : null;
-    if (ctx.opcoesMP?.pix || ctx.parametros.get("pix") === "mercado-pago" && !ctx.pixTeste) {
+    if (ctx.pixTeste && ctx.opcoesMP?.pix) {
+      ctx.pixMercadoPagoTeste = true;
+      ctx.pixDisponivel = true;
+    } else if (!ctx.pixTeste && (ctx.opcoesMP?.pix || ctx.parametros.get("pix") === "mercado-pago")) {
       ctx.pixMercadoPagoQuiosque = true;
       ctx.pixDisponivel = Boolean(ctx.opcoesMP?.pix);
     }
@@ -53,14 +57,17 @@ export function iniciarCardapio() {
     }
     if (!menu.produtos.length) throw new Error("Nenhum produto disponível.");
     ctx.carrinho = montarVitrine(menu.produtos);
-    if (!ctx.p_mesa && (ctx.p_slug === "quiosque-dorafa" ||
-        ctx.opcoesMP && ctx.parametros.get("entrega") === "sim")) {
+    if (!ctx.p_mesa && menu.oferece_entrega === true) {
       el("carrinho-cardapio").classList.add("checkout-entrega");
       el("contexto-cardapio").textContent = "Entrega";
       el("contexto-cardapio").hidden = false;
       await iniciarCheckoutEntrega({
         slug: ctx.p_slug, menu, carrinho: ctx.carrinho,
-        aoPix: dados => ctx.mostrarPix(dados),
+        aoPix(dados) {
+          if (ctx.pixTeste) ctx.pixMercadoPagoTeste = true;
+          else ctx.pixMercadoPagoQuiosque = true;
+          return ctx.mostrarPix(dados);
+        },
         async aoConfirmar(id, metodo) {
           ctx.p_id = id;
           ctx.parametros.set("pedido", id);

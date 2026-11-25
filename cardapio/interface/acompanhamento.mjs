@@ -34,6 +34,11 @@ export function configurarAcompanhamento(ctx) {
     if (ctx.p_mesa && (pedido.cancelado || !ctx.acompanhamentoAtivo)) apagarPedidoMesa(ctx.p_slug,ctx.p_mesa);
     exibirAvisosPedido(el("mensagem"),pedido.avisos ?? []);
     if (!ctx.aguardandoPix) el("pagamento-pix").hidden = true;
+    const volta = el("voltar-cardapio");
+    const destino = new URLSearchParams({ loja: ctx.p_slug });
+    if (pedido.mesa) destino.set("mesa", pedido.mesa);
+    volta.href = "?" + destino;
+    volta.hidden = ctx.aguardandoPix || Boolean(pedido.mesa && ctx.acompanhamentoAtivo);
     const { pixConfirmado } = resumo;
     const painelConfirmacao = el("pix-confirmado");
     painelConfirmacao.hidden = !pixConfirmado;

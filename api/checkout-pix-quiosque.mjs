@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   if (!integracao) return res.status(503).json({ erro: "Pix indisponível." });
   const { banco, asaas } = integracao;
   const { p_slug, p_id, p_cliente = null, p_mesa = null, p_itens, cpfCnpj } = req.body ?? {};
-  if (p_slug !== "quiosque-dorafa" || !pedidoValido(p_id) || !Array.isArray(p_itens) || p_itens.length > 30) {
+  if (typeof p_slug !== "string" || !pedidoValido(p_id) || !Array.isArray(p_itens) || p_itens.length > 30) {
     return res.status(400).json({ erro: "Pedido inválido." });
   }
   const documento = typeof cpfCnpj === "string" ? cpfCnpj.replace(/[.\/-]/g, "") : "";
@@ -18,6 +18,9 @@ export default async function handler(req, res) {
 
   let etapa = "disponibilidade";
   try {
+    if (!await banco("servico_asaas_checkout_legado", { p_slug, p_ambiente: "producao" })) {
+      return res.status(400).json({ erro: "Pedido inválido." });
+    }
     const ativo = await banco("pix_online_disponivel", { p_slug });
     if (!ativo) return res.status(503).json({ erro: "Pix indisponível." });
     etapa = "reserva do pedido";

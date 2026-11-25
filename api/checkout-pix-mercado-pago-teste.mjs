@@ -6,12 +6,12 @@ import { emailPixMercadoPago, mercadoPago } from "../lib/mercado-pago.mjs";
 import { bancoMercadoPagoTeste as banco } from "../lib/banco-mercado-pago-teste.mjs";
 import { cotarFreteRemo, enderecoValido, enderecoLegadoValido } from "../lib/frete-remo.mjs";
 
-export async function checkout(req, res, { sandbox, token, porEmpresa = false }) {
+export async function checkout(req, res, { sandbox, token }) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") return res.status(405).end();
   const { p_slug, p_id, p_cliente = null, p_mesa = null, p_itens, endereco, pagamento, frete_centavos: freteInformado } = req.body ?? {};
   if (typeof p_slug !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(p_slug) || p_slug.length > 100 ||
-      (!porEmpresa && p_slug !== (sandbox ? "loja-teste" : "quiosque-dorafa")) || typeof p_id !== "string" ||
+      typeof p_id !== "string" ||
       !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(p_id) ||
       !Array.isArray(p_itens) || p_itens.length > 30) {
     return res.status(400).json({ erro: "Pedido inválido." });
@@ -29,7 +29,7 @@ export async function checkout(req, res, { sandbox, token, porEmpresa = false })
     return res.status(400).json({ erro: "Confira o contato e a forma de pagamento." });
   }
   const naEntrega = pagamento === "na_entrega";
-  if (!naEntrega && !token && !porEmpresa) return res.status(503).json({ erro: "Pix indisponível." });
+
   try {
     let freteCentavos = 0;
     if (pagamento !== undefined) {
@@ -45,12 +45,9 @@ export async function checkout(req, res, { sandbox, token, porEmpresa = false })
       return res.status(200).json({ pedido: id });
     }
     const ambiente = sandbox ? "teste" : "quiosque";
-    const legado = async () => pagamento === "online"
-      ? await banco("reservar_pix_entrega_frete_" + ambiente, { p_id, p_cliente, p_itens, p_endereco: endereco, p_frete_centavos: freteCentavos })
-      : await banco("reservar_pix_mercado_pago_" + ambiente, { p_id, p_cliente, p_mesa, p_itens });
     const reserva = await reservarPedidoMP({ p_slug, p_id, p_cliente, p_mesa, p_itens,
       ...(pagamento === "online" && { p_endereco: endereco, p_frete: freteCentavos }) },
-      { sandbox, meio: "pix", legado, token, porEmpresa });
+      { sandbox, meio: "pix", token });
     if (!reserva) return res.status(503).json({ erro: "Pix indisponível." });
     const { pedido, integracao } = reserva;
     const cliente = mercadoPago(reserva.token);
@@ -58,7 +55,7 @@ export async function checkout(req, res, { sandbox, token, porEmpresa = false })
     const ordem = pedido.cobranca ? await cliente.consultarOrdem(pedido.cobranca)
       : await cliente.criarPix({
         pedidoId: p_id, totalCentavos: pedido.total_centavos,
-        email: emailPixMercadoPago(sandbox),
+        email: emailPixMercadoPago(sandbox, p_id),
         pagadorTeste: sandbox ? { first_name: "APRO" } : undefined
       });
     if (!ordemNoAmbienteMP(ordem, sandbox, reserva.recebedor) ||
@@ -88,5 +85,5 @@ export default function handler(req, res) {
   if (new URL(req.url || "/", "http://localhost").searchParams.get("cotacao_frete") === "1") {
     return cotarFreteCheckout(req, res);
   }
-  return checkout(req, res, { sandbox: true, token: process.env.MERCADO_PAGO_TEST_ACCESS_TOKEN, porEmpresa: true });
+  return checkout(req, res, { sandbox: true, token: process.env.MERCADO_PAGO_TEST_ACCESS_TOKEN });
 }
