@@ -1,5 +1,6 @@
 import { consultarFrete, registrarEntrega } from "../dados/checkout.mjs";
 import { telefoneNacional, trocoInsuficiente } from "../regras/pedido.mjs";
+import { configuracaoCartao } from "../../cardapio/regras/cartao.mjs";
 const el = id => document.getElementById(id);
 
 export function configurarConfirmacao(ctx) {
@@ -38,7 +39,8 @@ export function configurarConfirmacao(ctx) {
         p_cliente: ctx.estado.nome.trim(), endereco: ctx.endereco(), pagamento: ctx.estado.modalidade,
         frete_centavos: ctx.estado.frete
       };
-      const assinatura = JSON.stringify(dados);
+      const cartao = ctx.estado.metodo === "credit" ? configuracaoCartao(ctx.metodosOnline) : null;
+      const assinatura = JSON.stringify([dados, cartao]);
       if (ctx.estado.tentativa?.assinatura !== assinatura) ctx.estado.tentativa = { id: crypto.randomUUID(), assinatura };
       dados.p_id = ctx.estado.tentativa.id;
       if (ctx.estado.metodo === "pix") { await ctx.aoPix(dados); ctx.salvarDados(); await ctx.aoConfirmar(dados.p_id, "pix"); }
@@ -49,13 +51,15 @@ export function configurarConfirmacao(ctx) {
         ctx.salvarDados();
         await ctx.aoConfirmar(resultado.pedido, "na_entrega");
       } else if (ctx.estado.metodo === "credit") {
+        if (!cartao) throw new Error("Cartão indisponível para esta loja.");
         const { abrirCreditoTeste } = await import("../../credito-teste.mjs");
         el("carrinho-cardapio").close();
         el("vitrine").hidden = true;
         el("barra-cardapio").hidden = true;
         await abrirCreditoTeste({
           totalCentavos: ctx.subtotal() + ctx.estado.frete,
-          chavePublica: ctx.metodosOnline.chave_publica,
+          ...cartao,
+          aoRecusar: id => { ctx.estado.tentativa.id = id; },
           pedido: { ...dados }, aoFreteAlterado(novoFrete) {
             el("painel-credito-teste").hidden = true;
             ctx.estado.etapa = 1;
@@ -63,7 +67,7 @@ export function configurarConfirmacao(ctx) {
             el("carrinho-cardapio").showModal();
             ctx.mostrarFreteAtualizado(novoFrete);
           }
-        }, id => { ctx.salvarDados(); return ctx.aoConfirmar(id, "credito"); }, true);
+        }, id => { ctx.salvarDados(); return ctx.aoConfirmar(id, "credito"); });
       } else throw new Error("Escolha um método de pagamento disponível.");
     } catch (falha) {
       if (Number.isSafeInteger(falha.frete_centavos)) ctx.mostrarFreteAtualizado(falha.frete_centavos);

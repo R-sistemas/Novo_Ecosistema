@@ -1,19 +1,20 @@
 import { ordemNoAmbienteMP } from "../lib/mercado-pago-ambiente.mjs";
-import { reservarPedidoMP, vincularOrdemMP } from "../lib/reserva-pedido-mp.mjs";
+import { reservarCreditoMP, vincularOrdemMP } from "../lib/reserva-pedido-mp.mjs";
 import { codigoSuspensao, responderLojaFechada } from "../lib/suspensao-checkout.mjs";
 import { mercadoPago } from "../lib/mercado-pago.mjs";
 import { bancoMercadoPagoTeste as banco } from "../lib/banco-mercado-pago-teste.mjs";
 import { cotarFreteRemo, enderecoValido } from "../lib/frete-remo.mjs";
 
-export async function checkoutCredito(req, res, { sandbox, accessToken }) {
+export async function checkoutCredito(req, res, { sandbox }) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") return res.status(405).end();
 
   const ambiente = sandbox ? "teste" : "quiosque";
-  const { p_slug, p_id, p_cliente, p_mesa = null, p_itens, cartao, endereco, pagamento, frete_centavos: freteInformado } = req.body ?? {};
+  const { p_slug, p_id, p_cliente, p_mesa = null, p_itens, cartao, chave_publica, endereco, pagamento, frete_centavos: freteInformado } = req.body ?? {};
   if (typeof p_slug !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(p_slug) || p_slug.length > 100 ||
       typeof p_id !== "string" ||
       !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(p_id) ||
+      typeof chave_publica !== "string" || !chave_publica || chave_publica.length > 256 ||
       !Array.isArray(p_itens) || !p_itens.length || p_itens.length > 30 ||
       typeof cartao?.token !== "string" || !/^[a-z0-9_-]{10,256}$/i.test(cartao.token) ||
       typeof cartao.bandeira !== "string" || !/^[a-z0-9_]{1,32}$/i.test(cartao.bandeira) ||
@@ -21,7 +22,7 @@ export async function checkoutCredito(req, res, { sandbox, accessToken }) {
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cartao.email)) {
     return res.status(400).json({ erro: "Dados do pagamento inválidos." });
   }
-  if (pagamento !== undefined && (sandbox || pagamento !== "online" || p_mesa ||
+  if (pagamento !== undefined && (pagamento !== "online" || p_mesa ||
       !enderecoValido(endereco) || !Number.isSafeInteger(freteInformado) || freteInformado < 0)) {
     return res.status(400).json({ erro: "Confira a localização e o frete da entrega." });
   }
@@ -38,9 +39,9 @@ export async function checkoutCredito(req, res, { sandbox, accessToken }) {
         erro: "O frete foi atualizado. Confira o novo total antes de pagar.", frete_centavos: freteCentavos
       });
     }
-    const reserva = await reservarPedidoMP({ p_slug, p_id, p_cliente, p_mesa, p_itens,
+    const reserva = await reservarCreditoMP({ p_slug, p_id, p_cliente, p_mesa, p_itens,
       ...(pagamento === "online" && { p_endereco: endereco, p_frete: freteCentavos }) },
-      { sandbox, meio: "credito", token: accessToken });
+      sandbox, chave_publica);
     if (!reserva) return res.status(503).json({ erro: "Crédito online indisponível." });
     const { pedido } = reserva;
     integracao = reserva.integracao;
@@ -59,12 +60,15 @@ export async function checkoutCredito(req, res, { sandbox, accessToken }) {
     if (!pedido.cobranca && !await vincularOrdemMP(integracao, ambiente, "credito", p_id, ordem.id, pedido.total_centavos)) throw new Error("Vínculo da ordem recusado.");
     return res.status(200).json({ estado: ordem.status });
   } catch (erro) {
+    if (erro.codigo === "PT409") return res.status(409).json({
+      codigo: "configuracao_cartao_alterada", erro: "A configuração de cartão mudou. Atualize a página antes de pagar."
+    });
     if (erro.codigo === codigoSuspensao) return responderLojaFechada(res);
     if (erro.message.startsWith("Mercado Pago retornou HTTP 402")) {
       try {
-        const recusado = integracao
-          ? await banco("servico_mp_recusar_credito", { p_integracao: integracao, p_pedido: p_id })
-          : await banco("recusar_credito_mercado_pago_" + ambiente, { p_pedido: p_id });
+        const recusado = integracao && await banco("servico_mp_recusar_credito", {
+          p_integracao: integracao, p_pedido: p_id
+        });
         if (recusado) {
           return res.status(402).json({ erro: sandbox ? "Cartão recusado no teste. Você pode tentar novamente."
             : "Cartão recusado. Você pode tentar novamente." });
@@ -79,5 +83,5 @@ export async function checkoutCredito(req, res, { sandbox, accessToken }) {
 }
 
 export default function handler(req, res) {
-  return checkoutCredito(req, res, { sandbox: true, accessToken: process.env.MERCADO_PAGO_TEST_ACCESS_TOKEN });
+  return checkoutCredito(req, res, { sandbox: true });
 }

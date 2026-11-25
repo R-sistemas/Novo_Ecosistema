@@ -1,6 +1,6 @@
 import { entrar, carregarVinculosPdv } from "../dados/sessao.mjs";
 import { carregarCozinha } from "../../cozinha.mjs";
-import { carregarAjustesCaixa } from "../../ajustes-caixa.mjs";
+import { carregarAjustesCaixa, invalidarAjustesCaixa } from "../../ajustes-caixa.mjs";
 
 export function configurarSessao(ctx) {
   const { el, operar, atualizar, estado, carrinho, limparPagamento, renderizar, carregarComandas, carregarAcertos } =
@@ -33,8 +33,10 @@ export function configurarSessao(ctx) {
     });
   });
 
-  el("empresa").addEventListener("change", () =>
-    operar(async () => {
+  el("empresa").addEventListener("change", () => {
+    invalidarAjustesCaixa();
+    if (ctx.area() === "vendas") void carregarAjustesCaixa();
+    void operar(async () => {
       carrinho.clear();
       ctx.setComandaAberta(undefined);
       ctx.setVendaPendente(undefined);
@@ -52,6 +54,6 @@ export function configurarSessao(ctx) {
       }
       await atualizar();
       return "Estabelecimento carregado.";
-    }),
-  );
+    });
+  });
 }

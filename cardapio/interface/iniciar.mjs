@@ -57,7 +57,7 @@ export function iniciarCardapio() {
     }
     if (!menu.produtos.length) throw new Error("Nenhum produto disponível.");
     ctx.carrinho = montarVitrine(menu.produtos);
-    if (!ctx.p_mesa && menu.oferece_entrega === true) {
+    if (!ctx.p_mesa && (menu.oferece_entrega === true || (ctx.entregaTeste && ctx.opcoesMP?.credito))) {
       el("carrinho-cardapio").classList.add("checkout-entrega");
       el("contexto-cardapio").textContent = "Entrega";
       el("contexto-cardapio").hidden = false;
@@ -73,7 +73,8 @@ export function iniciarCardapio() {
           ctx.parametros.set("pedido", id);
           ctx.parametros.set("entrega", "sim");
           if (metodo === "credito") {
-            ctx.creditoQuiosque = true;
+            ctx.creditoTeste = ctx.opcoesMP?.ambiente === "sandbox";
+            ctx.creditoQuiosque = !ctx.creditoTeste;
             ctx.parametros.set("cartao", "credito");
             ctx.parametros.delete("pix");
           } else if (metodo === "pix") {

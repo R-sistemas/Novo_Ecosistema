@@ -11,7 +11,7 @@ declare
 begin
  insert into auth.users(id,email) values(g,'gestor-kds-fixture@example.invalid'),(k,'cozinha-kds-fixture@example.invalid'),(v,'vendas-kds-fixture@example.invalid');
  insert into public.empresas(id,nome) values(e,'Loja de teste'),(outra,'Outra loja');
- insert into public.membros(empresa_id,usuario_id,papel) values(e,g,'gestor'),(e,v,'operador');
+ insert into public.membros(empresa_id,usuario_id,papel) values(e,g,'gestor'),(e,v,'operador'),(outra,v,'operador');
  insert into public.equipe_kds(empresa_id,usuario_id) values(e,k),(outra,k);
  insert into public.produtos(id,empresa_id,codigo,nome,preco_centavos,preparo_cozinha)
  values(lanche,e,'1','Lanche',500,true),(bebida,e,'2','Bebida',200,false);
@@ -76,7 +76,12 @@ begin
  resultado:=public.registrar_ajuste_kds(e,remoto,x,'retirar',lanche,1,'Ingrediente acabou');
  if resultado<>'pendente' or (select total_centavos from public.pedidos_online where id=remoto)<>1000 then raise exception 'Remoto alterado direto'; end if;
  perform set_config('request.jwt.claim.sub',v::text,true);
- perform public.resolver_ajuste_comanda(x,true,'Cliente concordou');
+ begin
+   perform public.resolver_ajuste_comanda(outra,x,true,'Cliente concordou');
+   raise exception 'Ajuste aceito com a empresa errada';
+ exception when insufficient_privilege then null; end;
+ if (select estado from public.ajustes_comanda where id=x)<>'pendente' then raise exception 'Ajuste mudou de estado'; end if;
+ perform public.resolver_ajuste_comanda(e,x,true,'Cliente concordou');
  if (select total_centavos from public.pedidos_online where id=remoto)<>500 then raise exception 'Ajuste remoto não aplicado'; end if;
  perform set_config('request.jwt.claim.sub',k::text,true);
  x:=gen_random_uuid();

@@ -1,4 +1,5 @@
 import { consultarDisponibilidadePix, consultarPagamentoNaEntrega } from "../dados/pedidos.mjs";
+import { configuracaoCartao } from "../regras/cartao.mjs";
 const el = id => document.getElementById(id);
 
 export async function configurarPagamento(ctx) {
@@ -23,7 +24,7 @@ export async function configurarPagamento(ctx) {
     });
     atualizarPagamento();
   }
-  if (ctx.opcoesMP?.credito) {
+  if (configuracaoCartao(ctx.opcoesMP)) {
     for (const id of ["pagamento-padrao", "pagamento-mesa"]) {
       const grupo = el(id).querySelector(".opcoes-escolha") ?? el(id);
       const botao = document.createElement("button");

@@ -57,8 +57,12 @@ test("checkouts selecionam por reserva e webhook autentica a aplicação", async
   t.mock.method(globalThis,"fetch",async (url, opcoes) => {
     const rota = new URL(url).pathname;
     const corpo = JSON.parse(opcoes?.body ?? "{}");
-    if (rota.endsWith("/servico_mp_reserva_pedido")) {
+    if (rota.endsWith("/servico_mp_reserva_pedido") || rota.endsWith("/servico_mp_reserva_credito")) {
       const e = empresas.find(x => x.slug === corpo.p_slug && x.pedido === corpo.p_id);
+      if (rota.endsWith("/servico_mp_reserva_credito")) {
+        assert.equal(corpo.p_ambiente, "producao");
+        assert.equal(corpo.p_chave_publica, "chave-fixture-b");
+      }
       return Response.json(e ? { ...e.conta,total_centavos:100,cobranca:null } : null);
     }
     if (rota.endsWith("/servico_integracao_mp_webhook")) {
@@ -88,7 +92,7 @@ test("checkouts selecionam por reserva e webhook autentica a aplicação", async
   for (const e of empresas) {
     const res = resposta();
     const req = { method:"POST", headers:{},body:{p_slug:e.slug,p_id:e.pedido,p_cliente:"Fixture",
-      p_itens:[{produto_id:id(99),quantidade:1}],cartao:{token:"fixture-cartao",bandeira:"visa",email:"fixture@example.test"}} };
+      p_itens:[{produto_id:id(99),quantidade:1}],chave_publica:"chave-fixture-"+e.slug,cartao:{token:"fixture-cartao",bandeira:"visa",email:"fixture@example.test"}} };
     await (e.slug === "b" ? checkoutCredito : checkout)(req,res,{ sandbox:e.conta.ambiente === "sandbox",porEmpresa:true });
     assert.equal(res.codigo,200);
     assert.equal(chamadas.at(-1).p_integracao,e.conta.integracao);

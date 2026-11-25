@@ -1,12 +1,17 @@
-export async function abrirCreditoTeste(dados, aoEnviar, producao = false) {
+export async function abrirCreditoTeste(dados, aoEnviar) {
+  let configuracaoDesatualizada = false;
+  const sandbox = dados.ambiente === "sandbox";
   const painel = document.getElementById("painel-credito-teste");
   const formulario = document.getElementById("configurar-credito-teste");
+  document.getElementById("titulo-credito").textContent = sandbox ? "Crédito de homologação" : "Cartão de crédito";
+  document.getElementById("aviso-credito").textContent = sandbox
+    ? "Use somente cartões de teste do Mercado Pago." : "Pagamento Mercado Pago";
   painel.hidden = false;
   formulario.onsubmit = async evento => {
     evento.preventDefault();
     const mensagem = document.getElementById("status-credito-teste");
     mensagem.textContent = "";
-    const chave = document.getElementById("chave-credito-teste").value.trim();
+    const chave = dados.chavePublica;
     formulario.inert = true;
     try {
       if (!window.MercadoPago) {
@@ -25,12 +30,13 @@ export async function abrirCreditoTeste(dados, aoEnviar, producao = false) {
         callbacks: {
           onReady() { formulario.hidden = true; },
           async onSubmit(cartao) {
+            if (configuracaoDesatualizada) throw new Error("Atualize a página antes de pagar.");
             mensagem.textContent = "Verificando pagamento…";
             try {
-              const ambiente = producao ? "quiosque" : "teste";
+              const ambiente = sandbox ? "teste" : "quiosque";
               const resposta = await fetch("/api/checkout-credito-mercado-pago-" + ambiente, {
                 method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ...dados.pedido, cartao: {
+                body: JSON.stringify({ ...dados.pedido, chave_publica: chave, cartao: {
                   token: cartao.token, bandeira: cartao.payment_method_id, email: cartao.payer?.email
                 } })
               });
@@ -39,7 +45,13 @@ export async function abrirCreditoTeste(dados, aoEnviar, producao = false) {
                 dados.aoFreteAlterado(resultado.frete_centavos);
                 return;
               }
-              if (resposta.status === 402) dados.pedido.p_id = crypto.randomUUID();
+              if (resposta.status === 409 && resultado.codigo === "configuracao_cartao_alterada") {
+                configuracaoDesatualizada = true;
+              }
+              if (resposta.status === 402) {
+                dados.pedido.p_id = crypto.randomUUID();
+                dados.aoRecusar?.(dados.pedido.p_id);
+              }
               if (!resposta.ok) throw new Error(resultado.erro);
               painel.hidden = true;
               await aoEnviar(dados.pedido.p_id);
@@ -58,13 +70,11 @@ export async function abrirCreditoTeste(dados, aoEnviar, producao = false) {
         }
       });
     } catch {
-      mensagem.textContent = "Confira a Public Key de teste e tente carregar o formulário novamente.";
+      mensagem.textContent = "Não foi possível carregar o formulário de cartão. Tente novamente.";
     } finally {
       formulario.inert = false;
     }
   };
-  if (producao || dados.chavePublica) {
-    document.getElementById("chave-credito-teste").value = dados.chavePublica ?? "APP_USR-28b0f004-3565-43de-99f6-51fb3cde8735";
-    await formulario.onsubmit(new Event("submit"));
-  }
+  formulario.hidden = false;
+  await formulario.onsubmit(new Event("submit"));
 }

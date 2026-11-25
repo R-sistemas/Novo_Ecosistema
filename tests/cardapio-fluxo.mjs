@@ -21,8 +21,10 @@ const base = "http://127.0.0.1:" + server.address().port;
 const browser = await chromium.launch({ headless: true, channel: "chrome" });
 let testes = 0;
 try {
-  for (const caso of ["retirada", "mesa", "pix", "retomar", "entrega", "vazio", "credito", "retomar-pix", "pix-repetir", "quiosque", "fechado", "retomar-fechado", "credito-multiloja"]) {
+  for (const caso of ["retirada", "mesa", "pix", "retomar", "entrega", "vazio", "credito", "retomar-pix", "pix-repetir", "quiosque", "fechado", "retomar-fechado", "credito-multiloja", "credito-sandbox-balcao", "credito-sandbox-mesa", "credito-producao-mesa"]) {
     const page = await browser.newPage();
+    const sandboxCartao = caso.startsWith("credito-sandbox") || caso === "credito";
+    const mesaCartao = caso.endsWith("-mesa");
     const errors = [];
     const chamadas = [];
     page.on("pageerror", e => errors.push(e.message));
@@ -37,7 +39,7 @@ try {
           { id: "produto-teste", nome: "Produto de teste", preco_centavos: 1250, categoria: "Lanches" }
         ]
       };
-      else if (nome === "opcoes_mp_cardapio") json = caso === "credito-multiloja" ? { pix:true, credito:true, chave_publica:"publica-fixture" } : null;
+      else if (nome === "opcoes_mp_cardapio") json = caso.startsWith("credito") ? { pix:true, credito:true, ambiente:sandboxCartao ? "sandbox" : "producao", chave_publica:sandboxCartao ? "chave-sandbox" : "chave-producao" } : null;
       else if (nome === "enviar_pedido") json = "pedido-teste";
       else if (nome === "acompanhar_pedido") json = {
         ...pedido, mesa: caso === "mesa" ? "7" : null,
@@ -56,16 +58,15 @@ try {
         await route.fulfill({ status: 503, json: { erro: "Falha simulada" } });
       } else await route.fulfill({ json });
     });
-    await page.route("**/credito-teste.mjs", route => route.fulfill({
+    await page.route("https://sdk.mercadopago.com/js/v2", route => route.fulfill({
       contentType: "text/javascript",
-      body: 'export async function abrirCreditoTeste(dados, confirmar) { window.creditoSimulado = dados; await confirmar("pedido-credito"); }'
+      body: 'window.MercadoPago = class { constructor(chave) { this.chave = chave; } bricks() { return { create: async (_,__,config) => { window.creditoSimulado = {chave:this.chave, valor:config.initialization.amount}; window.enviarCartao = () => config.callbacks.onSubmit({ token:"cartao-fixture", payment_method_id:"visa", payer:{email:"teste@example.invalid"} }); config.callbacks.onReady(); } }; } };'
     }));
     await page.route("**/checkout-entrega.mjs", route => route.fulfill({
       contentType: "text/javascript",
       body: 'export async function iniciarCheckoutEntrega(ctx) { window.checkoutSimulado = { slug: ctx.slug, callbacks: [typeof ctx.aoPix, typeof ctx.aoConfirmar] }; await ctx.aoConfirmar("pedido-entrega", "pix"); }'
     }));
-    const consulta = caso === "credito-multiloja" ? "?loja=empresa-mp" : caso === "quiosque" ? "?loja=quiosque-dorafa" : caso === "entrega" ? "?loja=loja-teste&entrega=teste" :
-      caso === "credito" ? "?loja=loja-teste&cartao=credito" :
+    const consulta = caso.startsWith("credito") ? "?loja=" + (sandboxCartao ? "loja-teste" : "empresa-mp") + (mesaCartao ? "&mesa=7" : "") + (caso === "credito" ? "&cartao=credito" : "") : caso === "quiosque" ? "?loja=quiosque-dorafa" : caso === "entrega" ? "?loja=loja-teste&entrega=teste" :
       caso === "retomar-pix" ? "?loja=loja-teste&pedido=pedido-teste" :
       caso.startsWith("pix") ? "?loja=loja-teste" :
       caso === "mesa" ? "?loja=loja-teste&mesa=7" :
@@ -105,7 +106,7 @@ try {
       await page.locator("#ver-pedido").click();
       await page.locator("#cliente").fill("Cliente de teste");
       if (caso.startsWith("pix")) await page.locator("#opcao-pix").click();
-      if (caso === "credito-multiloja") await page.locator("#pagamento-padrao [data-pagamento=credito-mp]").click();
+      if (caso.startsWith("credito") && caso !== "credito") await page.locator((mesaCartao ? "#pagamento-mesa" : "#pagamento-padrao") + " [data-pagamento=credito-mp]").click();
       if (caso === "entrega") {
         for (const [nome, valor] of Object.entries({ logradouro: "Rua Teste", numero: "10", bairro: "Centro", cidade: "Cidade Teste" })) {
           await page.locator('#entrega-teste input[name="' + nome + '"]').fill(valor);
@@ -114,6 +115,10 @@ try {
         await page.locator("#frete-cotacao").filter({ hasText: "R$" }).waitFor();
       }
       await page.locator("#enviar-pedido").click();
+      if (caso.startsWith("credito")) {
+        await page.waitForFunction(() => Boolean(window.enviarCartao));
+        await page.evaluate(() => window.enviarCartao());
+      }
       if (caso === "pix-repetir") {
         await page.locator("#erro-pedido").filter({ hasText: "Falha simulada" }).waitFor();
         await page.locator("#enviar-pedido").click();
@@ -132,11 +137,12 @@ try {
           assert.equal(pix[0].dados.p_id, pix[1].dados.p_id);
         }
       } else if (caso.startsWith("credito")) {
-        assert.equal(await page.evaluate(() => window.creditoSimulado.totalCentavos), 1250);
-        if (caso === "credito-multiloja") {
-          assert.equal(await page.evaluate(() => window.creditoSimulado.chavePublica), "publica-fixture");
-          if (process.env.MP_4A_CAPTURAS) await page.screenshot({path:path.join(process.env.MP_4A_CAPTURAS,"cardapio-mp-multiloja.png")});
-        }
+        const chave = sandboxCartao ? "chave-sandbox" : "chave-producao";
+        assert.deepEqual(await page.evaluate(() => window.creditoSimulado), {chave, valor:12.5});
+        const envio = chamadas.find(c => c.nome.includes("checkout-credito"));
+        assert.equal(envio.nome, "/api/checkout-credito-mercado-pago-" + (sandboxCartao ? "teste" : "quiosque"));
+        assert.equal(envio.dados.chave_publica, chave);
+        assert.equal(envio.dados.p_mesa, mesaCartao ? "7" : null);
       } else {
         const envio = chamadas.find(c => c.nome === "enviar_pedido");
         assert.equal(envio.dados.p_cliente, "Cliente de teste");

@@ -1,4 +1,5 @@
 import { enviarPedido, registrarEntrega } from "../dados/pedidos.mjs";
+import { configuracaoCartao } from "../regras/cartao.mjs";
 const el = id => document.getElementById(id);
 
 export function configurarEnvio(ctx) {
@@ -22,23 +23,28 @@ export function configurarEnvio(ctx) {
       if (!p_itens.length) throw new Error("Escolha pelo menos um produto.");
       const p_cliente = el("cliente").value.trim();
       if (ctx.creditoTeste || ctx.creditoQuiosque || ctx.formaPagamento === "credito-mp") {
-        if (!ctx.creditoTeste) {
-          el("titulo-credito").textContent = "Cartão de crédito";
-          el("aviso-credito").textContent = ctx.opcoesMP ? "Pagamento Mercado Pago" : "Pagamento com cartão";
-        }
+        const cartao = configuracaoCartao(ctx.opcoesMP);
+        if (!cartao) throw new Error("Cartão indisponível para esta loja.");
+        const assinatura = JSON.stringify({ p_itens, p_cliente, p_mesa: ctx.p_mesa, cartao });
+        if (ctx.tentativa?.assinatura !== assinatura) ctx.tentativa = { assinatura, id: crypto.randomUUID() };
         const totalCentavos = ctx.carrinho.total();
         const { abrirCreditoTeste } = await import("../../credito-teste.mjs");
         await abrirCreditoTeste({
-          totalCentavos, chavePublica: ctx.opcoesMP?.chave_publica, pedido: { p_slug: ctx.p_slug, p_mesa: ctx.p_mesa, p_itens, p_cliente, p_id: crypto.randomUUID() }
+          totalCentavos, ...cartao,
+          aoRecusar: id => { ctx.tentativa.id = id; },
+          pedido: { p_slug: ctx.p_slug, p_mesa: ctx.p_mesa, p_itens, p_cliente, p_id: ctx.tentativa.id }
         }, async id => {
           ctx.p_id = id;
           ctx.confirmarPedidoMesa();
           ctx.parametros.set("pedido", id);
-          if (!ctx.creditoTeste) { ctx.creditoQuiosque = true; ctx.parametros.set("cartao", "credito"); }
+          ctx.creditoTeste = cartao.ambiente === "sandbox";
+          ctx.creditoQuiosque = !ctx.creditoTeste;
+          ctx.parametros.set("cartao", "credito");
+          ctx.parametros.delete("pix");
           history.replaceState(null, "", "?" + ctx.parametros);
           el("acompanhar").hidden = false;
           await ctx.acompanhar();
-        }, !ctx.creditoTeste);
+        });
         el("pedido").hidden = true;
         fecharCompra();
         return;

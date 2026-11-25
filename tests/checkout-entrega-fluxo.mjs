@@ -20,12 +20,15 @@ await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
 const base = "http://127.0.0.1:" + server.address().port + "/cardapio.html?loja=empresa-entrega";
 const browser = await chromium.launch({ headless: true, channel: "chrome" });
 try {
-  for (const caso of ["validacao", "pix", "dinheiro", "credito", "frete-alterado", "conflito", "repeticao", "metodos", "pino", "memoria", "limpeza", "armazenamento"]) {
+  for (const caso of ["validacao", "pix", "dinheiro", "credito", "credito-sandbox", "credito-config-alterada", "frete-alterado", "conflito", "repeticao", "metodos", "pino", "memoria", "limpeza", "armazenamento"]) {
     const page = await browser.newPage();
     page.setDefaultTimeout(15000);
     if (caso === "armazenamento") await page.addInitScript(() => {
       Object.defineProperty(window, "localStorage", { get() { throw Error("Sem armazenamento"); } });
     });
+    const sandboxCartao = caso === "credito-sandbox";
+    const chaveCartao = sandboxCartao ? "chave-sandbox" : "chave-producao";
+    let configuracaoAlterada = false;
     const errors = [], pagamentos = [], cotacoes = [];
     page.on("pageerror", e => errors.push(e.message));
     await page.route("https://tile.openstreetmap.org/**", route => route.fulfill({
@@ -35,18 +38,21 @@ try {
     await page.route("https://eyqxxlcmxlilgogxdcoq.supabase.co/**", async route => {
       const nome = route.request().url().split("/").at(-1);
       const json = nome === "ver_cardapio" ? {
-        nome: "Loja com entrega", oferece_entrega: true, mapa_centro: { latitude: -16.68, longitude: -49.26 },
+        nome: "Loja com entrega", oferece_entrega: !sandboxCartao, sandbox_checkout: sandboxCartao, mapa_centro: { latitude: -16.68, longitude: -49.26 },
         produtos: [{ id: "produto", nome: "Produto teste", preco_centavos: 1250, categoria: "Lanches" }]
       } : nome === "metodos_checkout_publico" ? { pix: caso !== "metodos", credito: caso !== "metodos", debito: false } :
         nome === "pagamento_na_entrega_disponivel" ? caso !== "metodos" :
           nome === "acompanhar_pedido" ? { estado: "novo", comanda: 42, total_centavos: 1750 } : null;
-      if (nome === "opcoes_mp_cardapio") { await route.fulfill({json:null}); return; }
+      if (nome === "opcoes_mp_cardapio") {
+        await route.fulfill({json:caso.startsWith("credito") ? {pix:true,credito:true,ambiente:sandboxCartao ? "sandbox" : "producao",chave_publica:chaveCartao} : null});
+        return;
+      }
       assert.notEqual(json, null, nome);
       await route.fulfill({ json });
     });
-    await page.route("**/credito-teste.mjs", route => route.fulfill({
+    await page.route("https://sdk.mercadopago.com/js/v2", route => route.fulfill({
       contentType: "text/javascript",
-      body: 'export async function abrirCreditoTeste(dados, confirmar, producao) { window.creditoSimulado = { dados, producao }; await confirmar(dados.pedido.p_id); }'
+      body: 'window.MercadoPago = class { constructor(chave) { this.chave = chave; } bricks() { return { create: async (_,__,config) => { window.creditoSimulado = {chave:this.chave, valor:config.initialization.amount}; window.enviarCartao = () => config.callbacks.onSubmit({ token:"cartao-fixture", payment_method_id:"visa", payer:{email:"teste@example.invalid"} }); config.callbacks.onReady(); } }; } };'
     }));
     await page.route("**/api/**", async route => {
       const nome = new URL(route.request().url()).pathname;
@@ -58,6 +64,11 @@ try {
           (caso === "conflito" && pagamentos.length >= 1);
         if (caso === "pino" && indiceCotacao === 1) await new Promise(r => setTimeout(r, 1000));
         await route.fulfill({ json: { frete_centavos: caso === "pino" && cotacoes.length === 1 ? 90000 : mudou ? 700 : 500 } }).catch(() => {});
+      } else if (nome.startsWith("/api/checkout-credito-")) {
+        assert.equal(nome, "/api/checkout-credito-mercado-pago-" + (sandboxCartao ? "teste" : "quiosque"));
+        pagamentos.push(dados);
+        if (configuracaoAlterada) await route.fulfill({status:409,json:{codigo:"configuracao_cartao_alterada",erro:"Atualize a página antes de pagar."}});
+        else await route.fulfill({json:{estado:"processed"}});
       } else {
         assert.equal(nome, "/api/checkout-pix-mercado-pago-quiosque");
         pagamentos.push(dados);
@@ -69,7 +80,7 @@ try {
       }
     });
     async function abrir() {
-      await page.goto(base);
+      await page.goto(base + (sandboxCartao ? "&entrega=teste" : ""));
       await page.locator('[aria-label^="Adicionar "]').first().click();
       await page.locator("#ver-pedido").click();
       await page.locator(".leaflet-container").waitFor();
@@ -116,7 +127,7 @@ try {
       assert.equal(await page.locator('[name="nome"]').inputValue(), "");
       assert.equal(await page.locator(".leaflet-marker-icon").count(), 0);
     } else if (caso !== "validacao") {
-      const metodo = ["dinheiro", "conflito"].includes(caso) ? "cash" : caso === "credito" ? "credit" : "pix";
+      const metodo = ["dinheiro", "conflito"].includes(caso) ? "cash" : caso.startsWith("credito") ? "credit" : "pix";
       await page.locator('[data-metodo="' + metodo + '"]').click();
       if (metodo === "cash") {
         await page.locator('[name="troco"]').fill("10");
@@ -137,12 +148,27 @@ try {
         await page.waitForURL(/pedido=/);
         assert.equal(pagamentos[0].p_id, pagamentos[1].p_id);
       }
-      await page.waitForURL(/pedido=/);
-      if (caso === "credito") {
-        const credito = await page.evaluate(() => window.creditoSimulado);
-        assert.equal(credito.dados.totalCentavos, 1750);
-        assert.equal(credito.producao, true);
+      if (metodo === "credit") {
+        await page.waitForFunction(() => Boolean(window.enviarCartao));
+        configuracaoAlterada = caso === "credito-config-alterada";
+        const enviar = () => page.evaluate(() => window.enviarCartao().then(() => "", erro => erro.message));
+        assert.equal(await enviar(), configuracaoAlterada ? "Atualize a página antes de pagar." : "");
+        assert.deepEqual(await page.evaluate(() => window.creditoSimulado), {chave:chaveCartao, valor:17.5});
+        assert.equal(pagamentos[0].chave_publica, chaveCartao);
+        assert.equal(pagamentos[0].endereco.metodo_pagamento, "credito");
+        assert.equal(pagamentos[0].frete_centavos, 500);
+        if (configuracaoAlterada) {
+          assert.equal(await enviar(), "Atualize a página antes de pagar.");
+          assert.equal(pagamentos.length, 1);
+          assert.doesNotMatch(page.url(), /pedido=/);
+        } else await page.waitForURL(/pedido=/);
+        if (process.env.B04_B05_CAPTURAS && caso === "credito-config-alterada") {
+          await page.screenshot({ path: path.join(process.env.B04_B05_CAPTURAS, "cartao-config-alterada-desktop.png") });
+          await page.setViewportSize({ width: 390, height: 844 });
+          await page.screenshot({ path: path.join(process.env.B04_B05_CAPTURAS, "cartao-config-alterada-mobile.png") });
+        }
       } else {
+        await page.waitForURL(/pedido=/);
         const envio = pagamentos.at(-1);
         assert.equal(envio.endereco.telefone, "62999999999");
         assert.equal(envio.frete_centavos, ["frete-alterado", "conflito"].includes(caso) ? 700 : 500);
@@ -162,7 +188,7 @@ try {
     console.log("PASS", caso);
     await page.close();
   }
-  console.log("12 fluxos de checkout em Chrome aprovados.");
+  console.log("14 fluxos de checkout em Chrome aprovados.");
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

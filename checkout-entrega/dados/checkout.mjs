@@ -1,3 +1,4 @@
+import { configuracaoCartao } from "../../cardapio/regras/cartao.mjs";
 import { executar } from "../../supabase-pdv.mjs";
 
 export async function consultarMetodos(slug) {
@@ -6,7 +7,8 @@ export async function consultarMetodos(slug) {
     executar("metodos_checkout_publico", { p_slug: slug }).catch(() => ({ pix: false, credito: false, debito: false })),
     executar("opcoes_mp_cardapio", { p_slug: slug }).catch(() => null)
   ]);
-  return { pagamentoNaEntrega, metodosOnline: typeof mp?.pix === "boolean" ? mp : metodosOnline };
+  const metodos = typeof mp?.pix === "boolean" ? mp : metodosOnline;
+  return { pagamentoNaEntrega, metodosOnline: { ...metodos, credito: Boolean(configuracaoCartao(mp)) } };
 }
 
 export async function consultarFrete(slug, endereco, signal) {

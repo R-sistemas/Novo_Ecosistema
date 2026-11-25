@@ -9,7 +9,7 @@ export function criarContexto(busca, capacidades = {}) {
   const acompanhamentoAtivo = false;
   const pixTeste = capacidades.sandbox_checkout === true;
   const creditoTeste = pixTeste && parametros.get("cartao") === "credito";
-  const entregaTeste = pixTeste && !p_mesa && !creditoTeste && parametros.get("entrega") === "teste";
+  const entregaTeste = pixTeste && !p_mesa && parametros.get("entrega") === "teste";
   const entregaQuiosque = Boolean(p_id || capacidades.oferece_entrega) && !p_mesa && parametros.get("entrega") === "sim";
   const entrega = entregaTeste || entregaQuiosque;
   const creditoQuiosque = !entrega && capacidades.mp_legado === true && parametros.get("cartao") === "credito";
