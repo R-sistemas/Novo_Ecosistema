@@ -113,8 +113,7 @@ export async function carregarCozinha() {
           troco_para_centavos != null && `Troco para ${moeda.format(troco_para_centavos / 100)}`].filter(Boolean).join(" · ");
         if (contato.textContent) artigo.append(contato);
       }
-      const avisoDespacho = document.createElement("p");
-      avisoDespacho.setAttribute("role", "status");
+      const avisoDespacho = document.createElement("p"); avisoDespacho.setAttribute("role", "status");
       async function solicitarDespacho() {
         try {
           await executarApi("despachar-remo", { pedido: pedido.id });
@@ -122,6 +121,7 @@ export async function carregarCozinha() {
           avisoDespacho.textContent = "Despacho solicitado à REMO.";
           if (vigente()) await carregarCozinha();
         } catch (erro) {
+          if (!vigente()) return;
           const mensagem = "Despacho pendente: " + erro.message;
           falhasDespacho.set(pedido.id, mensagem);
           avisoDespacho.textContent = mensagem;
@@ -162,6 +162,7 @@ export async function carregarCozinha() {
         const botao = document.createElement("button");
         botao.textContent = texto;
         botao.onclick = async () => {
+          if (!vigente()) return;
           artigo.inert = true;
           try {
             await executar(pedido.adicional ? "avancar_adicional_comanda" : "avancar_pedido", { p_id: pedido.id, p_estado: destino });

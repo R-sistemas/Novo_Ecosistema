@@ -1,11 +1,10 @@
 -- Run with a privileged test connection. All fixture data is rolled back.
 begin;
 DO $teste$
-declare u uuid; e uuid:=gen_random_uuid(); pr uuid:=gen_random_uuid(); pr2 uuid:=gen_random_uuid();
+declare u uuid:=gen_random_uuid(); e uuid:=gen_random_uuid(); pr uuid:=gen_random_uuid(); pr2 uuid:=gen_random_uuid();
  t uuid:=gen_random_uuid(); c uuid; p uuid:=gen_random_uuid(); a uuid:=gen_random_uuid(); b uuid:=gen_random_uuid(); itens jsonb; r jsonb; v bigint; falhou boolean;
 begin
- select id into u from auth.users where email='rafaelcaixeta.adm@gmail.com';
- if u is null then raise exception 'Usuário de validação indisponível'; end if;
+ insert into auth.users(id,email) values(u,'adicionais-fixture@example.invalid');
  perform set_config('request.jwt.claim.sub',u::text,true);
  insert into public.empresas(id,nome,cardapio_slug) values(e,'Validação rollback','validacao-adicionais');
  insert into public.membros values(e,u,'gestor');

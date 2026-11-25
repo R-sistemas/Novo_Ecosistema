@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { createServer } from "node:http";
-import { extname, resolve, sep } from "node:path";
+import { extname, join, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { before, after, test } from "node:test";
 import handler from "../api/cadastrar-operador.mjs";
@@ -170,7 +170,7 @@ test("cadastro legado, configuração e remoção auditam, e a próxima chamada 
   assert.equal((await registrar(email)).filter(x=>x.acao==="membros.excluir").length,1);
 });
 
-test("falha na auditoria de resultado reverte vínculo e caixa e registra compensação do Auth",async t=>{
+test("falha na auditoria reverte vínculo e caixa e preserva a identidade Auth",async t=>{
   mock(t);
   await db.exec(`
    create function public.fixture_falha_equipe() returns trigger language plpgsql as $$
@@ -181,11 +181,11 @@ test("falha na auditoria de resultado reverte vínculo e caixa e registra compen
   `);
   const email="falha@example.invalid";
   assert.equal((await api(url(A),"a",entrada(email))).code,409);
-  assert.equal((await rows("select id from auth.users where email=$1",[email])).length,0);
+  assert.equal((await rows("select id from auth.users where email=$1",[email])).length,1);
   assert.equal((await rows("select id from terminais_pdv where operador_id=$1",[users.get(email)])).length,0);
   const audit=await registrar(email);
   assert.deepEqual(audit.map(x=>x.acao).sort(),["auth.operador.tentativa","auth.operador.resultado"].sort());
-  assert.equal(audit.find(x=>x.acao==="auth.operador.resultado").depois.resultado,"auth_revertido");
+  assert.equal(audit.find(x=>x.acao==="auth.operador.resultado").depois.resultado,"indeterminado");
   assert.equal(audit[0].requisicao_id,audit[1].requisicao_id);
 });
 
@@ -235,13 +235,18 @@ test("Chrome percorre login, equipe, cadastro, listagem e remoção",{
     pagina.on("dialog",d=>d.accept());
     await pagina.route("https://eyqxxlcmxlilgogxdcoq.supabase.co/**",async route=>{
       const u=new URL(route.request().url());
-      if(u.pathname==="/auth/v1/token")return route.fulfill({json:{user:{id:users.get("a")},access_token:"a",refresh_token:"fixture",expires_in:3600}});
+      if (u.pathname === "/auth/v1/token") {
+        const email = route.request().postDataJSON().email;
+        const ator = email.split("@")[0];
+        return route.fulfill({json:{user:{id:users.get(ator)},access_token:ator,refresh_token:"fixture",expires_in:3600}});
+      }
       if (u.pathname.startsWith("/rest/v1/rpc/")) {
         const resposta = await supabase(u,{headers:{Authorization:route.request().headers().authorization},body:route.request().postData()});
         return route.fulfill({status:resposta.status,body:await resposta.text(),contentType:"application/json"});
       }
       assert.equal(u.pathname,"/rest/v1/membros");
-      return route.fulfill({json:[{empresas:{id:A,nome:"A"}}]});
+      const ator = route.request().headers().authorization?.split(" ")[1];
+      return route.fulfill({json:[{empresas:ator === "b" ? {id:B,nome:"B"} : {id:A,nome:"A"}}]});
     });
     const base="http://127.0.0.1:"+servidor.address().port;
     await pagina.goto(base+"/admin-loja.html");
@@ -279,6 +284,41 @@ test("Chrome percorre login, equipe, cadastro, listagem e remoção",{
     assert.ok(!(await pagina.locator("[data-terminal] select[name=email] option").allTextContents()).includes(cozinha));
     await linha.getByRole("button",{name:/Remover/}).click();
     await linha.waitFor({state:"detached"});
+    await db.query("select painel_privado.configurar_convites_equipe(array[$1]::uuid[],true)",[B]);
+    try {
+      await pagina.goto(base+"/admin-loja.html");
+      await pagina.getByLabel("E-mail",{exact:true}).fill("b@example.invalid");
+      await pagina.getByLabel("Senha",{exact:true}).fill("fixture");
+      await pagina.getByRole("button",{name:"Entrar"}).click();
+      await pagina.getByRole("button",{name:"Equipe e terminais"}).click();
+      await pagina.getByLabel("E-mail do operador").fill("op@example.invalid");
+      await pagina.getByLabel("Caixa do operador").fill("Caixa browser multiloja");
+      await pagina.getByRole("button",{name:"Convidar operador"}).click();
+      const link = pagina.getByRole("textbox",{name:"Link do convite"});
+      await link.waitFor();
+      const url = await link.inputValue();
+      assert.match(url,/\/convite-equipe\.html#convite=[0-9a-f]{64}$/);
+      assert.ok((await pagina.getByRole("link",{name:"Enviar pelo WhatsApp"}).getAttribute("href")).startsWith("https://wa.me/"));
+      const pasta = process.env.MULTILOJA_CAPTURAS;
+      await pagina.getByRole("button",{name:"Reenviar e gerar novo link"}).waitFor();
+      if (pasta) await pagina.screenshot({path:join(pasta,"painel-convites-desktop.png"),mask:[link],fullPage:true});
+      await pagina.goto(url);
+      assert.equal(new URL(pagina.url()).hash,"");
+      await pagina.getByLabel("E-mail",{exact:true}).fill("op@example.invalid");
+      await pagina.getByLabel("Senha",{exact:true}).fill("fixture");
+      await pagina.getByRole("button",{name:"Entrar"}).click();
+      await pagina.getByRole("heading",{name:"B",exact:true}).waitFor();
+      await pagina.getByText("Enviado por b@example.invalid").waitFor();
+      if (pasta) {
+        await pagina.setViewportSize({width:390,height:844});
+        await pagina.screenshot({path:join(pasta,"aceite-convite-mobile.png")});
+      }
+      await pagina.getByRole("button",{name:"Aceitar convite"}).click();
+      await pagina.getByText("Convite aceito para B.").waitFor();
+      await db.query("delete from public.membros where empresa_id=$1 and usuario_id=$2",[B,users.get("op")]);
+    } finally {
+      await db.query("delete from painel_privado.convites_equipe_ativacao where empresa_id=$1",[B]);
+    }
   }finally{servidor.close();await navegador.close();}
 });
 
@@ -469,4 +509,45 @@ test("suspensão local interrompe vendas e cozinha, preserva B e permite fechame
   assert.ok(trilha.every(evento => evento.autor_id === users.get("a")));
   const [recontratado] = await rows("insert into membros(empresa_id,usuario_id,papel) values($1,$2,'operador') returning vinculo_id",[A,usuario]);
   assert.notEqual(recontratado.vinculo_id,vinculo.vinculo_id);
+});
+
+test("ativação e reversão isolam o piloto e preservam convites, conta e vínculo aceito", async t => {
+  mock(t);
+  const ativar = ligado => db.query("select painel_privado.configurar_convites_equipe(array[$1]::uuid[],$2)",[B,ligado]);
+  const gerir = async (acao, dados = {}) => (await como("b",
+    "select gerenciar_convites_equipe($1,$2,$3) as r",[B,acao,JSON.stringify(dados)]
+  )).rows[0].r;
+  const resposta = async (ator, token, acao) => (await como(ator,
+    "select responder_convite_equipe($1,$2) as r",[token,acao]
+  )).rows[0].r;
+  const emitir = (email, perfil = "cozinha", caixa = null) => gerir("emitir",{email,perfil,caixa,requisicao:randomUUID()});
+  const email = "nova-conta@example.invalid";
+  const novo = randomUUID();
+  await ativar(true);
+  await assert.rejects(como("b","select painel_privado.configurar_convites_equipe(array[$1]::uuid[],false)",[B]),{code:"42501"});
+  assert.equal((await api(url(B),"b",entrada("legado-desligado@example.invalid"))).code,403);
+  assert.equal((await gerir("listar")).legado,false);
+  const convite = await emitir(email);
+  const cancelado = await emitir("cancelado@example.invalid");
+  await gerir("cancelar",{id:cancelado.id,requisicao:randomUUID()});
+  await assert.rejects(resposta("op",cancelado.token,"aceitar"),{code:"42501"});
+  const expirado = await emitir("expirado@example.invalid");
+  await db.query("update painel_privado.convites_equipe set expira_em=now()-interval '1 second' where id=$1",[expirado.id]);
+  assert.equal((await gerir("listar")).convites.find(c=>c.id===expirado.id).estado,"expirado");
+  const conflito = await emitir(email.replace("nova-conta","terminal-conflito"),"vendas","Caixa convites");
+  const idConflito = randomUUID();
+  await db.query("insert into auth.users(id,email) values($1,$2),($3,$4)",[novo,email,idConflito,"terminal-conflito@example.invalid"]);
+  users.set(email,novo);
+  users.set("terminal-conflito",idConflito);
+  await assert.rejects(resposta("terminal-conflito",conflito.token,"aceitar"),{code:"23505"});
+  assert.equal((await resposta("terminal-conflito",conflito.token,"consultar")).estado,"pendente");
+  assert.equal((await resposta(email,convite.token,"aceitar")).estado,"aceito");
+  await ativar(false);
+  assert.equal((await api(url(B),"b",entrada("legado-desligado@example.invalid"))).code,403);
+  await assert.rejects(emitir("bloqueado@example.invalid"),{code:"42501"});
+  await assert.rejects(resposta("terminal-conflito",conflito.token,"aceitar"),{code:"42501"});
+  assert.equal((await gerir("listar")).convites.find(c=>c.id===convite.id).estado,"aceito");
+  assert.equal((await rows("select count(*)::int as total from equipe_kds where empresa_id=$1 and usuario_id=$2",[B,novo]))[0].total,1);
+  assert.equal((await rows("select count(*)::int as total from auth.users where id=$1",[novo]))[0].total,1);
+  assert.equal((await api(url(A),"a",entrada("loja-controle@example.invalid"))).code,201);
 });

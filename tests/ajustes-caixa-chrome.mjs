@@ -27,16 +27,21 @@ try {
   const decisoes = [], empresas = [{id:"loja-a",nome:"Loja A"},{id:"loja-b",nome:"Loja B"}];
   const ajuste = (id,comanda) => ({id,comanda,cliente:"Cliente "+comanda,
     operacao:"adicionar",quantidade:1,produto_nome:"Suco",motivo:"Solicitado",protegido:false});
-  let segurarA = false;
+  let segurarA = false, acessoA = true;
   let respostaA;
-  await page.route("https://eyqxxlcmxlilgogxdcoq.supabase.co/**", async route => {
+  await page.context().route("https://eyqxxlcmxlilgogxdcoq.supabase.co/**", async route => {
     const url = new URL(route.request().url());
     const nome = url.pathname.split("/").at(-1);
     const dados = route.request().postDataJSON();
     if (nome === "token") return dados.password === "senha-fixture"
       ? route.fulfill({json:{user:{id:"operador-fixture"},access_token:"fixture",expires_in:3600}})
       : route.fulfill({status:400,json:{msg:"Senha inválida"}});
-    if (nome === "empresas") return route.fulfill({json:url.searchParams.has("id") ? [empresas.find(e=>url.searchParams.get("id")==="eq."+e.id)] : empresas});
+    if (nome === "empresas") {
+      const visiveis = acessoA ? empresas : empresas.slice(1);
+      return route.fulfill({json:visiveis.filter(e => !url.searchParams.has("id") || url.searchParams.get("id") === "eq."+e.id)});
+    }
+    if (nome === "membros") return route.fulfill({json:(acessoA ? empresas : empresas.slice(1))
+      .map(e=>({empresa_id:e.id,papel:"operador",vinculo_id:e.id+"-revisao"}))});
     if (nome === "ajustes_pendentes_caixa") {
       if (dados.p_empresa === "loja-a" && segurarA) {
         segurarA = false;
@@ -101,7 +106,21 @@ try {
   await page.locator("#form-resolver-ajuste").evaluate(el => el.requestSubmit());
   await page.getByText("Decisão registrada na comanda.").waitFor();
   assert.deepEqual(decisoes.map(({p_empresa,p_id})=>[p_empresa,p_id]),[["loja-b","ajuste-b"]]);
-  console.log("PASS Chrome PDV: diálogo de A fecha, resposta atrasada é descartada, somente B pode ser resolvida.");
+  const abaA = await page.context().newPage();
+  await abaA.goto("http://127.0.0.1:"+server.address().port+"/?empresa_id=loja-a");
+  await abaA.locator("#email").fill("fixture@example.invalid");
+  await abaA.locator("#password").fill("senha-fixture");
+  await abaA.getByRole("button",{name:"Entrar"}).click();
+  await abaA.locator("#lista-ajustes-caixa").getByText(/Comanda 41/).waitFor();
+  acessoA = false;
+  await abaA.getByText("Acesso à loja encerrado. Escolha outro estabelecimento.").waitFor();
+  assert.equal(await abaA.locator("#empresa").inputValue(),"");
+  assert.equal(await abaA.locator("#lista-ajustes-caixa").getByText(/Comanda 41/).count(),0);
+  await abaA.locator("#empresa").selectOption("loja-b");
+  await abaA.locator("#troca-loja-pdv").waitFor();
+  assert.equal(await page.locator("#empresa").inputValue(),"loja-b");
+  assert.equal(await lista.getByText(/Comanda 42/).count(),1);
+  console.log("PASS Chrome PDV: seleção, senha da troca, resposta atrasada descartada e revogação de A com a aba de B ativa.");
 } finally {
   await browser.close();
   await new Promise(resolve => server.close(resolve));

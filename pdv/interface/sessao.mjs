@@ -15,6 +15,7 @@ export function configurarSessao(ctx) {
   const senha = formulario.elements.senha;
   const aviso = el("aviso-troca-loja");
   let email, ativa, anterior, destino, geracao = 0;
+  let jaAbriu = false;
   let revisaoAtiva;
   let revisoes = new Map();
 
@@ -38,6 +39,7 @@ export function configurarSessao(ctx) {
     }
     if (atual !== geracao || !vigente()) return "";
     ativa = empresa;
+    jaAbriu = true;
     revisaoAtiva = revisoes.get(empresa);
     el("area-vendas").hidden = ctx.area() !== "vendas";
     el("area-administracao").hidden = ctx.area() !== "administracao";
@@ -72,7 +74,7 @@ export function configurarSessao(ctx) {
   seletor.addEventListener("change", () => {
     const escolhida = seletor.value;
     if (!escolhida || escolhida === ativa || dialogo.open) return;
-    if (!ativa) { void operar(() => abrir(escolhida)); return; }
+    if (!jaAbriu) { void operar(() => abrir(escolhida)); return; }
     if (ctx.ocupado()) { seletor.value = ativa; return; }
     destino = escolhida;
     anterior = ativa;
@@ -119,7 +121,7 @@ export function configurarSessao(ctx) {
     if (formulario.inert) return;
     senha.value = "";
     dialogo.close();
-    void operar(() => abrir(anterior));
+    if (anterior) void operar(() => abrir(anterior));
   }
   dialogo.oncancel = cancelar;
   el("cancelar-troca-loja").onclick = cancelar;

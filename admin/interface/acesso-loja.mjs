@@ -7,6 +7,7 @@ export function prepararAcessoLoja({ el, navegacao, selecionarLoja, falha, mensa
   vigiarVinculos({empresa,versao,consultar:lojasDoGestor,revogado(lojas) {
     preencherSeletorLojas(el("loja"),lojas);
     invalidar();
+    if (lojas.length) navegacao.escolherLoja();
     falha(lojas.length ? "Acesso à loja encerrado. Escolha outro estabelecimento." :
       "Seu usuário ainda não tem acesso ao painel de uma loja.");
   }});
@@ -22,12 +23,14 @@ export function prepararAcessoLoja({ el, navegacao, selecionarLoja, falha, mensa
       const lojas = await lojasDoGestor();
       const solicitada = new URLSearchParams(location.search).get("empresa_id");
       if (!lojas.length) { falha("Seu usuário ainda não tem acesso ao painel de uma loja."); return; }
-      preencherSeletorLojas(el("loja"), lojas, lojaInicial(lojas, solicitada));
+      const inicial = lojaInicial(lojas, solicitada);
+      if (solicitada && !inicial) throw Object.assign(new Error(), {status:403});
+      preencherSeletorLojas(el("loja"), lojas, inicial);
       form.hidden = true;
       el("catalogo").hidden = false;
       navegacao.revelar();
       await selecionarLoja();
-      if (!el("loja").value) el("loja").focus();
+      if (!el("loja").value) navegacao.escolherLoja();
     } catch (erro) {
       falha(erro.status === 400 || erro.status === 401 ? "Confira o e-mail e a senha." : mensagem(erro));
     } finally {

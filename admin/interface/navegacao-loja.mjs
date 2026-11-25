@@ -30,6 +30,10 @@ export function prepararNavegacao() {
   mostrar(false);
   return {
     revelar() { barra.hidden = menu.hidden = false; },
+    escolherLoja() {
+      if (mobile.matches) mostrar(true);
+      barra.querySelector("select").focus();
+    },
     selecionar(area) {
       for (const [nome,botao] of botoes) {
         const ativa = nome===area;

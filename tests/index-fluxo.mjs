@@ -8,7 +8,8 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
 const root = path.resolve(process.argv[2] || ".");
-const original = execFileSync("git", ["show", "d50ab7f:index.html"], { encoding: "utf8" });
+const original = execFileSync("git", ["show", "add4849:index.html"], { encoding: "utf8" });
+const administracao = execFileSync("git", ["show", "add4849:pdv/partes/administracao.html"], { encoding: "utf8" });
 const mime = { ".html": "text/html", ".mjs": "text/javascript", ".js": "text/javascript", ".css": "text/css", ".png": "image/png" };
 const server = http.createServer(async (req, res) => {
   try {
@@ -38,11 +39,31 @@ try {
   await dom.goto(base + "/");
   await dom.waitForFunction(() => window.pdvCarregado && !document.getElementById("login").inert);
   await dom.locator("#instalar-pwa:visible").waitFor();
+  const normalizarIncremento = () => {
+    document.getElementById("troca-loja-pdv")?.remove();
+    document.getElementById("empresa")?.removeAttribute("aria-label");
+    document.getElementById("convites-equipe-pdv")?.remove();
+    const suspensos = document.getElementById("desligamentos-pdv");
+    suspensos?.nextElementSibling?.remove();
+    suspensos?.remove();
+    const senha = document.getElementById("novo-operador-senha");
+    if (senha?.parentElement.tagName === "LABEL") {
+      senha.parentElement.htmlFor = senha.id;
+      senha.parentElement.after(senha);
+    }
+  };
+  await dom.evaluate(normalizarIncremento);
   const atual = await dom.evaluate(estrutura);
   await dom.setContent(original.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, ""));
-  await dom.locator("#instalar-pwa").evaluate(botao => { botao.hidden = false; });
+  await dom.evaluate(html => {
+    const parcial = document.createElement("template");
+    parcial.innerHTML = html;
+    document.querySelector('template[data-pdv-parcial="administracao"]').replaceWith(parcial.content);
+    document.getElementById("login").inert = false;
+    document.getElementById("instalar-pwa").hidden = false;
+  }, administracao);
   assert.deepEqual(atual, await dom.evaluate(estrutura));
-  console.log("PASS DOM completo, atributos, textos e hierarquia iguais à base");
+  console.log("PASS DOM operacional preservado fora dos novos controles de equipe e troca");
   testes++;
   await dom.close();
 
@@ -69,7 +90,7 @@ try {
         else json = [];
       } else if (nome === "empresas") json = [{ id: "empresa-teste", nome: "Loja teste", nome_pdv: "PDV teste",
         pagamento_na_entrega: true, cardapio_cor: "#175d2d", cardapio_fundo: "#f4f6f2" }];
-      else if (nome === "membros") json = [{ empresa_id: "empresa-teste" }];
+      else if (nome === "membros") json = [{ empresa_id: "empresa-teste", papel:"gestor", vinculo_id:"revisao-teste" }];
       else if (nome === "produtos") json = [{ id: "produto-teste", codigo: "101", nome: "Produto teste",
         preco_centavos: 1250, categoria: "Produtos", vendido_por_peso: false }];
       else if (nome === "terminais_pdv") json = [{ id: "terminal-teste", nome: "Caixa teste" }];

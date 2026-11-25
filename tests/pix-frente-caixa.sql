@@ -5,13 +5,16 @@ declare
   gestor uuid:=gen_random_uuid(); outro uuid:=gen_random_uuid(); loja uuid:=gen_random_uuid();
   terminal uuid:=gen_random_uuid(); outro_terminal uuid:=gen_random_uuid(); caixa uuid; outro_caixa uuid;
   produto uuid:=gen_random_uuid(); pedido uuid:=gen_random_uuid(); tentativa uuid:=gen_random_uuid();
-  reserva uuid:=gen_random_uuid(); segunda uuid:=gen_random_uuid(); itens jsonb; dados jsonb; resultado text;
+  integracao uuid; reserva uuid:=gen_random_uuid(); segunda uuid:=gen_random_uuid(); itens jsonb; dados jsonb; resultado text;
   bloqueado boolean;
 begin
   insert into auth.users(id,email) values(gestor,'gestor-pix-pdv@example.invalid'),(outro,'outro-pix-pdv@example.invalid');
   insert into public.empresas(id,nome) values(loja,'Loja Pix teste');
   insert into public.membros values(loja,gestor,'gestor'),(loja,outro,'operador');
   insert into public.provedores_pagamento(empresa_id,provedor,ambiente,pix_habilitado) values(loja,'mercado_pago','sandbox',true);
+  if public.ambiente_pix_frente(loja) is not null then raise exception 'Ambiente Pix sem credencial'; end if;
+  insert into painel_privado.credenciais_mp(empresa_id,ambiente,recebedor,envelope,chave_publica,estado,revisao)
+    values(loja,'sandbox','3095871690',repeat('X',50),'chave-fixture','ativa',1) returning id into integracao;
   insert into public.terminais_pdv(id,empresa_id,nome,operador_id) values(terminal,loja,'Caixa A',gestor),(outro_terminal,loja,'Caixa B',outro);
   insert into public.produtos(id,empresa_id,codigo,nome,preco_centavos) values(produto,loja,'T1','Lanche',1000);
   itens:=jsonb_build_array(jsonb_build_object('produto_id',produto,'quantidade',1));
@@ -22,7 +25,7 @@ begin
   set local role authenticated;
   perform set_config('request.jwt.claim.sub',gestor::text,true);
   caixa:=public.abrir_caixa(loja,0,terminal);
-  if public.pix_frente_disponivel(loja)<>'sandbox' then raise exception 'Ambiente Pix não configurado'; end if;
+  if public.pix_frente_disponivel(loja) is distinct from 'sandbox' then raise exception 'Ambiente Pix não configurado'; end if;
   bloqueado:=false;
   begin perform public.registrar_venda_com_desconto(caixa,gen_random_uuid(),'pix',itens,0); exception when raise_exception then bloqueado:=true; end;
   if not bloqueado then raise exception 'Pix manual indevidamente registrado'; end if;
@@ -36,13 +39,14 @@ begin
   reset role;
 
   set local role service_role;
-  resultado:=public.conciliar_pix_frente(tentativa,'ORDTST1',950,'sandbox','aguardando');
+  perform public.servico_mp_reserva_pdv(tentativa);
+  resultado:=public.servico_mp_conciliar_pdv(integracao,tentativa,'ORDTST1',950,'sandbox','aguardando');
   if resultado<>'aguardando' then raise exception 'Ordem pendente não vinculada'; end if;
   bloqueado:=false;
-  begin perform public.conciliar_pix_frente(tentativa,'ORDTST1',1000,'sandbox','confirmado'); exception when raise_exception then bloqueado:=true; end;
+  begin perform public.servico_mp_conciliar_pdv(integracao,tentativa,'ORDTST1',1000,'sandbox','confirmado'); exception when raise_exception then bloqueado:=true; end;
   if not bloqueado then raise exception 'Valor divergente confirmado'; end if;
-  perform public.conciliar_pix_frente(tentativa,'ORDTST1',950,'sandbox','confirmado');
-  perform public.conciliar_pix_frente(tentativa,'ORDTST1',950,'sandbox','confirmado');
+  perform public.servico_mp_conciliar_pdv(integracao,tentativa,'ORDTST1',950,'sandbox','confirmado');
+  perform public.servico_mp_conciliar_pdv(integracao,tentativa,'ORDTST1',950,'sandbox','confirmado');
   reset role;
   if (select count(*) from public.movimentos_caixa where caixa_id=caixa and tipo='venda')<>1 then raise exception 'Venda duplicada'; end if;
 
@@ -59,14 +63,16 @@ begin
   reset role;
 
   set local role service_role;
-  perform public.conciliar_pix_frente(reserva,'ORDTST2',1000,'sandbox','expirado');
+  perform public.servico_mp_reserva_pdv(reserva);
+  perform public.servico_mp_conciliar_pdv(integracao,reserva,'ORDTST2',1000,'sandbox','expirado');
   reset role;
   set local role authenticated;
   dados:=public.reservar_pix_frente(outro_caixa,segunda,pedido,'[]'::jsonb,0,1000,null);
   if dados->>'id'<>segunda::text then raise exception 'Nova ordem não abriu após expiração'; end if;
   reset role;
   set local role service_role;
-  perform public.conciliar_pix_frente(segunda,'ORDTST3',1000,'sandbox','confirmado');
+  perform public.servico_mp_reserva_pdv(segunda);
+  perform public.servico_mp_conciliar_pdv(integracao,segunda,'ORDTST3',1000,'sandbox','confirmado');
   reset role;
   if not exists(select 1 from public.vendas where id=pedido and total_centavos=1000 and meio='pix') then
     raise exception 'Recebimento da comanda não foi registrado';

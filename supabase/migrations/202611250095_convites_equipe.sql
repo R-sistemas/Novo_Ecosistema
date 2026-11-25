@@ -83,6 +83,9 @@ begin
   if p_acao<>'cancelar' and ativo is distinct from true then raise insufficient_privilege; end if;
   chave := (p_dados->>'requisicao')::uuid;
   if chave is null then raise sqlstate '22023'; end if;
+  p_dados := case when p_acao='emitir'
+    then jsonb_build_object('email',email_alvo,'perfil',perfil_alvo,'caixa',caixa_alvo)
+    else jsonb_build_object('id',(p_dados->>'id')::uuid) end;
   perform pg_advisory_xact_lock(hashtextextended(ator::text||':'||chave::text,95));
   select r.* into anterior from painel_privado.convites_equipe_requisicoes r
     where r.emissor=ator and r.requisicao=chave;

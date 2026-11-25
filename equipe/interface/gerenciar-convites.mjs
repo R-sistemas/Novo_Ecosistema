@@ -6,10 +6,11 @@ export function prepararConvites(painel) {
   const acesso = document.createElement("section");
   acesso.hidden = true;
   lista.after(acesso);
-  let empresa, geracao = 0, ocupado = false;
+  let empresa, compartilhado, geracao = 0, ocupado = false;
   const solicitacoes = new Map();
 
-  function compartilhar(token) {
+  function compartilhar(id, token) {
+    compartilhado = id;
     const url = new URL("/convite-equipe.html", location.origin);
     url.hash = "convite=" + token;
     const link = document.createElement("input");
@@ -45,7 +46,12 @@ export function prepararConvites(painel) {
       const resposta = await gerenciarConvites(loja, acao, {...dados,requisicao});
       if (atual !== geracao) return;
       solicitacoes.delete(operacao);
-      if (resposta.token) compartilhar(resposta.token);
+      if (resposta.token) compartilhar(resposta.id, resposta.token);
+      if (acao === "cancelar" && compartilhado === resposta.id) {
+        acesso.replaceChildren();
+        acesso.hidden = true;
+        compartilhado = undefined;
+      }
       aviso.textContent = acao === "cancelar" ? "Convite cancelado." : resposta.token
         ? "Link disponível para compartilhar."
         : "Convite registrado. Use Reenviar para gerar um novo link.";
@@ -88,6 +94,7 @@ export function prepararConvites(painel) {
   async function carregar(loja) {
     const atual = ++geracao;
     empresa = loja;
+    compartilhado = undefined;
     ocupado = false;
     solicitacoes.clear();
     aviso.textContent = "";
