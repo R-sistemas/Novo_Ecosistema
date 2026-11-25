@@ -3,8 +3,16 @@ import {
   cadastrarOperador, configurarMesa, configurarNomePdv, configurarEdicaoKds, configurarTerminal, configurarPagamentoNaEntrega,
 } from "../dados/administracao.mjs";
 
+import { configurarFormularioConvites } from "../../equipe/interface/formulario-convites.mjs";
+
 export function configurarAdministracao(ctx) {
   const { el, operar, atualizar, temItens } = ctx;
+  const formulario = el("cadastrar-operador");
+  const convites = configurarFormularioConvites(formulario,el("convites-equipe-pdv"));
+  formulario.addEventListener("abrir-convites", () => {
+    void convites.carregar(el("empresa").value).then(() => el("novo-operador-perfil").onchange())
+      .catch(() => { el("notice").textContent = "Não foi possível consultar os convites da loja."; });
+  });
   el("configurar-mesa").onsubmit = (evento) => {
     evento.preventDefault();
     operar(async () => {
@@ -52,27 +60,21 @@ export function configurarAdministracao(ctx) {
   };
   el("cadastrar-operador").onsubmit = (evento) => {
     evento.preventDefault();
-    operar(async () => {
-      const senha = el("novo-operador-senha");
-      const perfil = el("novo-operador-perfil").value;
-      try {
-        await cadastrarOperador({
-          empresa: el("empresa").value,
-          email: el("novo-operador-email").value.trim(),
-          senha: senha.value,
-          perfil,
-          caixa: perfil === "vendas" ? el("novo-operador-caixa").value.trim() || null : null,
-        });
-      } finally {
-        senha.value = "";
-      }
-      evento.target.reset();
-      el("novo-operador-perfil").onchange();
-      await atualizar();
-      return perfil === "cozinha"
-        ? "Conta exclusiva do KDS cadastrada."
-        : "Operador cadastrado e vinculado ao estabelecimento.";
-    }, true);
+    const empresa = el("empresa").value;
+    const perfil = el("novo-operador-perfil").value;
+    const entrada = {email:el("novo-operador-email").value.trim(), perfil,
+      caixa:perfil === "vendas" ? el("novo-operador-caixa").value.trim() || null : null};
+    void convites.enviar(entrada, () => {
+      operar(async () => {
+        const senha = el("novo-operador-senha");
+        try { await cadastrarOperador({...entrada,empresa,senha:senha.value}); }
+        finally { senha.value = ""; }
+        formulario.reset();
+        el("novo-operador-perfil").onchange();
+        await atualizar();
+        return "Operador cadastrado e vinculado ao estabelecimento.";
+      }, true);
+    }).finally(() => el("novo-operador-perfil").onchange());
   };
   el("editar-terminal").onchange = () => {
     const terminal = ctx.terminais().find((t) => t.id === el("editar-terminal").value);

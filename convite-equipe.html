@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="supabase-key" content="sb_publishable_s0oowaHaCZkMUZgNTo6upw_zljF76Na">
+  <title>Convite de equipe | R Sistemas</title>
+  <link rel="stylesheet" href="/admin-loja.css">
+  <script type="module" src="/equipe/interface/aceite.mjs"></script>
+</head>
+<body class="acesso-loja">
+  <main>
+    <h1>Convite de equipe</h1>
+    <section class="cartao">
+      <p id="convite-status" role="status"></p>
+      <form id="convite-login" method="post" hidden>
+        <label>E-mail <input name="email" type="email" autocomplete="username" required></label>
+        <label>Senha <input name="senha" type="password" autocomplete="current-password" required></label>
+        <button>Entrar</button>
+        <button type="button" id="convite-criar">Criar minha conta</button>
+        <a href="/recuperar-senha.html">Esqueci minha senha</a>
+      </form>
+      <section id="convite-detalhes" hidden>
+        <h2 id="convite-loja"></h2>
+        <p id="convite-perfil"></p>
+        <p id="convite-emissor"></p>
+        <button type="button" id="convite-aceitar">Aceitar convite</button>
+        <button type="button" id="convite-recusar">Recusar convite</button>
+        <button type="button" id="convite-trocar-conta">Trocar de conta</button>
+      </section>
+      <a id="convite-continuar" href="/" hidden>Ir para o PDV</a>
+    </section>
+  </main>
+</body>
+</html>

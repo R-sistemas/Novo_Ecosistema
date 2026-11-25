@@ -1,10 +1,13 @@
 import { consultarEquipe, criarOperador, mudarEquipe } from "../dados/equipe.mjs";
 
+import { configurarFormularioConvites } from "../../equipe/interface/formulario-convites.mjs";
+
 export function prepararEquipe(area, aoAvisar) {
   const encontrar = seletor => area.querySelector(seletor);
   const equipe = encontrar("[data-operadores]");
   const terminais = encontrar("[data-terminais]");
   const cadastro = encontrar("[data-cadastro]");
+  const convites = configurarFormularioConvites(cadastro,encontrar("[data-convites-painel]"));
   const terminal = encontrar("[data-terminal]");
   const nomePdv = encontrar("[data-nome-pdv]");
   const erro = encontrar("[data-erro-equipe]");
@@ -106,7 +109,8 @@ export function prepararEquipe(area, aoAvisar) {
     nomePdv.reset();
     bloquear(true);
     try {
-      const resposta = await consultarEquipe(loja);
+      const [resposta] = await Promise.all([consultarEquipe(loja),convites.carregar(loja)]);
+      atualizarPerfil();
       if (atual !== versao) return;
       dados = resposta;
       preencher();
@@ -139,7 +143,10 @@ export function prepararEquipe(area, aoAvisar) {
   cadastro.onsubmit = evento => {
     evento.preventDefault();
     const e = cadastro.elements;
-    operar(loja => criarOperador(loja,{email:e.email.value.trim(),senha:e.senha.value,perfil:e.perfil.value,caixa:e.caixa.disabled ? null : e.caixa.value.trim()}),"Operador cadastrado.");
+    const entrada = {email:e.email.value.trim(),perfil:e.perfil.value,caixa:e.caixa.disabled ? null : e.caixa.value.trim()};
+    void convites.enviar(entrada, () => {
+      operar(loja => criarOperador(loja,{...entrada,senha:e.senha.value}),"Operador cadastrado.");
+    }).finally(atualizarPerfil);
   };
   terminal.elements.id.onchange = () => {
     const t = dados?.terminais.find(item=>item.id===terminal.elements.id.value);

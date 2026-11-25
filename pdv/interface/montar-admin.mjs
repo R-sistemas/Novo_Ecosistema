@@ -24,6 +24,7 @@ export function montarAdmin(ctx) {
       const id = acao.dataset.adminAbrir;
       if (id === "cadastro-produto") editarProduto();
       abrirAdmin(id);
+      if (id === "cadastrar-operador") el(id).dispatchEvent(new Event("abrir-convites"));
       if (id === "lista-operadores") void carregarOperadores();
       if (id === "permissao-kds") void carregarOperadores(true);
     };

@@ -40,6 +40,8 @@ before(async () => {
 after(() => db.close());
 
 const queries = {
+  gerenciar_convites_equipe:["p_empresa","p_acao","p_dados"],
+  responder_convite_equipe:["p_token","p_acao"],
   enviar_aviso_pedido:["p_empresa","p_pedido","p_mensagem"],
   painel_contexto_sessao:["p_empresa_id"], painel_equipe:["p_empresa","p_acao","p_dados"],
   painel_iniciar_cadastro_operador:["p_gestor","p_empresa","p_email","p_perfil"],
@@ -398,4 +400,36 @@ test("RPC de aviso exige contato_cliente para cozinha e preserva acesso do gesto
   await equipe("a",A,"contato_cliente",{email:cozinha,permitir:false});
   assert.equal((await fila(cozinha)).pode_avisar,false);
   assert.equal(await enviar(cozinha),403);
+});
+
+test("convite de B preserva A, valida titular, gera novo link e aceita exatamente uma vez", async () => {
+  const gerir = async (ator, empresa, acao, dados = {}) => (await como(ator,
+    "select gerenciar_convites_equipe($1,$2,$3) as r", [empresa,acao,JSON.stringify(dados)]
+  )).rows[0].r;
+  const responder = async (ator, token, acao) => (await como(ator,
+    "select responder_convite_equipe($1,$2) as r", [token,acao]
+  )).rows[0].r;
+  const entrada = {email:"OP@example.invalid",perfil:"vendas",caixa:"Caixa convites",requisicao:randomUUID()};
+  await assert.rejects(gerir("b",B,"emitir",entrada),{code:"42501"});
+  await db.query("insert into painel_privado.convites_equipe_ativacao values($1,true)",[B]);
+  try {
+    await assert.rejects(gerir("a",B,"emitir",entrada),{code:"42501"});
+    const emitido = await gerir("b",B,"emitir",entrada);
+    assert.match(emitido.token,/^[0-9a-f]{64}$/);
+    assert.deepEqual(await gerir("b",B,"emitir",entrada),{id:emitido.id,geracao:1});
+    await assert.rejects(gerir("b",B,"emitir",{...entrada,perfil:"cozinha",caixa:null}),{code:"23505"});
+    await assert.rejects(responder("a",emitido.token,"aceitar"),{code:"42501"});
+    assert.equal((await responder("op",emitido.token,"consultar")).estado,"pendente");
+    assert.ok(!(await gerir("b",B,"listar")).convites[0].token);
+    const novo = await gerir("b",B,"reenviar",{id:emitido.id,requisicao:randomUUID()});
+    await assert.rejects(responder("op",emitido.token,"aceitar"),{code:"42501"});
+    const aceito = await responder("op",novo.token,"aceitar");
+    assert.equal(aceito.estado,"aceito");
+    assert.deepEqual(await responder("op",novo.token,"aceitar"),aceito);
+    assert.deepEqual((await rows("select empresa_id,papel from membros where usuario_id=$1 order by empresa_id",
+      [users.get("op")])).map(v=>[v.empresa_id,v.papel]),[[A,"operador"],[B,"operador"]]);
+    assert.equal((await rows("select count(*)::int as total from auth.users where id=$1",[users.get("op")]))[0].total,1);
+  } finally {
+    await db.query("delete from painel_privado.convites_equipe_ativacao where empresa_id=$1",[B]);
+  }
 });
