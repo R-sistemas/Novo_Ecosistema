@@ -26,8 +26,9 @@ create function painel_privado.auditar_convite_primeiro_gestor(
   insert into painel_privado.auditoria
     (autor_id,origem_autor,escopo,empresa_id,acao,entidade,entidade_id,depois,requisicao_id)
   values (p_ator,'usuario',case when p_acao in ('aceitar','recusar') then 'loja' else 'plataforma' end,
-    p_convite.empresa_id,'central.convite_gestor.'||p_acao,'convite_gestor',p_convite.id::text,
-    jsonb_build_object('geracao',p_convite.geracao),p_convite.onboarding_requisicao);
+    case when p_acao in ('aceitar','recusar') then p_convite.empresa_id end,
+    'central.convite_gestor.'||p_acao,'convite_gestor',p_convite.id::text,
+    jsonb_build_object('geracao',p_convite.geracao,'empresa_id',p_convite.empresa_id),p_convite.onboarding_requisicao);
 $$;
 
 create function painel_privado.emitir_primeiro_gestor(p_requisicao uuid,p_ator uuid)

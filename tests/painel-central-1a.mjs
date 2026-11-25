@@ -172,6 +172,9 @@ test("Chrome passa pelo login, MFA, inventário, busca, paginação, edição e 
     if (url.pathname === "/auth/v1/logout") return new Response(null, { status: 204 });
     try {
       const rpc = url.pathname.split("/").pop();
+      if (rpc === "central_provisionar_empresa") return identidade.aal === "aal2" && identidade.usuario === admin
+        ? Response.json({modo:"legado"}) : Response.json({code:"42501"},{status:403});
+      if (rpc === "central_convite_primeiro_gestor" && identidade.aal === "aal2" && identidade.usuario === admin) return Response.json({convite:null});
       const sql = {
         painel_contexto_sessao: "select public.painel_contexto_sessao($1) as dados",
         central_auditoria_global: "select public.central_auditoria_global($1,$2,$3,$4,$5,$6,$7) as dados",
@@ -310,8 +313,26 @@ test("Chrome passa pelo login, MFA, inventário, busca, paginação, edição e 
     assert.equal(await page.getByRole("button", { name: "Abrir Empresa 21", exact: true }).evaluate(el => el === document.activeElement), true);
     await page.getByLabel("Buscar empresa").fill("loja-02");
     await page.getByRole("button", { name: "Buscar" }).click();
+    const conviteFixture = {estado:"pendente",email:"gestor@example.invalid",geracao:1,reenvio_habilitado:true,
+      historico:[{acao:"central.convite_gestor.emitir",em:"2026-11-25T12:00:00Z",geracao:1}]};
+    await page.route("**/api/central/onboarding?empresa=*", route => route.fulfill({json:{convite:conviteFixture}}));
+    await page.route("**/api/central/onboarding", route => {
+      if (route.request().method() !== "POST" || route.request().postDataJSON()?.acao !== "reenviar") return route.fallback();
+      assert.match(route.request().postDataJSON().requisicao,/^[0-9a-f-]{36}$/);
+      conviteFixture.geracao = 2;
+      conviteFixture.historico.push({acao:"central.convite_gestor.reenviar",em:"2026-11-25T13:00:00Z",geracao:2});
+      return route.fulfill({json:{geracao:2,token:"a".repeat(64)}});
+    });
     await page.getByRole("button", { name: "Abrir Empresa 02", exact: true }).click();
     await page.getByRole("heading", { name: "Empresa 02" }).waitFor();
+    await page.getByRole("heading",{name:"Aguardando aceite do gestor"}).waitFor();
+    await capturar("primeiro-gestor-pendente");
+    await page.getByRole("button",{name:"Reenviar e gerar novo link"}).click();
+    await page.getByText("Novo link gerado.").waitFor();
+    assert.match(await page.getByLabel("Link do primeiro gestor").inputValue(),/#gestor=[a-f0-9]{64}$/);
+    await page.getByText(/Reenvio · geração 2/).waitFor();
+    await page.unroute("**/api/central/onboarding?empresa=*");
+    await page.unroute("**/api/central/onboarding");
     await page.locator("#licenca").getByLabel("Plano").selectOption("basico");
     await page.locator("#licenca").getByLabel("Preço mensal (R$)").fill("149.90");
     await page.getByLabel("Motivo da alteração").fill("Conferência local");

@@ -110,7 +110,7 @@ begin
     if not found then return jsonb_build_object('convite',null); end if;
     select coalesce(jsonb_agg(jsonb_build_object('acao',a.acao,'em',a.ocorrido_em,'geracao',a.depois->'geracao')
       order by a.ocorrido_em,a.id),'[]'::jsonb) into historico
-      from painel_privado.auditoria a where a.empresa_id=p_empresa
+      from painel_privado.auditoria a where a.depois->>'empresa_id'=p_empresa::text
         and a.entidade='convite_gestor' and a.entidade_id=convite.id::text;
     return jsonb_build_object('convite',jsonb_build_object('estado',case
       when convite.estado='pendente' and convite.expira_em<=now() then 'expirado' else convite.estado end,
