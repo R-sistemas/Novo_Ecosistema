@@ -44,6 +44,9 @@ export const historicoLicenca = (empresa, pagina) =>
 export const quitarLicenca = dados => chamar("licencas", "POST", dados);
 
 export const criarEmpresa = dados => chamar("onboarding", "POST", dados);
+export const lerConviteGestor = empresa => chamar("onboarding?" + new URLSearchParams({empresa}),"GET");
+export const reenviarConviteGestor = (empresa,requisicao) =>
+  chamar("onboarding","POST",{acao:"reenviar",empresa,requisicao});
 
 export async function definirSenhaGestor(convite, senha) {
   const resposta = await fetch("/api/central/ativar-gestor", {

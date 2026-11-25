@@ -142,8 +142,9 @@ begin
   insert into public.empresas (nome, cardapio_slug) values (v_nome, p_slug) returning id into v_id;
   insert into painel_privado.central_licencas (empresa_id, estado, plano, preco_centavos, vencimento, pagamento, revisao)
     values (v_id, 'ativa', p_plano, p_preco, p_vencimento, p_pagamento, 1);
-  insert into painel_privado.central_onboarding (requisicao, empresa_id, autor_id, email, dados)
-    values (p_requisicao, v_id, v_autor, v_email, v_dados);
+  insert into painel_privado.central_onboarding (requisicao, empresa_id, autor_id, email, dados, origem)
+    values (p_requisicao, v_id, v_autor, v_email, v_dados, 'convite');
+  v_token := painel_privado.emitir_primeiro_gestor(p_requisicao,v_autor);
   insert into painel_privado.auditoria (autor_id, escopo, acao, entidade, entidade_id, depois, motivo, requisicao_id)
     values (v_autor, 'plataforma','central.criar_empresa','empresa',v_id::text,v_dados,'Criação de empresa',p_requisicao);
   return jsonb_build_object('empresa',v_id,'modo','convite','token',v_token);

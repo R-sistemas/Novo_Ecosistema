@@ -3,6 +3,7 @@ import { dadosLicenca, resumoLicenca, situacaoLicenca, rotuloSuspensao } from ".
 import { controlesSuspensao } from "./suspensao.mjs";
 import { controlesCiclo } from "./ciclo.mjs";
 import { controlesRecebedorMP } from "./credencial-mp.mjs";
+import { controlesConviteGestor } from "./convite-gestor.mjs";
 import { selo } from "./selo.mjs";
 
 const el = id => document.getElementById(id);
@@ -29,6 +30,7 @@ export function editor(painel, atualizar, sair) {
 
   const mostrarCiclo = controlesCiclo(() => retornar(true), sair, bloquear);
 
+  const mostrarConvite = controlesConviteGestor(el("licenca"),sair);
   const mostrarRecebedor = controlesRecebedorMP(detalhe, sair, bloquear);
 
   function mensagem(texto = "") {
@@ -58,6 +60,7 @@ export function editor(painel, atualizar, sair) {
     mostrarSuspensao(empresa);
     mostrarCiclo(empresa);
     mostrarRecebedor(empresa);
+    void mostrarConvite(empresa);
     mensagem();
     painel.hidden = true;
     detalhe.hidden = false;
@@ -77,6 +80,7 @@ export function editor(painel, atualizar, sair) {
     mostrarSuspensao();
     mostrarCiclo();
     mostrarRecebedor();
+    void mostrarConvite();
     mensagem();
     bloquear(false);
   }

@@ -8,6 +8,7 @@ export const gerenciarConvites = (empresa, acao, dados) => executar("gerenciar_c
   p_empresa: empresa, p_acao: acao, p_dados: dados
 });
 
-export const responderConvite = (token, acao) => executar("responder_convite_equipe", {
+export const responderConvite = (token, acao, primeiroGestor = false) => executar(
+  primeiroGestor ? "responder_convite_primeiro_gestor" : "responder_convite_equipe", {
   p_token: token, p_acao: acao
 });

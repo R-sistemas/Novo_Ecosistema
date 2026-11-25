@@ -1,17 +1,23 @@
 import { criarEmpresa } from "../dados/central.mjs";
 
+import { exibirLinkGestor } from "./link-gestor.mjs";
+
 export function onboarding(atualizar, sair) {
   const dialogo = document.getElementById("nova-empresa");
   const form = dialogo.querySelector("form");
   const aviso = document.getElementById("estado-onboarding");
   const salvar = form.querySelector("button[type=submit]");
   const cancelar = document.getElementById("cancelar-onboarding");
+  const link = document.createElement('div');
+  aviso.after(link);
   let tentativa, versao = 0;
   document.getElementById("abrir-onboarding").onclick = () => dialogo.showModal();
-  cancelar.onclick = () => dialogo.close();
+  cancelar.onclick = () => fechar();
+  dialogo.addEventListener('close',() => { if (salvar.hidden) fechar(); });
   dialogo.addEventListener("cancel", evento => { if (salvar.disabled) evento.preventDefault(); });
   form.onsubmit = async evento => {
     evento.preventDefault();
+    if (salvar.hidden || salvar.disabled) return;
     const atual = versao;
     const dados = Object.fromEntries(new FormData(form));
     dados.preco_centavos = Math.round(Number(dados.preco_centavos) * 100);
@@ -20,8 +26,17 @@ export function onboarding(atualizar, sair) {
     aviso.textContent = "";
     salvar.disabled = cancelar.disabled = true;
     try {
-      await criarEmpresa({ ...dados, requisicao: tentativa.id });
+      const resultado = await criarEmpresa({ ...dados, requisicao: tentativa.id });
       if (versao !== atual) return;
+      if (resultado.modo === "convite") {
+        salvar.hidden = true;
+        cancelar.textContent = "Fechar";
+        aviso.textContent = resultado.token ? "Empresa registrada. Aguardando aceite do gestor."
+          : "Empresa já registrada. Consulte o convite na ficha da empresa.";
+        exibirLinkGestor(link,resultado.token);
+        atualizar();
+        return;
+      }
       fechar();
       atualizar();
     } catch (e) {
@@ -38,6 +53,9 @@ export function onboarding(atualizar, sair) {
     dialogo.close();
     form.reset();
     aviso.textContent = "";
+    link.replaceChildren();
+    salvar.hidden = false;
+    cancelar.textContent = "Cancelar";
     tentativa = undefined;
     salvar.disabled = cancelar.disabled = false;
   }

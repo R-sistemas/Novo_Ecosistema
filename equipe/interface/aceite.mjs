@@ -2,7 +2,9 @@ import { criarMinhaConta, entrar } from "../../supabase-pdv.mjs";
 import { responderConvite } from "../dados/convites.mjs";
 
 const el = id => document.getElementById("convite-" + id);
-const token = new URLSearchParams(location.hash.slice(1)).get("convite");
+const parametros = new URLSearchParams(location.hash.slice(1));
+const primeiroGestor = parametros.has("gestor");
+const token = parametros.get(primeiroGestor ? "gestor" : "convite");
 if (location.hash) history.replaceState(null, "", location.pathname);
 const form = el("login");
 const status = el("status");
@@ -14,13 +16,13 @@ function mostrar(dados) {
   form.hidden = true;
   detalhes.hidden = !pendente;
   el("loja").textContent = dados.loja;
-  el("perfil").textContent = (dados.perfil === "vendas" ? "Vendas" : "Cozinha") + (dados.caixa ? " · " + dados.caixa : "");
+  el("perfil").textContent = ({vendas:"Vendas",cozinha:"Cozinha",gestor:"Gestor"})[dados.perfil] + (dados.caixa ? " · " + dados.caixa : "");
   el("emissor").textContent = "Enviado por " + dados.emissor;
   status.textContent = pendente ? "" : dados.estado === "aceito" ? "Convite aceito para " + dados.loja + "." : "Convite recusado.";
   const continuar = el("continuar");
   continuar.hidden = dados.estado !== "aceito";
-  continuar.href = (dados.perfil === "vendas" ? "/" : "/kds.html") + "?empresa_id=" + encodeURIComponent(dados.empresa_id);
-  continuar.textContent = dados.perfil === "vendas" ? "Ir para o PDV" : "Ir para o KDS";
+  continuar.href = ({vendas:"/",cozinha:"/kds.html",gestor:"/admin-loja.html"})[dados.perfil] + "?empresa_id=" + encodeURIComponent(dados.empresa_id);
+  continuar.textContent = ({vendas:"Ir para o PDV",cozinha:"Ir para o KDS",gestor:"Ir para o painel da loja"})[dados.perfil];
 }
 
 async function operar(acao) {
@@ -38,7 +40,7 @@ async function operar(acao) {
 }
 
 async function consultar(acao) {
-  try { mostrar(await responderConvite(token, acao)); }
+  try { mostrar(await responderConvite(token, acao, primeiroGestor)); }
   catch (erro) {
     status.textContent = erro.status === 409
       ? "A loja precisa revisar o terminal ou o vínculo antes de concluir este convite."
