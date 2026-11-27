@@ -90,6 +90,19 @@ try {
         assert.equal(await page.locator("#pix-codigo").inputValue(), "PIX-TESTE");
       }
       if (caso === "retomar") {
+        const atual = page.locator('#etapas-pedido [aria-current="step"]');
+        assert.equal(await atual.textContent(), "Recebido");
+        pedido.estado = "preparo";
+        await atual.filter({ hasText: "Em preparo" }).waitFor();
+        for (const [estado, estado_remo, titulo] of [
+          ["pronto", null, "Pronto"],
+          ["pronto", "em_rota", "A caminho"],
+          ["pronto", "entregue", "Entregue"]
+        ]) {
+          Object.assign(pedido, { estado, estado_remo });
+          await page.locator("#acompanhar").click();
+          await atual.filter({ hasText: titulo }).waitFor();
+        }
         const voltar = page.getByRole("link", { name: "Voltar ao cardápio" });
         await voltar.click();
         await page.locator('[aria-label*="Adicionar"]').first().waitFor();

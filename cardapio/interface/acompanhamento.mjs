@@ -2,6 +2,7 @@ import { consultarPedido } from "../dados/pedidos.mjs";
 import { lerPedidoMesa, guardarPedidoMesa, apagarPedidoMesa } from "../dados/pedido-mesa-local.mjs";
 import { prepararPedidoPronto } from "./pedido-pronto.mjs";
 import { exibirAvisosPedido } from "./avisos-pedido.mjs";
+import { exibirEtapasPedido } from "./etapas-pedido.mjs";
 import { resumirPedido } from "../regras/acompanhamento.mjs";
 const el = id => document.getElementById(id);
 
@@ -30,6 +31,7 @@ export function configurarAcompanhamento(ctx) {
     el("titulo-andamento").hidden = false;
     const mensagem = el("mensagem");
     if (mensagem.firstChild?.nodeValue !== resumo.mensagem) mensagem.textContent = resumo.mensagem;
+    exibirEtapasPedido(el("etapas-pedido"), pedido, resumo, ctx.entrega);
     retirada.atualizar(pedido);
     if (ctx.p_mesa && (pedido.cancelado || !ctx.acompanhamentoAtivo)) apagarPedidoMesa(ctx.p_slug,ctx.p_mesa);
     exibirAvisosPedido(el("mensagem"),pedido.avisos ?? []);
