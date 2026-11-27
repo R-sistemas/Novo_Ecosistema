@@ -147,3 +147,27 @@ test("API usa o token do agente e a pausa conserva os vínculos", async t => {
   assert.equal((await ficha(res.dados.empresa)).convite.reenvio_habilitado,false);
   assert.equal((await vinculos(titular)).length,2);
 });
+
+
+
+test("onboarding de trial começa no primeiro aceite e preserva a rota legada", async () => {
+  const sql = "select central_provisionar_empresa_trial($1,$2,$3,$4,$5) as r";
+  const dados = ["Ensaio trial", "ensaio-trial", email, "12.ABC.345/01DE-35", randomUUID()];
+  await banco.query("select painel_privado.configurar_onboarding_multiempresa(true)");
+  await assert.rejects(como(central2,sql,dados),{code:"42501"});
+  await banco.exec("update licenciamento_privado.configuracao set admissao_ativa=true");
+  await assert.rejects(como(titular1,sql,dados),{code:"42501"});
+  const [{r: criado}] = await como(central2,sql,dados);
+  const [{r: replay}] = await como(central2,sql,dados);
+  assert.deepEqual(replay,{empresa:criado.empresa,modo:"convite"});
+  await assert.rejects(como(central2,sql,["Outra","outra-trial",email,dados[3],randomUUID()]),{code:"23505"});
+  const estado = async () => (await banco.query(`
+    select c.fase, extract(epoch from c.trial_fim-c.trial_inicio)::int duracao, s.efetivo,
+      exists(select 1 from painel_privado.central_licencas l where l.empresa_id=c.empresa_id) legado
+    from licenciamento_privado.contratos c cross join lateral painel_privado.situacao_empresa(c.empresa_id) s
+    where c.empresa_id=$1`,[criado.empresa])).rows[0];
+  assert.deepEqual(await estado(),{fase:"preparacao",duracao:null,efetivo:"bloqueada_total",legado:false});
+  await aceitar(criado.token);
+  await aceitar(criado.token);
+  assert.deepEqual(await estado(),{fase:"trial",duracao:604800,efetivo:"em_dia",legado:false});
+});

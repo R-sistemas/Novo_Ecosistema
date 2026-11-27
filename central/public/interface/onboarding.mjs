@@ -1,4 +1,4 @@
-import { criarEmpresa } from "../dados/central.mjs";
+import { criarEmpresa, opcoesOnboardingLicenca } from "../dados/central.mjs";
 
 import { exibirLinkGestor } from "./link-gestor.mjs";
 
@@ -11,7 +11,25 @@ export function onboarding(atualizar, sair) {
   const link = document.createElement('div');
   aviso.after(link);
   let tentativa, versao = 0;
-  document.getElementById("abrir-onboarding").onclick = () => dialogo.showModal();
+  const modalidade = document.getElementById("onboarding-modalidade");
+  const acao = form.elements.acao;
+  const campoCnpj = document.getElementById("onboarding-cnpj");
+  const legado = document.getElementById("onboarding-legado");
+  function modo() {
+    const trial = acao.value === "criar_trial" && !acao.disabled;
+    campoCnpj.hidden = form.elements.cnpj.disabled = !trial;
+    legado.hidden = legado.disabled = trial;
+  }
+  acao.onchange = modo;
+  document.getElementById("abrir-onboarding").onclick = async () => {
+    const atual = versao;
+    dialogo.showModal();
+    try {
+      const opcoes = await opcoesOnboardingLicenca();
+      if (atual !== versao || !dialogo.open) return;
+      modalidade.hidden = acao.disabled = opcoes.trial !== true;
+    } catch { /* O formulário legado continua disponível. */ }
+  };
   cancelar.onclick = () => fechar();
   dialogo.addEventListener('close',() => { if (salvar.hidden) fechar(); });
   dialogo.addEventListener("cancel", evento => { if (salvar.disabled) evento.preventDefault(); });
@@ -20,7 +38,7 @@ export function onboarding(atualizar, sair) {
     if (salvar.hidden || salvar.disabled) return;
     const atual = versao;
     const dados = Object.fromEntries(new FormData(form));
-    dados.preco_centavos = Math.round(Number(dados.preco_centavos) * 100);
+    if (dados.acao !== "criar_trial") dados.preco_centavos = Math.round(Number(dados.preco_centavos) * 100);
     const assinatura = JSON.stringify(dados);
     if (tentativa?.assinatura !== assinatura) tentativa = { assinatura, id: crypto.randomUUID() };
     aviso.textContent = "";
@@ -52,6 +70,8 @@ export function onboarding(atualizar, sair) {
     versao++;
     dialogo.close();
     form.reset();
+    modalidade.hidden = acao.disabled = true;
+    modo();
     aviso.textContent = "";
     link.replaceChildren();
     salvar.hidden = false;

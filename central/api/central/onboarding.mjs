@@ -35,9 +35,28 @@ export default async function onboarding(req, res) {
   if (!iniciar(req, res, ["GET","POST"])) return;
   const token = tokenDe(req);
   if (!token) return erroApi(res, 401);
+  if (req.method === "GET" && req.query?.acao === "opcoes_licenca") {
+    try {
+      const resposta = await supabase("/rest/v1/rpc/central_opcoes_onboarding_licenca", { token, dados: {} });
+      return resposta.ok ? res.status(200).json(await resposta.json()) : erroApi(res, resposta.status);
+    } catch { return erroApi(res, 503); }
+  }
   if (req.method === "GET" || req.body?.acao === "reenviar") {
     try { return await gerenciarConvite(req,res,token); }
     catch { return erroApi(res,503); }
+  }
+  if (req.body?.acao === "criar_trial") {
+    const { nome, slug, email, cnpj, requisicao } = req.body;
+    if (![nome, slug, email, cnpj].every(valor => typeof valor === "string") ||
+        nome.length > 100 || slug.length > 63 || email.length > 254 || cnpj.length > 24 ||
+        typeof requisicao !== "string" || !uuid.test(requisicao)) return erroApi(res, 400);
+    try {
+      const resposta = await supabase("/rest/v1/rpc/central_provisionar_empresa_trial", {
+        token, dados: { p_nome: nome, p_slug: slug, p_email: email, p_cnpj: cnpj, p_requisicao: requisicao }
+      });
+      const corpo = await resposta.json();
+      return resposta.ok ? res.status(201).json(corpo) : erroApi(res, falhaRpc(resposta, corpo));
+    } catch { return erroApi(res, 503); }
   }
   const dados = cadastro(req.body);
   if (!dados) return erroApi(res, 400);

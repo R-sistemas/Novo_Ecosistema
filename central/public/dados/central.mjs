@@ -43,6 +43,7 @@ export const historicoLicenca = (empresa, pagina) =>
   chamar("licencas?" + new URLSearchParams({ empresa, pagina }), "GET");
 export const quitarLicenca = dados => chamar("licencas", "POST", dados);
 
+export const opcoesOnboardingLicenca = () => chamar("onboarding?acao=opcoes_licenca", "GET");
 export const criarEmpresa = dados => chamar("onboarding", "POST", dados);
 export const lerConviteGestor = empresa => chamar("onboarding?" + new URLSearchParams({empresa}),"GET");
 export const reenviarConviteGestor = (empresa,requisicao) =>
