@@ -62,14 +62,15 @@ export function prepararLicenca(area, atualizarResumo) {
       qr.hidden = true;
       qr.value = "";
       try {
-        const resposta = await executarApi("mercado-pago-empresa?operacao_mp=licenca_pix", {empresa, ...dados});
+        const operacao = dados.cobranca ? "licenca_consultar" : "licenca_pix";
+        const resposta = await executarApi("mercado-pago-empresa?operacao_mp=" + operacao, {empresa, ...dados});
         if (versao !== atual) return;
         if (resposta?.pix) {
           qr.value = resposta.pix;
           qr.hidden = false;
         }
         status.textContent = nomes[resposta?.estado] ?? "Pagamento indisponível.";
-        if (resposta?.estado === "pendente") botao.textContent = "Consultar Pix";
+        if (resposta?.estado === "pendente") botao.textContent = "Consultar cobrança";
         else {
           const atualizado = await resumoLicenca(empresa);
           if (versao === atual) {
@@ -84,10 +85,10 @@ export function prepararLicenca(area, atualizarResumo) {
       }
     }
     const pendente = resumo.historico.find(item => ["pendente","revisao"].includes(item.estado));
-    if (resumo.cobranca_ativa && pendente?.retomar) {
-      const botao = texto("button", "Consultar Pix pendente");
+    if (pendente) {
+      const botao = texto("button", "Consultar cobrança");
       botao.type = "button";
-      botao.onclick = () => pagar(pendente.retomar, botao);
+      botao.onclick = () => pagar(resumo.cobranca_ativa && pendente.retomar ? pendente.retomar : {cobranca:pendente.id}, botao);
       botoes.push(botao);
       area.append(botao);
     } else if (!pendente && resumo.fase !== "encerrada" && !resumo.nao_renovar) {

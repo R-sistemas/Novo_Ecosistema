@@ -7,8 +7,11 @@ import { licenciamentoCartao } from "../lib/licenciamento-cartao.mjs";
 
 import { licenciamentoWorker } from "../lib/licenciamento-worker.mjs";
 
+import { consultarCobrancaLicenca } from "../lib/licenciamento-conciliacao.mjs";
+
 export default function mercadoPagoEmpresa(req, res) {
   switch (req.query?.operacao_mp) {
+    case "licenca_consultar": return consultarCobrancaLicenca(req,res);
     case "licenca_worker": return licenciamentoWorker(req,res);
     case "licenca_cartao": return licenciamentoCartao(req, res);
     case "licenca_pix": return licenciamentoPix(req, res);

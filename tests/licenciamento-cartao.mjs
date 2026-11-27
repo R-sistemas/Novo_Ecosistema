@@ -26,7 +26,7 @@ test("checkout só processa ORDTST com cotação confirmada e guarda a mesma ord
   const efeitos = [];
   let recurso = "ORDTSTVAL001", vinculada, status = "created", versaoPagamento;
   const ordem = () => ({id:recurso,collector_id:1234,external_reference:cobranca,processing_mode:"manual",
-    total_amount:"600.00",status,status_detail:status==="processed"?"accredited":status,created_date:"2026-11-27T00:00:00Z",
+    total_amount:"600.00",status,status_detail:status==="processed"?"accredited":status,last_updated_date:"2026-11-27T00:00:00Z",
     transactions:{payments:versaoPagamento?[versaoPagamento]:[]}});
   const rpc = {
     "/auth/v1/user": () => ({id:gestor}),

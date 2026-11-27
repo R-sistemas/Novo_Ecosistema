@@ -55,14 +55,14 @@ test("licenciamento v2 em banco descartável", async (t) => {
     "202611270101_licenciamento_validade_base", "202611270102_licenciamento_calendario_portas",
     "202611270103_licenciamento_cobrancas_pix", "202611270104_licenciamento_avisos_retencao",
     "202611270106_licenciamento_catalogo_vigente", "202611270107_licenciamento_cartao_sandbox",
-    "202611270108_licenciamento_agenda_pix"
+    "202611270108_licenciamento_agenda_pix", "202611270109_licenciamento_conciliacao_ativa"
   ]) await aplicar(name);
 
   const iniciar = (empresa, cnpj, chave) => scalar(
     "select public.central_iniciar_trial_licenca($1,$2,$3) resultado", [empresa, cnpj, chave]
   );
   await t.test("expansão privada, flags desligadas, paridade do legado e calendário", async () => {
-    assert.equal(await scalar(`select not (admissao_ativa or cobranca_ativa or avisos_ativos or exclusao_ativa or agenda_ativa)
+    assert.equal(await scalar(`select not (admissao_ativa or cobranca_ativa or avisos_ativos or exclusao_ativa or agenda_ativa or conciliacao_ativa)
       resultado from licenciamento_privado.configuracao`), true);
     assert.equal(await scalar(`select not has_schema_privilege('authenticated','licenciamento_privado','USAGE') resultado`), true);
     assert.deepEqual(await scalar(`select jsonb_build_array(c.politica,c.ancora_dia,l.preco_centavos,l.revisao,l.pagamento,
@@ -190,6 +190,26 @@ test("licenciamento v2 em banco descartável", async (t) => {
     assert.equal(await fechar(item,true),false);
     assert.equal(await fechar(repetida,true),true);
     assert.equal(await puxar(),null);
+  });
+
+  await t.test("conciliação usa conta privativa e reprocessa lease sem emitir outra cobrança",async () => {
+    const puxar = (id) => scalar("select public.servico_licenca_puxar_conciliacao($1) resultado",[id]);
+    assert.equal(await puxar("sandbox-teste"),null);
+    await db.exec("update licenciamento_privado.configuracao set conciliacao_ativa=true");
+    assert.equal(await puxar("recebedor-alheio"),null);
+    const primeira = await puxar("sandbox-teste");
+    assert.ok(primeira.consulta_lease);
+    assert.equal(primeira.recebedor,"sandbox-teste");
+    assert.equal(await scalar("select public.servico_licenca_fechar_conciliacao($1,$2,false) resultado",
+      [primeira.id,id(911)]),false);
+    assert.equal(await scalar("select public.servico_licenca_fechar_conciliacao($1,$2,false) resultado",
+      [primeira.id,primeira.consulta_lease]),true);
+    const espera = await scalar("select consultas_falhas resultado from licenciamento_privado.cobrancas where id=$1",[primeira.id]);
+    assert.equal(espera,1);
+    assert.equal(await scalar("select public.servico_licenca_ler_cobranca($1,$2,$3,$4) resultado",
+      [primeira.empresa_id,outro,primeira.id,"sandbox-teste"]),null);
+    assert.equal((await scalar("select public.servico_licenca_ler_cobranca($1,$2,$3,$4) resultado",
+      [primeira.empresa_id,gestor,primeira.id,"sandbox-teste"])).id,primeira.id);
   });
 
   await t.test("saída voluntária exige sessão recente e ciência, corte e retenção idempotentes", async () => {
