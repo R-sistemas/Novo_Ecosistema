@@ -1,6 +1,7 @@
 import { confirmarSenhaAtual, executar, executarApi } from "../../supabase-pdv.mjs";
 import { montarCartaoLicenca } from "./licenca-cartao.mjs";
 import { mostrarMudancaLicenca } from "./licenca-mudanca.mjs";
+const dataCivil = data => new Date(data).toLocaleDateString("pt-BR",{timeZone:"America/Sao_Paulo"});
 const reais = new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
 const valor = centavos => reais.format(centavos / 100);
 function texto(tag, conteudo) {
@@ -50,6 +51,7 @@ export function prepararLicenca(area, atualizarResumo) {
     } else if (resumo.trial_fim) {
       area.append(texto("p", "Trial até " + new Date(resumo.trial_fim).toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo"})));
     }
+    if (resumo.retencao_ate && resumo.valido_ate) area.append(texto("p","Retenção até " + dataCivil(resumo.retencao_ate)));
     const status = texto("p", "");
     status.setAttribute("role", "status");
     const qr = document.createElement("textarea");

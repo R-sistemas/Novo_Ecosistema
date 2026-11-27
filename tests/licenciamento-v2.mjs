@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url);
 const id = (n) => "00000000-0000-0000-0000-" + String(n).padStart(12, "0");
 const central = id(1), gestor = id(2), outro = id(3);
 const legado = id(11), loja = id(12), encerrada = id(13), expirada = id(14), suspensa = id(15), cartao = id(16);
-const requisicao = id(21), agendada = id(17), alteravel = id(18);
+const requisicao = id(21), agendada = id(17), alteravel = id(18), retida = id(19);
 const migration = (name) => readFile(new URL("../supabase/migrations/" + name + ".sql", import.meta.url), "utf8");
 
 test("licenciamento v2 em banco descartável", async (t) => {
@@ -45,7 +45,7 @@ test("licenciamento v2 em banco descartável", async (t) => {
     "202611210073_central_inventario_licenca", "202611210074_politica_suspensao_central"
   ]) await aplicar(name);
   for (const usuario of [central, gestor, outro]) await db.query("insert into auth.users values($1)", [usuario]);
-  for (const empresa of [legado, loja, encerrada, expirada, suspensa, cartao, agendada, alteravel]) {
+  for (const empresa of [legado, loja, encerrada, expirada, suspensa, cartao, agendada, alteravel, retida]) {
     await db.query("insert into public.empresas(id,nome) values($1,'Empresa de teste')", [empresa]);
     await db.query("insert into public.membros values($1,$2,'gestor')", [empresa, gestor]);
   }
@@ -56,7 +56,8 @@ test("licenciamento v2 em banco descartável", async (t) => {
     "202611270103_licenciamento_cobrancas_pix", "202611270104_licenciamento_avisos_retencao",
     "202611270106_licenciamento_catalogo_vigente", "202611270107_licenciamento_cartao_sandbox",
     "202611270108_licenciamento_agenda_pix", "202611270109_licenciamento_conciliacao_ativa",
-    "202611270110_licenciamento_mudancas_programadas"
+    "202611270110_licenciamento_mudancas_programadas",
+    "202611270112_licenciamento_elegibilidade_retencao"
   ]) await aplicar(name);
 
   const iniciar = (empresa, cnpj, chave) => scalar(
@@ -268,6 +269,40 @@ test("licenciamento v2 em banco descartável", async (t) => {
     assert.equal(await scalar(`select not has_function_privilege('authenticated',
       'public.servico_licenca_manutencao()','EXECUTE') resultado`), true);
   });
+  await t.test("retenção paga avisa em D−30/15/7 e só registra elegibilidade após quitar dúvidas financeiras",async () => {
+    const mensal = await scalar("select id resultado from licenciamento_privado.ofertas where comercializavel and meses=1");
+    await db.query(`insert into licenciamento_privado.contratos(empresa_id,politica,fase,oferta_id,ancora_dia,valido_ate)
+      values($1,'aniversario','ativa',$2,5,(statement_timestamp() at time zone 'America/Sao_Paulo')::date-5)`,[retida,mensal]);
+    const tick = () => scalar("select public.servico_licenca_manutencao() resultado");
+    const estado = () => scalar("select estado resultado from licenciamento_privado.revisoes_exclusao where empresa_id=$1",[retida]);
+    await tick();
+    const dados = await scalar(`select jsonb_agg(extract(day from (c.retencao_ate-a.devido_em))::int
+      order by c.retencao_ate-a.devido_em) resultado from licenciamento_privado.avisos a
+      join licenciamento_privado.contratos c using(empresa_id)
+      where a.empresa_id=$1 and a.canal='painel' and a.marco like 'exclusao_%'`,[retida]);
+    assert.deepEqual(dados,[7,15,30]);
+    assert.equal(await estado(),undefined);
+    await db.query(`update licenciamento_privado.contratos set acesso_encerrado_em=acesso_encerrado_em-interval '91 days',
+      retencao_ate=retencao_ate-interval '91 days' where empresa_id=$1`,[retida]);
+    await db.query(`insert into public.produtos(empresa_id,codigo,nome,preco_centavos)
+      values($1,'RETENCAO','Item de teste',100)`,[retida]);
+    await db.query(`insert into licenciamento_privado.cobrancas(empresa_id,gestor_id,requisicao_id,oferta_id,meses,termos_versao,
+      base_centavos,desconto_basis_points,valor_centavos,revisao_contrato,provedor,recebedor,ambiente,estado)
+      values($1,$2,$3,$4,1,'mensal-v1',10000,0,10000,2,'mercado_pago','sandbox-teste','sandbox','revisao')`,
+      [retida,gestor,id(750),mensal]);
+    await tick();
+    assert.equal(await estado(),"bloqueada_financeiro");
+    await db.query("update licenciamento_privado.cobrancas set estado='encerrado' where empresa_id=$1",[retida]);
+    await tick();
+    await tick();
+    assert.equal(await estado(),"avaliar_escopo");
+    assert.deepEqual(await scalar(`select jsonb_build_array(tipo_retencao,protecao->'antifraude_meses',
+      protecao->'preservar_obrigacoes_legais',protecao->'preservar_dados_compartilhados') resultado
+      from licenciamento_privado.revisoes_exclusao where empresa_id=$1`,[retida]),
+      ["paga_90d",12,true,true]);
+    assert.equal(await scalar("select count(*)::int resultado from public.produtos where empresa_id=$1",[retida]),1);
+  });
+
 });
 
 test("webhook de licenças rejeita assinatura, modo e recebedor divergentes antes da RPC", async (t) => {
