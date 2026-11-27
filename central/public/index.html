@@ -187,12 +187,10 @@
         <label>E-mail do gestor<input type="email" name="email" required maxlength="254"></label>
         <label id="onboarding-modalidade" hidden>Licenciamento<select name="acao" disabled><option value="">Legado</option><option value="criar_trial">Trial de 168 horas</option></select></label>
         <label id="onboarding-cnpj" hidden>CNPJ<input name="cnpj" required maxlength="24" disabled></label>
-        <fieldset class="campos" id="onboarding-legado">
-        <label>Plano<select name="plano"><option value="basico">Básico</option><option value="pro">Pró</option></select></label>
+        <fieldset class="campos" id="onboarding-legado"><label>Plano<select name="plano"><option value="basico">Básico</option><option value="pro">Pró</option></select></label>
         <label>Preço mensal (R$)<input type="number" name="preco_centavos" min="0" maxlength="11" max="21474836.47" step="0.01" required></label>
         <label>Primeiro vencimento (dia 5)<input type="date" name="vencimento" required></label>
-        <label>Pagamento<select name="pagamento"><option value="pendente">Pendente</option><option value="pago">Pago</option></select></label>
-        </fieldset>
+        <label>Pagamento<select name="pagamento"><option value="pendente">Pendente</option><option value="pago">Pago</option></select></label></fieldset>
         <p id="estado-onboarding" role="alert"></p>
         <div class="acoes"><button type="button" class="neutro" id="cancelar-onboarding">Cancelar</button><button type="submit">Criar e convidar gestor</button></div>
       </form>
