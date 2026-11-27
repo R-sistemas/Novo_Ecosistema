@@ -136,6 +136,35 @@ create trigger licenca_confirmar_mudanca after update of estado on licenciamento
 for each row when (new.mudanca_id is not null and new.estado='confirmado' and old.estado is distinct from new.estado)
 execute function licenciamento_privado.confirmar_mudanca();
 
+-- Estorno do período comprado antecipadamente preserva a vigência ainda em curso.
+create function licenciamento_privado.reverter_mudanca_futura()
+returns trigger language plpgsql security definer set search_path='' as $$
+declare m licenciamento_privado.mudancas; anterior licenciamento_privado.cobrancas;
+begin
+  select x.* into m from licenciamento_privado.mudancas x
+  join licenciamento_privado.cobrancas p on p.id=x.cobranca
+  where x.empresa_id=new.empresa_id and x.oferta_nova=new.oferta_id
+    and p.vigencia_aplicada=new.valido_ate and p.estado in ('estornado','contestado')
+    and x.efetiva_em>(statement_timestamp() at time zone 'America/Sao_Paulo')::date;
+  if not found then return new; end if;
+  select * into anterior from licenciamento_privado.cobrancas p
+    where p.empresa_id=new.empresa_id and p.vigencia_aplicada=m.efetiva_em
+    order by p.confirmado_em desc limit 1;
+  -- Só restaura uma vigência anterior comprovada, ainda válida no PSP.
+  if not found or anterior.estado<>'confirmado' then return new; end if;
+  new.oferta_id:=m.oferta_anterior;
+  new.valido_ate:=m.efetiva_em;
+  new.invalido_em:=null;
+  new.acesso_encerrado_em:=null;
+  new.retencao_ate:=null;
+  update licenciamento_privado.mudancas set confirmada_em=null,cobranca=null where id=m.id;
+  return new;
+end;
+$$;
+create trigger licenca_reverter_mudanca_futura before update of invalido_em on licenciamento_privado.contratos
+for each row when (new.invalido_em is not null and old.invalido_em is distinct from new.invalido_em)
+execute function licenciamento_privado.reverter_mudanca_futura();
+
 create function licenciamento_privado.agendar_sem_mudanca()
 returns trigger language plpgsql security definer set search_path='' as $$
 begin

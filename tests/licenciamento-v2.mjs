@@ -229,8 +229,13 @@ test("licenciamento v2 em banco descartável", async (t) => {
     assert.equal(mudanca.paga,false);
     const resumo = () => scalar("select public.loja_licenca_resumo($1) resultado",[alteravel]);
     assert.equal((await resumo()).oferta_atual,mensal);
-    const reservar = (o,termo) => scalar(`select public.servico_licenca_reservar_pix(
-      $1,$2,$3,$4,$5,'mercado_pago','sandbox-teste','sandbox') resultado`,[alteravel,gestor,o,termo,id(502)]);
+    await db.query(`insert into licenciamento_privado.cobrancas(empresa_id,gestor_id,requisicao_id,oferta_id,
+      meses,termos_versao,base_centavos,desconto_basis_points,valor_centavos,revisao_contrato,provedor,recebedor,
+      ambiente,estado,confirmado_em,vigencia_aplicada)
+      values($1,$2,$3,$4,1,'mensal-v1',10000,0,10000,1,'mercado_pago','sandbox-teste','sandbox','confirmado',
+        statement_timestamp()-interval '1 month',$5)`,[alteravel,gestor,id(503),mensal,mudanca.efetiva_em]);
+    const reservar = (o,termo,chave=id(502)) => scalar(`select public.servico_licenca_reservar_pix(
+      $1,$2,$3,$4,$5,'mercado_pago','sandbox-teste','sandbox') resultado`,[alteravel,gestor,o,termo,chave]);
     await assert.rejects(reservar(mensal,"mensal-v1"),{code:"23505"});
     const c = await reservar(semestral,"termos-v2");
     assert.equal(c.valor_centavos,61000);
@@ -239,6 +244,13 @@ test("licenciamento v2 em banco descartável", async (t) => {
       'ORDTSTMUDANCA',61000,'mudanca','pago',statement_timestamp()) resultado`,[c.id]),"confirmado");
     assert.equal((await resumo()).oferta_atual,mensal);
     assert.equal((await resumo()).mudanca.paga,true);
+    assert.equal(await scalar(`select public.servico_licenca_evento($1,'mercado_pago','sandbox-teste','sandbox',
+      'ORDTSTMUDANCA',61000,'reversao','estornado',statement_timestamp()) resultado`,[c.id]),"estornado");
+    assert.equal((await resumo()).situacao,"valida");
+    assert.equal((await resumo()).valido_ate,mudanca.efetiva_em);
+    const nova = await reservar(semestral,"termos-v2",id(504));
+    assert.equal(await scalar(`select public.servico_licenca_evento($1,'mercado_pago','sandbox-teste','sandbox',
+      'ORDTSTMUDANCAB',61000,'novo-pagamento','pago',statement_timestamp()) resultado`,[nova.id]),"confirmado");
     await db.query(`update licenciamento_privado.mudancas set efetiva_em=(statement_timestamp() at time zone 'America/Sao_Paulo')::date
       where empresa_id=$1`,[alteravel]);
     assert.equal((await resumo()).oferta_atual,semestral);
