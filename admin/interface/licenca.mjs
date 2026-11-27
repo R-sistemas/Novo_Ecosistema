@@ -1,4 +1,4 @@
-import { executar, executarApi } from "../../supabase-pdv.mjs";
+import { confirmarSenhaAtual, executar, executarApi } from "../../supabase-pdv.mjs";
 
 const reais = new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
 const valor = centavos => reais.format(centavos / 100);
@@ -13,7 +13,28 @@ const nomes = {
   estornado: "Estornado", contestado: "Contestado"
 };
 
-export function prepararLicenca(area) {
+function campo(descricao, tipo, preenchimento) {
+  const rotulo = texto("label", descricao);
+  const input = document.createElement("input");
+  input.type = tipo;
+  input.autocomplete = preenchimento;
+  input.required = true;
+  rotulo.append(input);
+  return {rotulo, input};
+}
+
+function textoAviso(marco) {
+  if (marco === "trial_d1") return "Seu período experimental começou.";
+  if (marco === "trial_d5") return "Seu período experimental está chegando ao fim.";
+  if (marco === "trial_d7") return "Último dia do seu período experimental.";
+  if (marco === "renovacao_d0") return "A validade venceu e a renovação está pendente.";
+  if (marco === "renovacao_d2") return "O pagamento da renovação está em atraso.";
+  if (marco === "renovacao_d4") return "A licença será suspensa no próximo dia se a renovação continuar pendente.";
+  if (marco.startsWith("renovacao_d-")) return "A renovação da licença está próxima.";
+  if (marco.startsWith("exclusao_menos_")) return "Prazo até a exclusão dos dados operacionais: " + marco.split("_").at(-1) + " dias.";
+}
+
+export function prepararLicenca(area, atualizarResumo) {
   let versao = 0;
   function limpar() {
     versao++;
@@ -55,7 +76,10 @@ export function prepararLicenca(area) {
         if (resposta?.estado === "pendente") botao.textContent = "Consultar Pix";
         else {
           const atualizado = await resumoLicenca(empresa);
-          if (versao === atual) await abrir(empresa, atualizado);
+          if (versao === atual) {
+            atualizarResumo(atualizado);
+            await abrir(empresa, atualizado);
+          }
         }
       } catch {
         if (versao === atual) status.textContent = "Não foi possível consultar a cobrança. Tente novamente.";
@@ -95,6 +119,68 @@ export function prepararLicenca(area) {
       }
     }
     area.append(status, qr);
+    const modo = resumo.fase === "trial" && resumo.situacao === "trial" ? "trial"
+      : resumo.meses === 6 && resumo.situacao === "valida" && !resumo.nao_renovar ? "nao_renovar" : null;
+    if (modo) montarCancelamento(modo);
+    const avisos = await executar("loja_licenca_avisos", {p_empresa:empresa}).catch(() => []);
+    if (versao === atual && avisos.length) {
+      const lista = document.createElement("ul");
+      for (const aviso of avisos) {
+        const mensagem = textoAviso(aviso.marco);
+        if (mensagem) lista.append(texto("li", mensagem));
+      }
+      if (lista.childElementCount) area.append(texto("h3", "Avisos da licença"), lista);
+    }
+
+    function montarCancelamento(modo) {
+      const titulo = modo === "trial" ? "Encerrar trial agora" : "Desativar renovação";
+      const detalhes = document.createElement("details");
+      detalhes.append(texto("summary", titulo));
+      const form = document.createElement("form");
+      const email = campo("E-mail da conta", "email", "username");
+      const senha = campo("Senha atual", "password", "current-password");
+      const ciencia = document.createElement("input");
+      ciencia.type = "checkbox";
+      ciencia.required = true;
+      const confirma = texto("label", modo === "trial"
+        ? " Entendo que o acesso terminará agora e os dados operacionais não terão prazo de recuperação."
+        : " Entendo que o acesso fica disponível pelo período pago e não será renovado.");
+      confirma.prepend(ciencia);
+      const botao = texto("button", titulo);
+      botao.type = "submit";
+      const requisicao = crypto.randomUUID();
+      let recibo;
+      form.append(email.rotulo, senha.rotulo, confirma, botao);
+      form.onsubmit = async (evento) => {
+        evento.preventDefault();
+        if (botao.disabled || recibo) return;
+        botao.disabled = true;
+        status.textContent = "Confirmando o encerramento…";
+        try {
+          await confirmarSenhaAtual(email.input.value.trim(), senha.input.value);
+          if (versao !== atual) return;
+          recibo = await executar("loja_licenca_cancelar", {
+            p_empresa:empresa, p_modo:modo, p_revisao:resumo.revisao,
+            p_requisicao:requisicao, p_ciencia:ciencia.checked
+          });
+          if (versao !== atual) return;
+          const atualizado = await resumoLicenca(empresa);
+          if (versao === atual) {
+            atualizarResumo(atualizado);
+            await abrir(empresa, atualizado);
+          }
+        } catch {
+          if (versao === atual) status.textContent = "Não foi possível confirmar. Confira a senha e o estado da licença.";
+        } finally {
+          senha.input.value = "";
+          if (!recibo && versao === atual) botao.disabled = false;
+        }
+      };
+      detalhes.append(form);
+      area.append(detalhes);
+    }
+
+    if (versao !== atual) return;
     if (resumo.historico.length) {
       const historico = document.createElement("ul");
       for (const item of resumo.historico) {

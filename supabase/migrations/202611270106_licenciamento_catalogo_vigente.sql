@@ -41,6 +41,7 @@ begin
   select cobranca_ativa into habilitada from licenciamento_privado.configuracao;
   return jsonb_build_object('fase',c.fase,'situacao',licenciamento_privado.estado_operacional(c,statement_timestamp()),
     'cobranca_ativa',habilitada,'trial_fim',c.trial_fim,'valido_ate',c.valido_ate,'nao_renovar',c.nao_renovar,'revisao',c.revisao,
+    'meses',(select meses from licenciamento_privado.ofertas where id=c.oferta_id),
     'ofertas',case when habilitada then (
       select coalesce(jsonb_agg(to_jsonb(o)-'comercializavel' order by o.plano,o.meses,o.versao),'[]'::jsonb)
       from licenciamento_privado.ofertas o where comercializavel) else '[]'::jsonb end,

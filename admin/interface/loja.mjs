@@ -42,7 +42,11 @@ const areaLicenca = document.createElement("section");
 const financeiroOperacional = document.createElement("div");
 areaLicenca.hidden = true;
 areaFinanceiro.append(areaLicenca, financeiroOperacional);
-const licenca = prepararLicenca(areaLicenca);
+const licenca = prepararLicenca(areaLicenca, dados => {
+  resumo = dados;
+  financeiroOperacional.hidden = somenteLicenca();
+  comandos(lojaAutorizada && !consultando);
+});
 const financeiro = prepararFinanceiro(financeiroOperacional);
 const entregas = prepararEntregas(el("area-entregas"));
 const pedidos = prepararPedidos(el("area-pedidos"));
@@ -67,8 +71,9 @@ async function mostrarArea(area,opcoes={}) {
   else if (area === "preferencias") { mostrarCredencialMP(empresa); await carregarPreferencias(empresa); }
   else if (area === "financeiro") {
     financeiroOperacional.hidden = somenteLicenca();
+    const atual = geracaoLoja;
     await licenca.abrir(empresa, resumo);
-    if (!somenteLicenca()) await financeiro.abrirLoja(empresa);
+    if (atual === geracaoLoja && areaAtiva === "financeiro" && !somenteLicenca()) await financeiro.abrirLoja(empresa);
   }
   else if (area === "entregas") await entregas.abrirLoja(empresa);
   else if (area === "pedidos") await pedidos.abrirLoja(empresa,opcoes.campos,opcoes.intervalo);
