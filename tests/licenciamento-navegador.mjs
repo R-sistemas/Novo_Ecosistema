@@ -80,7 +80,11 @@ test("Chrome apresenta as condições 1x/6x e envia somente token e cotação", 
     await seletor.locator("option").filter({hasText:"6× de"}).waitFor({state:"attached"});
     assert.match(await seletor.innerText(),/1× de R\$\s*600,00/);
     await seletor.selectOption("1");
-    assert.match(await seletor.innerText(),/6× de R\$\s*114,32.*acréscimo R\$\s*85,92.*total R\$\s*685,92/);
+    assert.match(await seletor.innerText(),/6× de R\$\s*114,32/);
+    const valores=await pagina.locator("[data-resumo-cartao]").innerText();
+    assert.match(valores,/Acréscimo do parcelamento\s+R\$\s*85,92/);
+    assert.match(valores,/Total a pagar\s+R\$\s*685,92/);
+    assert.equal(await pagina.evaluate(() => document.documentElement.scrollWidth),viewport.width);
     if(process.env.LICENCA_CAPTURAS) {
       const nome=viewport.width>500?"CHECKOUT-DESKTOP.png":"CHECKOUT-MOBILE.png";
       await pagina.screenshot({path:resolve(process.env.LICENCA_CAPTURAS,nome),fullPage:true,animations:"disabled"});

@@ -19,6 +19,7 @@ function dado(form, legenda, nome) {
 
 export function montarCartaoLicenca(destino, dados, atualizar) {
   const bloco = document.createElement("details");
+  bloco.className = "cartao-licenca";
   bloco.append(criar("summary","Cartão de crédito — sandbox"));
   const status = criar("p","Use um cartão e um titular de teste do Mercado Pago.");
   status.setAttribute("role","status");
@@ -47,6 +48,7 @@ function montarCampos(bloco,status,mp,dados,atualizar) {
     .map(([tipo,rotulo]) => {
       const el = document.createElement("div");
       el.id = prefixo + "-" + tipo;
+      el.className = "campo-seguro-licenca";
       form.append(criar("span",rotulo),el);
       return [tipo,rotulo,el.id];
     });
@@ -61,11 +63,14 @@ function montarCampos(bloco,status,mp,dados,atualizar) {
   const aceite = document.createElement("input");
   aceite.type = "checkbox";
   aceite.required = true;
+  termo.className = "aceite-cartao-licenca";
   termo.prepend(aceite);
   const pagar = criar("button","Pagar com cartão de teste");
   pagar.type = "submit";
   pagar.disabled = true;
-  form.append(label,termo,pagar);
+  const valores = document.createElement("dl");
+  valores.dataset.resumoCartao = "";
+  form.append(label,valores,termo,pagar);
   bloco.append(form);
 
   let opcoes = [], bin, tentativa;
@@ -79,20 +84,26 @@ function montarCampos(bloco,status,mp,dados,atualizar) {
     aceite.checked = false;
     opcoes = [];
     parcelas.replaceChildren(new Option("Escolha uma condição",""));
+    valores.replaceChildren();
     if (!bin) return;
     try {
       const cotacao = await cartaoLicenca("cotar",{...dados,bin});
       if (atual !== versao || !bloco.isConnected) return;
       opcoes = cotacao.opcoes;
-      opcoes.forEach((q,i) => parcelas.add(new Option(
-        [q.bandeira, q.vezes+"× de "+reais(q.parcela), "base "+reais(q.base),
-          "acréscimo "+reais(q.total-q.base), "total "+reais(q.total)].join(" · "), String(i))));
+      opcoes.forEach((q,i) => parcelas.add(new Option(q.bandeira+" · "+q.vezes+"× de "+reais(q.parcela),String(i))));
       pagar.disabled = enviando || !opcoes.length;
     } catch {
       if (atual === versao) status.textContent = "Cotação indisponível para este cartão.";
     }
   });
-  parcelas.onchange = () => { aceite.checked = false; };
+  parcelas.onchange = () => {
+    aceite.checked = false;
+    valores.replaceChildren();
+    const q = parcelas.value === "" ? null : opcoes[Number(parcelas.value)];
+    if (q) for (const [rotulo,preco] of [["Valor da licença",q.base],["Acréscimo do parcelamento",q.total-q.base],["Total a pagar",q.total]]) {
+      valores.append(criar("dt",rotulo),criar("dd",reais(preco)));
+    }
+  };
   form.onsubmit = async evento => {
     evento.preventDefault();
     const q = parcelas.value === "" ? null : opcoes[Number(parcelas.value)];

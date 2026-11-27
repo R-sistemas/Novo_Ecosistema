@@ -278,3 +278,17 @@ main:has(> #login:not([hidden])) > :is(#erro, #status) { width: min(100%, 26rem)
 .credencial-mp h3 { margin: 1rem 0 .5rem; }
 .credencial-mp [data-webhook] code { display: block; margin-block-start: .35rem; overflow-wrap: anywhere; }
 #area-preferencias .credencial-mp form { margin-block-start: 1rem; }
+
+.cartao-licenca { width: min(100%, 35rem); margin-block: .9rem; }
+.cartao-licenca form { min-width: 0; }
+.cartao-licenca select { min-width: 0; width: 100%; }
+.cartao-licenca .campo-seguro-licenca {
+  min-height: 2.75rem; margin-block: .25rem .8rem; border: 1px solid #839f91;
+  border-radius: .55rem; background: #fff; padding-inline: .65rem;
+}
+.cartao-licenca .campo-seguro-licenca iframe { display: block; width: 100%; height: 2.65rem; border: 0; }
+.cartao-licenca .campo-seguro-licenca input { width: 100%; border: 0; padding-inline: 0; }
+.cartao-licenca form .aceite-cartao-licenca { display: flex; align-items: flex-start; gap: .55rem; }
+.cartao-licenca [data-resumo-cartao] { display: grid; grid-template-columns: 1fr auto; gap: .45rem 1rem; margin-bottom: 1rem; }
+.cartao-licenca [data-resumo-cartao]:empty { display: none; }
+.cartao-licenca dd { margin: 0; font-weight: 650; }
