@@ -1,5 +1,5 @@
 import { confirmarSenhaAtual, executar, executarApi } from "../../supabase-pdv.mjs";
-
+import { montarCartaoLicenca } from "./licenca-cartao.mjs";
 const reais = new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
 const valor = centavos => reais.format(centavos / 100);
 function texto(tag, conteudo) {
@@ -12,7 +12,6 @@ const nomes = {
   pendente: "Pagamento pendente", confirmado: "Confirmado", revisao: "Em conciliação", encerrado: "Encerrado",
   estornado: "Estornado", contestado: "Contestado"
 };
-
 function campo(descricao, tipo, preenchimento) {
   const rotulo = texto("label", descricao);
   const input = document.createElement("input");
@@ -22,7 +21,6 @@ function campo(descricao, tipo, preenchimento) {
   rotulo.append(input);
   return {rotulo, input};
 }
-
 function textoAviso(marco) {
   if (marco === "trial_d1") return "Seu período experimental começou.";
   if (marco === "trial_d5") return "Seu período experimental está chegando ao fim.";
@@ -33,7 +31,6 @@ function textoAviso(marco) {
   if (marco.startsWith("renovacao_d-")) return "A renovação da licença está próxima.";
   if (marco.startsWith("exclusao_menos_")) return "Prazo até a exclusão dos dados operacionais: " + marco.split("_").at(-1) + " dias.";
 }
-
 export function prepararLicenca(area, atualizarResumo) {
   let versao = 0;
   function limpar() {
@@ -41,7 +38,6 @@ export function prepararLicenca(area, atualizarResumo) {
     area.hidden = true;
     area.replaceChildren();
   }
-
   async function abrir(empresa, resumo) {
     limpar();
     if (!resumo) return;
@@ -87,7 +83,6 @@ export function prepararLicenca(area, atualizarResumo) {
         if (versao === atual) for (const controle of botoes) controle.disabled = false;
       }
     }
-
     const pendente = resumo.historico.find(item => ["pendente","revisao"].includes(item.estado));
     if (resumo.cobranca_ativa && pendente?.retomar) {
       const botao = texto("button", "Consultar Pix pendente");
@@ -116,6 +111,10 @@ export function prepararLicenca(area, atualizarResumo) {
         botoes.push(botao);
         linha.append(bloco, botao);
         area.append(linha);
+        if (oferta.meses === 6) montarCartaoLicenca(linha, {empresa, oferta:oferta.id, termos:oferta.termos_versao}, async () => {
+          const atualizado = await resumoLicenca(empresa);
+          if (versao === atual) await abrir(empresa, atualizado);
+        });
       }
     }
     area.append(status, qr);
@@ -131,7 +130,6 @@ export function prepararLicenca(area, atualizarResumo) {
       }
       if (lista.childElementCount) area.append(texto("h3", "Avisos da licença"), lista);
     }
-
     function montarCancelamento(modo) {
       const titulo = modo === "trial" ? "Encerrar trial agora" : "Desativar renovação";
       const detalhes = document.createElement("details");
@@ -179,7 +177,6 @@ export function prepararLicenca(area, atualizarResumo) {
       detalhes.append(form);
       area.append(detalhes);
     }
-
     if (versao !== atual) return;
     if (resumo.historico.length) {
       const historico = document.createElement("ul");
@@ -191,5 +188,4 @@ export function prepararLicenca(area, atualizarResumo) {
   }
   return {abrir, limpar};
 }
-
 export const resumoLicenca = empresa => executar("loja_licenca_resumo", {p_empresa:empresa});

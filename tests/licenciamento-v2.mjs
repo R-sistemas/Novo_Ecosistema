@@ -8,7 +8,7 @@ import api from "../api/mercado-pago-empresa.mjs";
 const require = createRequire(import.meta.url);
 const id = (n) => "00000000-0000-0000-0000-" + String(n).padStart(12, "0");
 const central = id(1), gestor = id(2), outro = id(3);
-const legado = id(11), loja = id(12), encerrada = id(13), expirada = id(14), suspensa = id(15);
+const legado = id(11), loja = id(12), encerrada = id(13), expirada = id(14), suspensa = id(15), cartao = id(16);
 const requisicao = id(21);
 const migration = (name) => readFile(new URL("../supabase/migrations/" + name + ".sql", import.meta.url), "utf8");
 
@@ -45,7 +45,7 @@ test("licenciamento v2 em banco descartável", async (t) => {
     "202611210073_central_inventario_licenca", "202611210074_politica_suspensao_central"
   ]) await aplicar(name);
   for (const usuario of [central, gestor, outro]) await db.query("insert into auth.users values($1)", [usuario]);
-  for (const empresa of [legado, loja, encerrada, expirada, suspensa]) {
+  for (const empresa of [legado, loja, encerrada, expirada, suspensa, cartao]) {
     await db.query("insert into public.empresas(id,nome) values($1,'Empresa de teste')", [empresa]);
     await db.query("insert into public.membros values($1,$2,'gestor')", [empresa, gestor]);
   }
@@ -54,7 +54,7 @@ test("licenciamento v2 em banco descartável", async (t) => {
   for (const name of [
     "202611270101_licenciamento_validade_base", "202611270102_licenciamento_calendario_portas",
     "202611270103_licenciamento_cobrancas_pix", "202611270104_licenciamento_avisos_retencao",
-    "202611270106_licenciamento_catalogo_vigente"
+    "202611270106_licenciamento_catalogo_vigente", "202611270107_licenciamento_cartao_sandbox"
   ]) await aplicar(name);
 
   const iniciar = (empresa, cnpj, chave) => scalar(
@@ -91,6 +91,8 @@ test("licenciamento v2 em banco descartável", async (t) => {
     assert.deepEqual(await iniciar(loja, "12345678000195", requisicao), trial);
     await assert.rejects(iniciar(encerrada, "12345678000195", id(22)), { code: "23505" });
     await iniciar(encerrada, "12.ABC.345/01DE-35", id(22));
+    await db.query(`insert into licenciamento_privado.contratos(empresa_id,politica,fase,trial_inicio,trial_fim)
+      values($1,'aniversario','trial',statement_timestamp(),statement_timestamp()+interval '168 hours')`,[cartao]);
     oferta = await scalar(`select public.central_licenca_publicar_oferta('basico',1,6::smallint,60000,1250,'termos-v1') resultado`);
   });
 
@@ -142,6 +144,26 @@ test("licenciamento v2 em banco descartável", async (t) => {
     await scalar("select public.servico_licenca_manutencao() resultado");
     assert.equal(await scalar(`select extract(day from retencao_ate-acesso_encerrado_em)::int resultado
       from licenciamento_privado.contratos where empresa_id=$1`, [suspensa]), 90);
+  });
+
+  await t.test("cartão preserva cotação e confirma somente a condição aceita", async () => {
+    await sessao(central,"aal2");
+    const oferta = await scalar(`select id resultado from licenciamento_privado.ofertas where comercializavel and meses=6`);
+    const q = {base:61000,total:68400,parcela:11400,vezes:6,bandeira:"master"};
+    const reservar = (condicoes) => scalar(`select public.servico_licenca_reservar_cartao(
+      $1,$2,$3,'termos-v2',$4,'mercado_pago','sandbox-teste','sandbox',$5) resultado`, [cartao,gestor,oferta,id(61),condicoes]);
+    const c = await reservar(q);
+    assert.equal(c.desconto_basis_points,0);
+    assert.equal(c.meio,"cartao");
+    assert.deepEqual(await reservar(q),c);
+    await assert.rejects(reservar({...q,vezes:7}),{code:"23505"});
+    const observar = (meio, condicoes) => scalar(`select public.servico_licenca_observar_ordem(
+      $1,'mercado_pago','sandbox-teste','sandbox','ORDTSTCARTAO',61000,'cartao','pago',statement_timestamp(),$2,$3) resultado`,
+      [c.id,meio,condicoes]);
+    assert.equal(await observar("pix",{}),"ignorado");
+    assert.equal(await observar("cartao",{...q,total:61000}),"ignorado");
+    assert.equal(await observar("cartao",q),"confirmado");
+    assert.equal(await observar("cartao",q),"confirmado");
   });
 
   await t.test("saída voluntária exige sessão recente e ciência, corte e retenção idempotentes", async () => {
@@ -202,7 +224,7 @@ test("webhook de licenças rejeita assinatura, modo e recebedor divergentes ante
       return Response.json({id:5555,country_id:"BR",tags:["test_user"]});
     }
     if (hostname === "api.mercadopago.com" && pathname === "/v1/orders/" + recurso) return Response.json(ordem);
-    if (hostname === "db.example.invalid" && pathname === "/rest/v1/rpc/servico_licenca_evento") {
+    if (hostname === "db.example.invalid" && pathname === "/rest/v1/rpc/servico_licenca_observar_ordem") {
       const dados = JSON.parse(opcoes.body);
       assert.equal(dados.p_recebedor,"5555");
       assert.equal(dados.p_tipo,"pago");
