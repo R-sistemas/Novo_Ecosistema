@@ -10,8 +10,8 @@ returns boolean language sql stable security definer set search_path='' as $$
     where c.empresa_id=p_empresa and c.politica='aniversario' and s.efetivo='bloqueada_total');
 $$;
 
-create function painel_privado.contexto_operacional(p_empresa uuid)
-returns jsonb language plpgsql stable set search_path='' as $$
+create function public.painel_contexto_operacional(p_empresa uuid)
+returns jsonb language plpgsql stable security definer set search_path='' as $$
 declare contexto jsonb := public.painel_contexto_sessao(p_empresa);
 begin
   if p_empresa is not null and not public.licenca_operacao_permitida(p_empresa) then
@@ -33,7 +33,7 @@ begin
       'painel_visao_geral','painel_mesas','painel_entregas')
   loop
     definicao:=pg_catalog.pg_get_functiondef(f.oid);
-    nova:=replace(definicao,'public.painel_contexto_sessao(','painel_privado.contexto_operacional(');
+    nova:=replace(definicao,'public.painel_contexto_sessao(','public.painel_contexto_operacional(');
     if nova=definicao then raise exception 'Contexto operacional não encontrado em %',f.oid::regprocedure; end if;
     execute nova;
     total:=total+1;
@@ -98,11 +98,11 @@ begin
   end loop;
   -- Webhooks/retorno de REMO e a baixa de pedidos em andamento preservam a trilha.
   create trigger licenca_alteracao_pedido before update of itens,estado on public.pedidos_online
-    for each row when (new.estado<>'entregue') execute function licenciamento_privado.proteger_mutacao_operacional();
+    for each row when (new.itens is distinct from old.itens or new.estado<>'entregue') execute function licenciamento_privado.proteger_mutacao_operacional();
 end;
 $$;
 
-revoke all on function public.licenca_operacao_permitida(uuid),painel_privado.contexto_operacional(uuid),
+revoke all on function public.licenca_operacao_permitida(uuid),public.painel_contexto_operacional(uuid),
   licenciamento_privado.proteger_mutacao_operacional() from public,anon,authenticated,service_role;
-grant execute on function public.licenca_operacao_permitida(uuid) to authenticated;
+grant execute on function public.licenca_operacao_permitida(uuid),public.painel_contexto_operacional(uuid) to authenticated;
 commit;
