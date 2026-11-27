@@ -171,3 +171,27 @@ test("onboarding de trial começa no primeiro aceite e preserva a rota legada", 
   await aceitar(criado.token);
   assert.deepEqual(await estado(),{fase:"trial",duracao:604800,efetivo:"em_dia",legado:false});
 });
+
+test("portas operacionais negam loja vencida e preservam Financeiro, identidade e outra loja", async () => {
+  const [{empresa_id:bloqueada}] = (await banco.query(`select c.empresa_id
+    from licenciamento_privado.contratos c join public.empresas e on e.id=c.empresa_id
+    where e.cardapio_slug='ensaio-trial'`)).rows;
+  await banco.query(`update licenciamento_privado.contratos
+    set trial_inicio=statement_timestamp()-interval '169 hours',trial_fim=statement_timestamp()-interval '1 hour'
+    where empresa_id=$1`,[bloqueada]);
+  await banco.query(`insert into public.produtos(empresa_id,codigo,nome,preco_centavos)
+    values($1,'PRT-A','Produto bloqueado',100),($2,'PRT-B','Produto acessível',100)`,[bloqueada,a.empresa]);
+  await assert.rejects(como(titular1,"select public.painel_listar_produtos($1,null,20)",[bloqueada]),{code:"42501"});
+  await assert.rejects(como(titular1,"select public.monitor_gestor($1,current_date)",[bloqueada]),{code:"42501"});
+  await assert.rejects(como(titular1,"select public.painel_mesas($1,'listar')",[bloqueada]),{code:"42501"});
+  const [{aberta,fechada}] = await como(titular1,`select public.licenca_operacao_permitida($1) aberta,
+    public.licenca_operacao_permitida($2) fechada`,[a.empresa,bloqueada]);
+  assert.deepEqual({aberta,fechada},{aberta:true,fechada:false});
+  assert.deepEqual(await como(titular1,"select codigo from public.produtos where empresa_id in ($1,$2)",[bloqueada,a.empresa]),
+    [{codigo:"PRT-B"}]);
+  assert.deepEqual(await como(titular1,"select public.fila_cozinha($1) fila",[bloqueada]),[{fila:[]}]);
+  assert.equal((await como(titular1,"select painel_contexto_sessao($1) as r",[bloqueada]))[0].r.empresa_id,bloqueada);
+  assert.equal((await como(titular1,"select loja_licenca_resumo($1) as r",[bloqueada]))[0].r.situacao,"restrita");
+  assert.equal((await como(titular1,
+    "select public.painel_financeiro_resumo($1,current_date,current_date) is not null ok",[bloqueada]))[0].ok,true);
+});
