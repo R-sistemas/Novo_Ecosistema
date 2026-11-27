@@ -28,8 +28,9 @@ insert into painel_privado.capacidades_centrais values ('central.licencas.cancel
 insert into painel_privado.capacidades_por_papel values ('central','central.licencas.cancelar');
 
 create function licenciamento_privado.autorizacao_recente()
-returns boolean language sql stable set search_path = '' as $$
-  select exists(select 1
+returns boolean language plpgsql stable set search_path = '' as $$
+begin
+  return exists(select 1
     from jsonb_array_elements(case when jsonb_typeof(auth.jwt()->'amr')='array'
       then auth.jwt()->'amr' else '[]'::jsonb end) metodo
     where metodo->>'method' in ('password','totp')
@@ -37,6 +38,7 @@ returns boolean language sql stable set search_path = '' as $$
         to_timestamp((metodo->>'timestamp')::double precision)
           between statement_timestamp()-interval '5 minutes' and statement_timestamp()
         else false end);
+end;
 $$;
 revoke all on function licenciamento_privado.autorizacao_recente() from public,anon,authenticated,service_role;
 

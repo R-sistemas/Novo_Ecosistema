@@ -3,6 +3,7 @@ import { prepararNavegacao } from "./navegacao-loja.mjs";
 import { prepararMesas } from "./mesas.mjs";
 import { prepararVisao } from "./visao.mjs";
 import { prepararFinanceiro } from "./financeiro.mjs";
+import { prepararLicenca, resumoLicenca } from "./licenca.mjs";
 import { prepararEntregas } from "./entregas.mjs";
 import { prepararPedidos } from "./pedidos.mjs";
 import { prepararCredencialMP } from "./credencial-mp.mjs";
@@ -29,12 +30,20 @@ let indice = 0;
 let proximo;
 let consultando = false;
 let lojaAutorizada = false;
+let resumo;
+const somenteLicenca = () => resumo?.situacao === "restrita";
 let areaAtiva = "catalogo";
 let produtosDaPagina = [];
 const carregarEquipe = prepararEquipe(el("area-equipe"),aviso);
 const mostrarCredencialMP = prepararCredencialMP(el("area-preferencias"));
 const carregarPreferencias = prepararPreferencias(el("area-preferencias"),aviso);
-const financeiro = prepararFinanceiro(el("area-financeiro"));
+const areaFinanceiro = el("area-financeiro");
+const areaLicenca = document.createElement("section");
+const financeiroOperacional = document.createElement("div");
+areaLicenca.hidden = true;
+areaFinanceiro.append(areaLicenca, financeiroOperacional);
+const licenca = prepararLicenca(areaLicenca);
+const financeiro = prepararFinanceiro(financeiroOperacional);
 const entregas = prepararEntregas(el("area-entregas"));
 const pedidos = prepararPedidos(el("area-pedidos"));
 const mesas = prepararMesas(el("area-mesas"));
@@ -43,7 +52,7 @@ const visao = prepararVisao(el("area-visao"),{
   catalogo:()=>mostrarArea("catalogo",{ativos:true})
 });
 async function mostrarArea(area,opcoes={}) {
-  if (!lojaAutorizada || consultando) return;
+  if (!lojaAutorizada || consultando || (somenteLicenca() && area !== "financeiro")) return;
   pedidos.limparDetalhe();
   entregas.limpar();
   financeiro.limpar();
@@ -56,7 +65,11 @@ async function mostrarArea(area,opcoes={}) {
   }
   else if (area === "equipe") await carregarEquipe(empresa);
   else if (area === "preferencias") { mostrarCredencialMP(empresa); await carregarPreferencias(empresa); }
-  else if (area === "financeiro") await financeiro.abrirLoja(empresa);
+  else if (area === "financeiro") {
+    financeiroOperacional.hidden = somenteLicenca();
+    await licenca.abrir(empresa, resumo);
+    if (!somenteLicenca()) await financeiro.abrirLoja(empresa);
+  }
   else if (area === "entregas") await entregas.abrirLoja(empresa);
   else if (area === "pedidos") await pedidos.abrirLoja(empresa,opcoes.campos,opcoes.intervalo);
   else if (area === "visao") await visao(empresa);
@@ -83,7 +96,7 @@ function comandos(habilitado) {
   el("anterior").disabled = !habilitado || indice === 0;
   el("proxima").disabled = !habilitado || !proximo;
   el("loja").disabled = consultando;
-  for (const aba of ["catalogo","equipe","preferencias","pedidos","entregas","financeiro","visao","mesas"]) el("aba-" + aba).disabled = consultando || !lojaAutorizada;
+  for (const aba of ["catalogo","equipe","preferencias","pedidos","entregas","financeiro","visao","mesas"]) el("aba-" + aba).disabled = consultando || !lojaAutorizada || (somenteLicenca() && aba !== "financeiro");
 }
 
 function renderizar() {
@@ -141,6 +154,8 @@ async function selecionarLoja() {
   if (consultando) return;
   const atual = ++geracaoLoja;
   lojaAutorizada = false;
+  resumo = undefined;
+  licenca.limpar();
   mostrarCredencialMP();
   pedidos.limparDetalhe();
   entregas.limpar();
@@ -166,7 +181,9 @@ async function selecionarLoja() {
   if (!empresa) { consultando = false; comandos(false); return; }
   try {
     await verificarLoja(empresa);
+    const dadosLicenca = await resumoLicenca(empresa).catch(() => null);
     if (atual !== geracaoLoja) return;
+    resumo = dadosLicenca;
   } catch (erro) {
     if (atual !== geracaoLoja) return;
     consultando = false;
@@ -179,7 +196,7 @@ async function selecionarLoja() {
   el("loja-ativa").textContent = el("loja").selectedOptions[0].textContent;
   consultando = false;
   comandos(true);
-  await mostrarArea(areaAtiva);
+  await mostrarArea(somenteLicenca() ? "financeiro" : areaAtiva);
 }
 
 prepararAcessoLoja({ el, navegacao, selecionarLoja, falha, mensagem, empresa: () => empresa,
