@@ -1,5 +1,6 @@
 import { confirmarSenhaAtual, executar, executarApi } from "../../supabase-pdv.mjs";
 import { montarCartaoLicenca } from "./licenca-cartao.mjs";
+import { mostrarMudancaLicenca } from "./licenca-mudanca.mjs";
 const reais = new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
 const valor = centavos => reais.format(centavos / 100);
 function texto(tag, conteudo) {
@@ -55,6 +56,8 @@ export function prepararLicenca(area, atualizarResumo) {
     qr.hidden = true;
     qr.readOnly = true;
     qr.setAttribute("aria-label", "Código Pix copia e cola");
+    const refrescar = async () => { const novo = await resumoLicenca(empresa); if (versao === atual) await abrir(empresa,novo); };
+    mostrarMudancaLicenca(area,empresa,resumo,refrescar);
     const botoes = [];
     async function pagar(dados, botao) {
       for (const controle of botoes) controle.disabled = true;
@@ -92,7 +95,7 @@ export function prepararLicenca(area, atualizarResumo) {
       botoes.push(botao);
       area.append(botao);
     } else if (!pendente && resumo.fase !== "encerrada" && !resumo.nao_renovar) {
-      for (const oferta of resumo.ofertas) {
+      for (const oferta of resumo.ofertas.filter(o => !resumo.mudanca || resumo.mudanca.paga || o.id===resumo.mudanca.oferta)) {
         const linha = document.createElement("div");
         const total = Math.max(1, Math.round(oferta.preco_centavos * (10000 - (oferta.desconto_pix_basis_points ?? 0)) / 10000));
         const periodo = oferta.meses === 1 ? "mensal" : "semestral";

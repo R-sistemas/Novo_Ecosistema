@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url);
 const id = (n) => "00000000-0000-0000-0000-" + String(n).padStart(12, "0");
 const central = id(1), gestor = id(2), outro = id(3);
 const legado = id(11), loja = id(12), encerrada = id(13), expirada = id(14), suspensa = id(15), cartao = id(16);
-const requisicao = id(21), agendada = id(17);
+const requisicao = id(21), agendada = id(17), alteravel = id(18);
 const migration = (name) => readFile(new URL("../supabase/migrations/" + name + ".sql", import.meta.url), "utf8");
 
 test("licenciamento v2 em banco descartável", async (t) => {
@@ -45,7 +45,7 @@ test("licenciamento v2 em banco descartável", async (t) => {
     "202611210073_central_inventario_licenca", "202611210074_politica_suspensao_central"
   ]) await aplicar(name);
   for (const usuario of [central, gestor, outro]) await db.query("insert into auth.users values($1)", [usuario]);
-  for (const empresa of [legado, loja, encerrada, expirada, suspensa, cartao, agendada]) {
+  for (const empresa of [legado, loja, encerrada, expirada, suspensa, cartao, agendada, alteravel]) {
     await db.query("insert into public.empresas(id,nome) values($1,'Empresa de teste')", [empresa]);
     await db.query("insert into public.membros values($1,$2,'gestor')", [empresa, gestor]);
   }
@@ -55,14 +55,15 @@ test("licenciamento v2 em banco descartável", async (t) => {
     "202611270101_licenciamento_validade_base", "202611270102_licenciamento_calendario_portas",
     "202611270103_licenciamento_cobrancas_pix", "202611270104_licenciamento_avisos_retencao",
     "202611270106_licenciamento_catalogo_vigente", "202611270107_licenciamento_cartao_sandbox",
-    "202611270108_licenciamento_agenda_pix", "202611270109_licenciamento_conciliacao_ativa"
+    "202611270108_licenciamento_agenda_pix", "202611270109_licenciamento_conciliacao_ativa",
+    "202611270110_licenciamento_mudancas_programadas"
   ]) await aplicar(name);
 
   const iniciar = (empresa, cnpj, chave) => scalar(
     "select public.central_iniciar_trial_licenca($1,$2,$3) resultado", [empresa, cnpj, chave]
   );
   await t.test("expansão privada, flags desligadas, paridade do legado e calendário", async () => {
-    assert.equal(await scalar(`select not (admissao_ativa or cobranca_ativa or avisos_ativos or exclusao_ativa or agenda_ativa or conciliacao_ativa)
+    assert.equal(await scalar(`select not (admissao_ativa or cobranca_ativa or avisos_ativos or exclusao_ativa or agenda_ativa or conciliacao_ativa or mudancas_ativas)
       resultado from licenciamento_privado.configuracao`), true);
     assert.equal(await scalar(`select not has_schema_privilege('authenticated','licenciamento_privado','USAGE') resultado`), true);
     assert.deepEqual(await scalar(`select jsonb_build_array(c.politica,c.ancora_dia,l.preco_centavos,l.revisao,l.pagamento,
@@ -210,6 +211,36 @@ test("licenciamento v2 em banco descartável", async (t) => {
       [primeira.empresa_id,outro,primeira.id,"sandbox-teste"]),null);
     assert.equal((await scalar("select public.servico_licenca_ler_cobranca($1,$2,$3,$4) resultado",
       [primeira.empresa_id,gestor,primeira.id,"sandbox-teste"])).id,primeira.id);
+  });
+
+  await t.test("mudança de plano exige pagamento e só altera o plano no vencimento",async () => {
+    const mensal = await scalar("select id resultado from licenciamento_privado.ofertas where comercializavel and meses=1");
+    const semestral = await scalar("select id resultado from licenciamento_privado.ofertas where comercializavel and meses=6");
+    await db.query(`insert into licenciamento_privado.contratos(empresa_id,politica,fase,oferta_id,ancora_dia,valido_ate)
+      values($1,'aniversario','ativa',$2,5,(statement_timestamp() at time zone 'America/Sao_Paulo')::date+3)`,[alteravel,mensal]);
+    await sessao(gestor);
+    const programar = () => scalar("select public.loja_licenca_programar_mudanca($1,$2,'termos-v2',$3) resultado",
+      [alteravel,semestral,id(501)]);
+    await assert.rejects(programar(),{code:"42501"});
+    await db.exec("update licenciamento_privado.configuracao set mudancas_ativas=true");
+    const mudanca = await programar();
+    assert.deepEqual(await programar(),mudanca);
+    assert.equal(mudanca.paga,false);
+    const resumo = () => scalar("select public.loja_licenca_resumo($1) resultado",[alteravel]);
+    assert.equal((await resumo()).oferta_atual,mensal);
+    const reservar = (o,termo) => scalar(`select public.servico_licenca_reservar_pix(
+      $1,$2,$3,$4,$5,'mercado_pago','sandbox-teste','sandbox') resultado`,[alteravel,gestor,o,termo,id(502)]);
+    await assert.rejects(reservar(mensal,"mensal-v1"),{code:"23505"});
+    const c = await reservar(semestral,"termos-v2");
+    assert.equal(c.valor_centavos,61000);
+    assert.equal(c.inicio_vigencia,mudanca.efetiva_em);
+    assert.equal(await scalar(`select public.servico_licenca_evento($1,'mercado_pago','sandbox-teste','sandbox',
+      'ORDTSTMUDANCA',61000,'mudanca','pago',statement_timestamp()) resultado`,[c.id]),"confirmado");
+    assert.equal((await resumo()).oferta_atual,mensal);
+    assert.equal((await resumo()).mudanca.paga,true);
+    await db.query(`update licenciamento_privado.mudancas set efetiva_em=(statement_timestamp() at time zone 'America/Sao_Paulo')::date
+      where empresa_id=$1`,[alteravel]);
+    assert.equal((await resumo()).oferta_atual,semestral);
   });
 
   await t.test("saída voluntária exige sessão recente e ciência, corte e retenção idempotentes", async () => {
