@@ -263,7 +263,9 @@ test("Chrome percorre login, equipe, cadastro, listagem e remoção",{
     await pagina.getByRole("button",{name:"Cadastrar operador"}).click();
     const remover=pagina.getByRole("button",{name:"Remover "+email});
     await remover.waitFor();
-    await pagina.locator("[data-terminais]").getByText(/Caixa Browser/).waitFor();
+    const linhaTerminal = pagina.locator("[data-terminais] li").filter({hasText:"Caixa Browser"});
+    await linhaTerminal.getByText(/ID do terminal:/).waitFor();
+    assert.match(await linhaTerminal.locator("code").textContent(), /^[0-9a-f-]{36}$/);
     await remover.click();
     await remover.waitFor({state:"detached"});
     const trilha=await registrar(email);
@@ -299,7 +301,14 @@ test("Chrome percorre login, equipe, cadastro, listagem e remoção",{
       await link.waitFor();
       const url = await link.inputValue();
       assert.match(url,/\/convite-equipe\.html#convite=[0-9a-f]{64}$/);
-      assert.ok((await pagina.getByRole("link",{name:"Enviar pelo WhatsApp"}).getAttribute("href")).startsWith("https://wa.me/"));
+      const contexto = pagina.context();
+      await contexto.route("https://wa.me/**", rota => rota.fulfill({body:"WhatsApp de teste"}));
+      const destinoWhatsApp = contexto.waitForEvent("page");
+      await pagina.getByRole("button",{name:"Enviar pelo WhatsApp"}).click();
+      const whatsapp = await destinoWhatsApp;
+      await whatsapp.waitForURL("https://wa.me/**");
+      assert.equal(new URL(whatsapp.url()).searchParams.get("text"), "Aceite o convite da equipe: " + url);
+      await whatsapp.close();
       const pasta = process.env.MULTILOJA_CAPTURAS;
       await pagina.getByRole("button",{name:"Reenviar e gerar novo link"}).waitFor();
       if (pasta) await pagina.screenshot({path:join(pasta,"painel-convites-desktop.png"),mask:[link],fullPage:true});

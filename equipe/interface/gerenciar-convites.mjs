@@ -24,11 +24,15 @@ export function prepararConvites(painel) {
       try { await navigator.clipboard.writeText(link.value); aviso.textContent = "Link copiado."; }
       catch { link.select(); aviso.textContent = "Copie o endereço selecionado."; }
     };
-    const whatsapp = document.createElement("a");
-    whatsapp.href = "https://wa.me/?" + new URLSearchParams({text: "Aceite o convite da equipe: " + url.href});
-    whatsapp.target = "_blank";
-    whatsapp.rel = "noopener noreferrer";
+    const whatsapp = document.createElement("button");
+    whatsapp.type = "button";
     whatsapp.textContent = "Enviar pelo WhatsApp";
+    whatsapp.onclick = () => {
+      const destino = new URL("https://wa.me/");
+      destino.searchParams.set("text", "Aceite o convite da equipe: " + url.href);
+      window.open(destino.href, "_blank", "noopener,noreferrer");
+    };
+    acesso.className = "compartilhar-convite";
     acesso.replaceChildren(link, copiar, whatsapp);
     acesso.hidden = false;
   }

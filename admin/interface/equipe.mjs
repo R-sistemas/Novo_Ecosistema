@@ -73,7 +73,12 @@ export function prepararEquipe(area, aoAvisar) {
     terminais.replaceChildren(...dados.terminais.map(t => {
       const item = document.createElement("li");
       const uso = t.ultimo_uso ? new Date(t.ultimo_uso).toLocaleString("pt-BR") : "Sem uso registrado";
-      item.textContent = [t.nome,t.id,t.email || "Sem operador vinculado",uso].join(" · ");
+      const id = document.createElement("code");
+      id.textContent = t.id;
+      const identificacao = document.createElement("div");
+      identificacao.className = "terminal-id";
+      identificacao.append("ID do terminal: ", id);
+      item.append(t.nome, " · ", t.email || "Sem operador vinculado", " · ", uso, identificacao);
       return item;
     }));
     encontrar("[data-sem-operadores]").hidden = dados.operadores.length !== 0;
