@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url);
 const id = (n) => "00000000-0000-0000-0000-" + String(n).padStart(12, "0");
 const central = id(1), gestor = id(2), outro = id(3);
 const legado = id(11), loja = id(12), encerrada = id(13), expirada = id(14), suspensa = id(15), cartao = id(16);
-const requisicao = id(21);
+const requisicao = id(21), agendada = id(17);
 const migration = (name) => readFile(new URL("../supabase/migrations/" + name + ".sql", import.meta.url), "utf8");
 
 test("licenciamento v2 em banco descartável", async (t) => {
@@ -45,7 +45,7 @@ test("licenciamento v2 em banco descartável", async (t) => {
     "202611210073_central_inventario_licenca", "202611210074_politica_suspensao_central"
   ]) await aplicar(name);
   for (const usuario of [central, gestor, outro]) await db.query("insert into auth.users values($1)", [usuario]);
-  for (const empresa of [legado, loja, encerrada, expirada, suspensa, cartao]) {
+  for (const empresa of [legado, loja, encerrada, expirada, suspensa, cartao, agendada]) {
     await db.query("insert into public.empresas(id,nome) values($1,'Empresa de teste')", [empresa]);
     await db.query("insert into public.membros values($1,$2,'gestor')", [empresa, gestor]);
   }
@@ -54,14 +54,15 @@ test("licenciamento v2 em banco descartável", async (t) => {
   for (const name of [
     "202611270101_licenciamento_validade_base", "202611270102_licenciamento_calendario_portas",
     "202611270103_licenciamento_cobrancas_pix", "202611270104_licenciamento_avisos_retencao",
-    "202611270106_licenciamento_catalogo_vigente", "202611270107_licenciamento_cartao_sandbox"
+    "202611270106_licenciamento_catalogo_vigente", "202611270107_licenciamento_cartao_sandbox",
+    "202611270108_licenciamento_agenda_pix"
   ]) await aplicar(name);
 
   const iniciar = (empresa, cnpj, chave) => scalar(
     "select public.central_iniciar_trial_licenca($1,$2,$3) resultado", [empresa, cnpj, chave]
   );
   await t.test("expansão privada, flags desligadas, paridade do legado e calendário", async () => {
-    assert.equal(await scalar(`select not (admissao_ativa or cobranca_ativa or avisos_ativos or exclusao_ativa)
+    assert.equal(await scalar(`select not (admissao_ativa or cobranca_ativa or avisos_ativos or exclusao_ativa or agenda_ativa)
       resultado from licenciamento_privado.configuracao`), true);
     assert.equal(await scalar(`select not has_schema_privilege('authenticated','licenciamento_privado','USAGE') resultado`), true);
     assert.deepEqual(await scalar(`select jsonb_build_array(c.politica,c.ancora_dia,l.preco_centavos,l.revisao,l.pagamento,
@@ -164,6 +165,31 @@ test("licenciamento v2 em banco descartável", async (t) => {
     assert.equal(await observar("cartao",{...q,total:61000}),"ignorado");
     assert.equal(await observar("cartao",q),"confirmado");
     assert.equal(await observar("cartao",q),"confirmado");
+  });
+
+  await t.test("agenda Pix mensal começa em D−5 e reutiliza a mesma intenção após falha",async () => {
+    await sessao(central,"aal2");
+    const oferta = await scalar(`select public.central_licenca_publicar_oferta(
+      'basico',1,1::smallint,10000,null,'mensal-v1') resultado`);
+    await db.query(`insert into licenciamento_privado.contratos(empresa_id,politica,fase,oferta_id,ancora_dia,valido_ate)
+      values($1,'aniversario','ativa',$2,5,(statement_timestamp() at time zone 'America/Sao_Paulo')::date+6)`,[agendada,oferta]);
+    const puxar = () => scalar(`select public.servico_licenca_agendar_pix('sandbox-teste') resultado`);
+    assert.equal(await puxar(),null);
+    await db.exec("update licenciamento_privado.configuracao set agenda_ativa=true");
+    assert.equal(await puxar(),null);
+    await db.query("update licenciamento_privado.contratos set valido_ate=valido_ate-1 where empresa_id=$1",[agendada]);
+    const item = await puxar();
+    assert.equal(item.cobranca.empresa_id,agendada);
+    assert.equal(item.cobranca.valor_centavos,10000);
+    assert.equal(await puxar(),null);
+    const fechar = (x,sucesso) => scalar("select public.servico_licenca_fechar_agenda($1,$2,$3) resultado",[x.id,x.lease,sucesso]);
+    assert.equal(await fechar(item,false),true);
+    await db.exec("update licenciamento_privado.agenda_pix set nova_tentativa_em=statement_timestamp()");
+    const repetida = await puxar();
+    assert.equal(repetida.cobranca.id,item.cobranca.id);
+    assert.equal(await fechar(item,true),false);
+    assert.equal(await fechar(repetida,true),true);
+    assert.equal(await puxar(),null);
   });
 
   await t.test("saída voluntária exige sessão recente e ciência, corte e retenção idempotentes", async () => {
