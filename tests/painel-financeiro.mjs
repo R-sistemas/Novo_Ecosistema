@@ -500,7 +500,7 @@ test("Chrome: área, filtros, provedor desconhecido, paginação, vazio, retry e
     const captura = async nome => {
       if (process.env.PAINEL_CAPTURAS) await pagina.screenshot({path:resolve(process.env.PAINEL_CAPTURAS,nome)});
     };
-    const recebimentos = area.locator(":scope > [data-resultados]");
+    const recebimentos = area.locator(":scope > div > [data-resultados]");
     const conciliacao = area.getByRole("region",{name:"Conciliação"});
     await recebimentos.getByText("Página 1",{exact:true}).waitFor();
     assert.equal(await recebimentos.locator("tbody tr").count(),25);
@@ -540,7 +540,7 @@ test("Chrome: área, filtros, provedor desconhecido, paginação, vazio, retry e
     await conciliacao.getByText("Página 1",{exact:true}).waitFor();
     falhar();
     await filtro.selectOption("hoje");
-    await area.locator(":scope > [data-repetir]").click();
+    await area.locator(":scope > div > [data-repetir]").click();
     await recebimentos.getByText("Página 1",{exact:true}).waitFor();
     await pagina.setViewportSize({width:390,height:844});
     await pagina.waitForFunction(() => document.querySelector("#lateral-painel").getBoundingClientRect().right <= 0);

@@ -264,6 +264,7 @@ test("navegador usa Auth, bloqueia URL de outra loja e edita/recarrega o produto
       if (url.pathname === "/auth/v1/token") {
         return route.fulfill({json:{user:{id:gestores.a},access_token:"a",refresh_token:"fixture",expires_in:3600}});
       }
+      if (url.pathname === "/rest/v1/rpc/loja_licenca_resumo") return route.fulfill({body:"null",contentType:"application/json"});
       assert.equal(url.pathname,"/rest/v1/membros");
       return route.fulfill({json:[{empresas:{id:lojaA,nome:"A"}}]});
     });
