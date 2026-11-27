@@ -21,7 +21,7 @@ const base = "http://127.0.0.1:" + server.address().port + "/cardapio.html?loja=
 const browser = await chromium.launch({ headless: true, channel: "chrome" });
 try {
   for (const caso of ["validacao", "pix", "dinheiro", "credito", "credito-sandbox", "credito-config-alterada", "frete-alterado", "conflito", "repeticao", "metodos", "pino", "memoria", "limpeza", "armazenamento"]) {
-    const page = await browser.newPage();
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     page.setDefaultTimeout(15000);
     if (caso === "armazenamento") await page.addInitScript(() => {
       Object.defineProperty(window, "localStorage", { get() { throw Error("Sem armazenamento"); } });
@@ -179,6 +179,10 @@ try {
       if (caso === "memoria") {
         await abrir();
         assert.equal(await page.locator('[name="nome"]').inputValue(), "Cliente teste");
+        const titulo = page.getByRole("heading", { name: "Onde vamos entregar?" });
+        await titulo.waitFor();
+        const topo = await titulo.boundingBox();
+        assert.ok(topo.y >= 0 && topo.y < 300, "Início da etapa fora da área esperada: " + topo.y);
         assert.equal(await page.locator('[name="telefone"]').inputValue(), "+55 62 99999-9999");
         assert.equal(await page.locator('[name="lembrar"]').isChecked(), true);
         await page.locator(".leaflet-marker-icon").waitFor();

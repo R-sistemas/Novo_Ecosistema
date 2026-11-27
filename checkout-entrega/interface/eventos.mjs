@@ -1,3 +1,4 @@
+import { mostrarEtapaPedido } from "../../cardapio/interface/rolagem-pedido.mjs";
 const el = id => document.getElementById(id);
 
 export function configurarEventos(ctx) {
@@ -9,7 +10,11 @@ export function configurarEventos(ctx) {
       ctx.render();
     }
     const etapa = evento.target.closest("[data-etapa]")?.dataset.etapa;
-    if (etapa) { ctx.estado.etapa = Number(etapa); ctx.render(); }
+    if (etapa) {
+      ctx.estado.etapa = Number(etapa);
+      ctx.render();
+      mostrarEtapaPedido(ctx.conteudo);
+    }
   });
   ctx.conteudo.addEventListener("input", evento => {
     const { name, value } = evento.target;
@@ -26,7 +31,12 @@ export function configurarEventos(ctx) {
   ctx.conteudo.addEventListener("change", evento => {
     if (evento.target.name === "lembrar") ctx.estado.lembrar = evento.target.checked;
   });
-  ctx.voltar.onclick = () => { ctx.erro.textContent = ""; ctx.estado.etapa = Math.max(0, ctx.estado.etapa - 1); ctx.render(); };
+  ctx.voltar.onclick = () => {
+    ctx.erro.textContent = "";
+    ctx.estado.etapa = Math.max(0, ctx.estado.etapa - 1);
+    ctx.render();
+    mostrarEtapaPedido(ctx.conteudo);
+  };
   el("pedido").hidden = false;
   el("vitrine").hidden = false;
   el("barra-cardapio").hidden = false;

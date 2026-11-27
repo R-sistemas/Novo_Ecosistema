@@ -40,6 +40,9 @@ button.secundario,button.mais,button.produto-detalhe{border-color:var(--borda)}b
 #etapas-pedido .etapa-concluida { background: #e5f0e6; }
 #etapas-pedido [aria-current="step"] { background: #175d2d; color: white; font-weight: 800; }
 #etapas-pedido .etapa-interrompida[aria-current="step"] { background: #8d2929; }
+#pagamento-pix, #andamento-pedido, #checkout-conteudo, #entrega-teste, #dados-pix, #passo-pedido { scroll-margin-block-start: 1rem; }
+#pix-codigo { display: block; width: 100%; margin-block: .35rem .65rem; }
+#aviso-copiar-pix:empty { display: none; }
 .numero-pedido{display:table;margin:12px auto;padding:8px 14px;border-radius:999px;background:#e5f0e6;color:var(--verde);font-weight:800;font-size:1rem}
 
 .painel-pedido-pronto { margin: 1rem 0; padding: clamp(1rem,4vw,2rem); border-radius: 1rem; background: #175d2d; color: white; text-align: center; }

@@ -1,5 +1,6 @@
 import { enviarPedido, registrarEntrega } from "../dados/pedidos.mjs";
 import { configuracaoCartao } from "../regras/cartao.mjs";
+import { mostrarDestinoPedido, mostrarEtapaPedido } from "./rolagem-pedido.mjs";
 const el = id => document.getElementById(id);
 
 export function configurarEnvio(ctx) {
@@ -7,12 +8,15 @@ export function configurarEnvio(ctx) {
     el("carrinho-cardapio").close();
     el("vitrine").hidden = true;
     el("barra-cardapio").hidden = true;
-    window.scrollTo(0, 0);
   }
   el("pedido").addEventListener("click", evento => {
     if (!evento.target.closest("[data-pagamento], [data-recebimento]")) return;
     el("passo-pedido").textContent = "Próximo passo · Confirme seu pedido";
     el("enviar-pedido").classList.add("guiado");
+    const endereco = el("entrega-teste");
+    const documento = el("dados-pix");
+    const recebeu = evento.target.closest("[data-recebimento]");
+    mostrarEtapaPedido(recebeu && !endereco.hidden ? endereco : !documento.hidden ? documento : el("passo-pedido"));
   });
   el("pedido").onsubmit = evento => {
     evento.preventDefault();
@@ -44,6 +48,7 @@ export function configurarEnvio(ctx) {
           history.replaceState(null, "", "?" + ctx.parametros);
           el("acompanhar").hidden = false;
           await ctx.acompanhar();
+          mostrarDestinoPedido();
         });
         el("pedido").hidden = true;
         fecharCompra();
@@ -95,6 +100,7 @@ export function configurarEnvio(ctx) {
         fecharCompra();
         el("acompanhar").hidden = false;
         await ctx.acompanhar();
+        mostrarDestinoPedido();
       } finally {
         el("pedido").inert = false;
       }

@@ -1,6 +1,7 @@
 import { consultarFrete, registrarEntrega } from "../dados/checkout.mjs";
 import { telefoneNacional, trocoInsuficiente } from "../regras/pedido.mjs";
 import { configuracaoCartao } from "../../cardapio/regras/cartao.mjs";
+import { mostrarEtapaPedido } from "../../cardapio/interface/rolagem-pedido.mjs";
 const el = id => document.getElementById(id);
 
 export function configurarConfirmacao(ctx) {
@@ -16,7 +17,10 @@ export function configurarConfirmacao(ctx) {
       if (!ctx.estado.pino || ctx.estado.cotacaoPino !== ctx.estado.pino.maps_url || ctx.estado.frete === null) {
         if (!await ctx.cotar()) return;
       }
-      ctx.estado.etapa = 1; ctx.render(); return;
+      ctx.estado.etapa = 1;
+      ctx.render();
+      mostrarEtapaPedido(ctx.conteudo);
+      return;
     }
     if (!ctx.estado.metodo) {
       ctx.conteudo.querySelectorAll(".checkout-grupo-pagamento").forEach(grupo => grupo.classList.add("checkout-pagamento-invalido"));

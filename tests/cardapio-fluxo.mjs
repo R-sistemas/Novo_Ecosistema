@@ -88,6 +88,11 @@ try {
       if (caso === "retomar-pix") {
         await page.locator("#pagamento-pix").waitFor();
         assert.equal(await page.locator("#pix-codigo").inputValue(), "PIX-TESTE");
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+        await page.getByRole("button", { name: "Copiar Pix" }).click();
+        await page.getByText("Código Pix copiado.", { exact: true }).waitFor();
+        assert.equal(await page.evaluate(() => navigator.clipboard.readText()), "PIX-TESTE");
       }
       if (caso === "retomar") {
         const atual = page.locator('#etapas-pedido [aria-current="step"]');

@@ -8,6 +8,7 @@ import { configurarPix } from "./pix.mjs";
 import { configurarFrete } from "./frete.mjs";
 import { configurarPagamento } from "./pagamento.mjs";
 import { configurarEnvio } from "./envio.mjs";
+import { mostrarDestinoPedido } from "./rolagem-pedido.mjs";
 const el = id => document.getElementById(id);
 
 export function iniciarCardapio() {
@@ -87,8 +88,8 @@ export function iniciarCardapio() {
           el("vitrine").hidden = true;
           el("barra-cardapio").hidden = true;
           el("acompanhar").hidden = false;
-          window.scrollTo(0, 0);
           await ctx.acompanhar();
+          mostrarDestinoPedido();
         }
       });
       return;
