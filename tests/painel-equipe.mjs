@@ -240,6 +240,7 @@ test("Chrome percorre login, equipe, cadastro, listagem e remoção",{
         const ator = email.split("@")[0];
         return route.fulfill({json:{user:{id:users.get(ator)},access_token:ator,refresh_token:"fixture",expires_in:3600}});
       }
+      if (u.pathname === "/rest/v1/rpc/loja_licenca_resumo") return route.fulfill({body:"null",contentType:"application/json"});
       if (u.pathname.startsWith("/rest/v1/rpc/")) {
         const resposta = await supabase(u,{headers:{Authorization:route.request().headers().authorization},body:route.request().postData()});
         return route.fulfill({status:resposta.status,body:await resposta.text(),contentType:"application/json"});
